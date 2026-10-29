@@ -16,7 +16,8 @@ internal sealed record ProbeState(int Pid,string Hwnd,string Mode,bool Loaded,bo
     bool ParentMatches,bool NativeVisible,bool WpfVisible,bool Minimized,string Cloaked,
     string Bounds,uint Dpi,string Coverage,string Error,string Case,bool Transparent,string Style,string ExStyle,
     bool Layered,bool Child,bool Popup,string RequestedMode,string ClientBounds,string HostIntersection,
-    string RenderPreference,int RenderTier,bool RemoteSession,string RdpAcceleration,string HwndRenderMode,string SurfaceEvidence);
+    string RenderPreference,int RenderTier,bool RemoteSession,string RdpAcceleration,string HwndRenderMode,string SurfaceEvidence,
+    string ActiveCase,string ActiveMode,string NativeEvidence,bool NativeConfirmed);
 
 internal sealed class ProbeWindow : Window
 {
@@ -33,6 +34,9 @@ internal sealed class ProbeWindow : Window
     readonly Action<string> report;
     readonly DispatcherTimer health=new() { Interval=TimeSpan.FromSeconds(2) };
     readonly bool automated;
+    NativePaintProbe? nativeProbe;
+    bool closing;
+    internal string ActiveMode => nativeProbe?.Mode??Mode;
     long originalStyle;
     nint shellAtAttach;
     uint hostPid;
@@ -115,7 +119,7 @@ internal sealed class ProbeWindow : Window
             bool first=!Rendered; Rendered=true;
             if(first) { originalStyle=(long)Native.GetLong(Handle,Native.Style); report($"WPF_CONTENT_RENDERED hwnd={Handle:X}"); Snapshot("CONTENT_RENDERED"); }
         };
-        Closed+=(_,_)=> { health.Stop(); report("WINDOW_CLOSED"); };
+        Closed+=(_,_)=> { closing=true; health.Stop(); nativeProbe?.Close(); report("WINDOW_CLOSED"); };
     }
     void UpdateConfirmation() { if(!HumanConfirmed) Confirm.IsEnabled=clicks>0 && inputEdited && Rendered; }
     nint Hook(nint hwnd,int message,nint wp,nint lp,ref bool handled)
@@ -128,6 +132,7 @@ internal sealed class ProbeWindow : Window
     }
     internal bool Switch(string requested)
     {
+        if(nativeProbe!=null)nativeProbe.Close();
         requestedMode=requested;
         string mode=requested=="fallback"?"normal":requested;
         if(!Rendered) { LastError="WPF ContentRendered 尚未到达，拒绝改变宿主"; Snapshot("REJECTED"); return false; }
@@ -191,6 +196,7 @@ internal sealed class ProbeWindow : Window
     }
     internal void CheckHost(bool simulateLoss=false)
     {
+        nativeProbe?.CheckHost(simulateLoss);
         if(transitioning || Host==0) return;
         if(simulateLoss || !Native.IsWindow(Host) || Native.Pid(Host)!=hostPid || Native.GetShellWindow()!=shellAtAttach || Native.GetParent(Handle)!=Host)
         { report(simulateLoss?"SIMULATED_HOST_LOSS":"HOST_LOST"); Switch("normal"); }
@@ -248,7 +254,8 @@ internal sealed class ProbeWindow : Window
             ((long)Native.GetLong(Handle,Native.Style)&Native.Popup)!=0,requestedMode,Native.ClientBounds(Handle),Native.HostIntersection(Handle,Host),
             RenderOptions.ProcessRenderMode.ToString(),RenderCapability.Tier>>16,Native.GetSystemMetrics(0x1000)!=0,
             AppContext.TryGetSwitch("Switch.System.Windows.Media.EnableHardwareAccelerationInRdp",out bool enabled)?enabled.ToString():"unset (runtime default)",
-            HwndSource.FromHwnd(Handle)?.CompositionTarget?.RenderMode.ToString()??"unavailable",surfaceEvidence);
+            HwndSource.FromHwnd(Handle)?.CompositionTarget?.RenderMode.ToString()??"unavailable",surfaceEvidence,
+            nativeProbe?.Case??Case,ActiveMode,nativeProbe?.Evidence()??"inactive",nativeProbe?.HumanConfirmed??false);
     }
     internal void Snapshot(string reason)
     {
@@ -260,6 +267,22 @@ internal sealed class ProbeWindow : Window
     {
         switch(command)
         {
+            case "native-normal":
+                if(nativeProbe!=null) { nativeProbe.Restore(); Snapshot("NATIVE_NORMAL"); return true; }
+                if(!Switch("normal"))return false;
+                System.Windows.Forms.Integration.WindowsFormsHost.EnableWindowsFormsInterop();
+                var probe=new NativePaintProbe(report,()=>Snapshot("NATIVE_CONFIRM"),Native.Bounds(Handle));
+                nativeProbe=probe;
+                probe.FormClosed+=(_,_)=> {
+                    nativeProbe=null;
+                    if(!closing) { Show(); BringIntoWorkArea(); Activate(); Snapshot("NATIVE_CLOSED_RETURN_WPF"); }
+                };
+                try { probe.Show(); Hide(); Snapshot("NATIVE_CREATED"); return true; }
+                catch { probe.Close(); throw; }
+            case "native-desktop":
+                if(nativeProbe==null) { LastError="请先打开 E 原生普通窗口并确认"; return false; }
+                bool attached=nativeProbe.Attach(automated); LastError=attached?"":nativeProbe.Error;
+                Snapshot("NATIVE_DESKTOP"); return attached;
             case "exit": report("USER_EXIT"); return true;
             case "snapshot": Snapshot("COMMAND"); return true;
             case "sample": SampleContent(); Snapshot("OFFSCREEN_SAMPLE"); return true;

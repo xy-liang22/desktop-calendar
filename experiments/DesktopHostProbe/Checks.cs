@@ -31,6 +31,7 @@ internal static class Checks
         var normal=new ProbeWindow(lines.Add);
         normal.Loaded+=async (_,_)=> {
             ProbeWindow? experimental=null,transparent=null;
+            NativePaintProbe? native=null;
             try
             {
                 await Rendered(normal);
@@ -98,13 +99,42 @@ internal static class Checks
                 bool worker=transparent.Switch("wallpaper");
                 Assert(worker?transparent.State().ParentMatches:transparent.Mode=="normal" && transparent.LastError!="","WorkerW result distinguishes actual attachment from failed normal fallback");
                 lines.Add($"WORKERW attached={worker}; actual={transparent.Mode}; requested={transparent.State().RequestedMode}; error={transparent.LastError}");
+                transparent.Close(); transparent=null;
+                // E/F are GDI-painted Forms with native EDIT/BUTTON HWNDs, no WPF visual tree.
+                System.Windows.Forms.Integration.WindowsFormsHost.EnableWindowsFormsInterop();
+                native=new NativePaintProbe(lines.Add,()=>{},Native.Bounds(normal.Handle));
+                native.Show(); await Task.Delay(200);
+                nint nativeHwnd=native.Handle;
+                Assert(Native.GetParent(nativeHwnd)==0 && !native.HumanConfirmed && native.Mode=="native-normal","E: independent normal native HWND, no false human confirmation");
+                Assert(native.PaintCount>0 && Native.IsWindowVisible(nativeHwnd),"E: GDI paint callback and visible bit (not actual screen evidence)");
+                Assert(Native.Class(native.Input.Handle).Contains("EDIT",StringComparison.OrdinalIgnoreCase) && Native.Class(native.Counter.Handle).Contains("BUTTON",StringComparison.OrdinalIgnoreCase),"E: native EDIT and BUTTON child handles exist");
+                Assert(((long)Native.GetLong(nativeHwnd,Native.ExStyle)&0x80000)==0,"E: opaque non-layered native baseline");
+                Assert(!native.Attach() && native.Host==0 && native.Error!="","F blocked until E interaction is manually confirmed");
+                native.Input.Text="temporary native test"; native.Counter.PerformClick();
+                Assert(!native.HumanConfirmed && !native.Confirm.Enabled,"programmatic text/click does not fabricate E manual confirmation");
+                bool nativeAttached=native.Attach(true); await Task.Delay(150);
+                Assert(nativeAttached || native.Mode=="native-normal","F: attaches or explicitly restores normal mode");
+                if(nativeAttached) {
+                    Assert(native.Handle==nativeHwnd && native.Host==Native.Desktop().Host && Native.GetParent(nativeHwnd)==native.Host,"F: same native HWND attached to same Explorer candidate as C/D");
+                    Assert(((long)Native.GetLong(nativeHwnd,Native.Style)&Native.Child)!=0 && ((long)Native.GetLong(nativeHwnd,Native.ExStyle)&0x80000)==0,"F: native WS_CHILD and no layered flag");
+                    lines.Add("NATIVE_CASE "+native.Evidence());
+                }
+                native.Restore();
+                Assert(Native.GetParent(nativeHwnd)==0 && native.Mode=="native-normal" && native.Input.Text=="temporary native test","native normal restore preserves text and HWND");
+                if(native.Attach(true)) {
+                    native.CheckHost(true);
+                    Assert(native.Mode=="native-normal" && native.Host==0,"native simulated host loss safely restores E");
+                }
+                native.Close();
+                Assert(!Native.IsWindow(nativeHwnd),"native close destroys owned HWND");
+                native=null;
                 lines.Add("PENDING user must see two windows, type text, click counter, resize and explicitly confirm before desktop experiment.");
                 lines.Add("PENDING actual desktop visibility, Explorer restart, sleep and mixed-DPI remain unverified.");
             }
             catch(Exception ex) { fail++; lines.Add("FAIL "+ex); }
             finally
             {
-                transparent?.Close(); experimental?.Close();
+                native?.Close(); transparent?.Close(); experimental?.Close();
                 lines.Add($"RESULT {pass} PASS, {fail} FAIL; human visibility NOT asserted");
                 File.WriteAllLines(Path.Combine(dir,software?"p1.1-2-software-checks.txt":"p1.1-2-checks.txt"),lines);
                 app.Shutdown(fail==0?0:1);

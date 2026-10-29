@@ -35,6 +35,7 @@ internal static class Native
     [DllImport("user32.dll")] internal static extern bool ScreenToClient(nint h,ref Point pt);
     [DllImport("user32.dll")] internal static extern bool GetCursorPos(out Point pt);
     [DllImport("user32.dll")] internal static extern bool IsWindow(nint h);
+    [DllImport("user32.dll")] internal static extern bool IsChild(nint parent,nint child);
     [DllImport("user32.dll")] internal static extern bool IsWindowVisible(nint h);
     [DllImport("user32.dll")] internal static extern bool IsIconic(nint h);
     [DllImport("user32.dll")] internal static extern nint GetWindowDpiAwarenessContext(nint h);
@@ -72,7 +73,7 @@ internal static class Native
         foreach(var p in new[]{new Point(r.Left+r.Width/2,r.Top+r.Height/2),new Point(r.Left+r.Width/4,r.Top+r.Height/4),new Point(r.Left+3*r.Width/4,r.Top+3*r.Height/4)})
         {
             nint hit=WindowFromPoint(p);
-            if(hit==h || GetAncestor(hit,2)==h) own++;
+            if(hit==h || IsChild(h,hit)) own++;
             else others.Add($"{hit:X}/{Class(hit)}/PID={Pid(hit)}");
         }
         return $"ownHit={own}/3; possibleCover=[{string.Join(",",others)}] (hit samples, not pixel proof)";
