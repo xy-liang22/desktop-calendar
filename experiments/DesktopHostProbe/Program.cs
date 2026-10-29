@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -9,155 +11,254 @@ using System.Windows.Threading;
 
 namespace DesktopHostProbe;
 
+internal sealed record CommandReply(long Id,string Command,bool Ok,string Mode,string Error);
+
 internal static class Program
 {
     [STAThread] static int Main(string[] args)
     {
-        var app=new Application { ShutdownMode=ShutdownMode.OnMainWindowClose };
-        app.Exit+=(_,e)=> { if(Array.IndexOf(args,"--supervisor-test")>=0) e.ApplicationExitCode=Environment.ExitCode; };
-        if(Array.IndexOf(args,"--self-test")>=0) return Checks.Run(app);
-        if(Array.IndexOf(args,"--widget")>=0)
+        try
         {
-            Console.OutputEncoding=new UTF8Encoding(false);
-            var widget=new ProbeWindow(s=>Console.WriteLine(s));
-            widget.Loaded+=async (_,_)=> {
-                Console.WriteLine(Native.Inventory());
-                widget.Switch(Array.IndexOf(args,"--fallback")>=0?"fallback":"desktop");
-                // EOF also ends the child if its controller disappears.
-                await Task.Run(async ()=> {
-                    string? line;
-                    while((line=await Console.In.ReadLineAsync())!=null) await app.Dispatcher.InvokeAsync(()=>widget.Command(line));
-                    await app.Dispatcher.InvokeAsync(()=>app.Shutdown());
+            var app=new Application { ShutdownMode=ShutdownMode.OnMainWindowClose };
+            if(Array.IndexOf(args,"--self-test")>=0) return Checks.Run(app);
+            if(Array.IndexOf(args,"--widget")>=0)
+            {
+                Console.OutputEncoding=new UTF8Encoding(false);
+                void Report(string text) { Console.WriteLine(text); Console.Out.Flush(); }
+                Report($"BOOT pid={Environment.ProcessId}; startup=normal; no desktop attach");
+                var widget=new ProbeWindow(Report,Array.IndexOf(args,"--test-commands")>=0);
+                _=Task.Run(async ()=> {
+                    try
+                    {
+                        string? line;
+                        while((line=await Console.In.ReadLineAsync())!=null)
+                        {
+                            int split=line.IndexOf('|');
+                            if(split<1 || !long.TryParse(line[..split],out long id)) { Report("PROTOCOL_ERROR invalid request"); continue; }
+                            string command=line[(split+1)..];
+                            await app.Dispatcher.InvokeAsync(()=> {
+                                Report($"RECEIVED id={id} command={command}");
+                                bool ok=false; string error="";
+                                try { ok=widget.Command(command); error=ok?"":widget.LastError; }
+                                catch(Exception ex) { error=ex.Message; }
+                                Report("ACK "+JsonSerializer.Serialize(new CommandReply(id,command,ok,widget.Mode,error)));
+                                if(command=="exit") widget.Close();
+                            });
+                        }
+                        if(!app.Dispatcher.HasShutdownStarted) await app.Dispatcher.InvokeAsync(()=>app.Shutdown());
+                    }
+                    catch(TaskCanceledException) {}
+                    catch(IOException) { if(!app.Dispatcher.HasShutdownStarted) _=app.Dispatcher.BeginInvoke(()=>app.Shutdown()); }
                 });
-            };
-            return app.Run(widget);
+                return app.Run(widget); // WPF owns the complete initial Show/Loaded/ContentRendered sequence.
+            }
+            var controller=new Controller(Array.IndexOf(args,"--supervisor-test")>=0);
+            app.Exit+=(_,e)=>e.ApplicationExitCode=controller.TestExitCode;
+            return app.Run(controller);
         }
-        return app.Run(new Controller(Array.IndexOf(args,"--supervisor-test")>=0));
+        catch(Exception ex) { Console.Error.WriteLine(ex); return 1; }
     }
 }
 
 internal sealed class Controller : Window
 {
     Process? child;
-    bool closing,intentionalExit,recovered;
-    string latestMode="";
-    readonly TextBox log = new() { IsReadOnly=true, AcceptsReturn=true, TextWrapping=TextWrapping.Wrap, VerticalScrollBarVisibility=ScrollBarVisibility.Auto };
+    ProbeState? state;
+    bool closing,intentionalExit,recovered,rebuilding;
+    readonly bool selfTest;
+    long nextId;
+    readonly Dictionary<long,TaskCompletionSource<CommandReply>> pending=new();
+    readonly TextBlock summary=new() { TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,8,0,8) };
+    readonly TextBlock result=new() { TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,0,0,8),Text="尚无控制命令；等待组件启动及渲染报告。" };
+    readonly TextBox log=new() { IsReadOnly=true,AcceptsReturn=true,TextWrapping=TextWrapping.Wrap,VerticalScrollBarVisibility=ScrollBarVisibility.Auto };
+    readonly List<Button> experimentalButtons=new();
     readonly string logPath=Path.Combine(AppContext.BaseDirectory,"probe-session.log");
-    readonly DispatcherTimer pulse=new() { Interval=TimeSpan.FromSeconds(2) };
+    readonly DispatcherTimer pulse=new() { Interval=TimeSpan.FromSeconds(3) };
+    internal int TestExitCode { get; private set; }
+
     internal Controller(bool selfTest=false)
     {
+        this.selfTest=selfTest;
         Title="Desktop Calendar — 实验控制台（保留找回入口）";
-        Width=690; Height=510; Left=60; Top=100;
+        Width=740; Height=640; Left=40; Top=60;
         var grid=new Grid { Margin=new Thickness(16) }; Content=grid;
-        grid.RowDefinitions.Add(new RowDefinition { Height=GridLength.Auto });
-        grid.RowDefinitions.Add(new RowDefinition { Height=GridLength.Auto });
+        for(int i=0;i<4;i++) grid.RowDefinitions.Add(new RowDefinition { Height=GridLength.Auto });
         grid.RowDefinitions.Add(new RowDefinition());
-        grid.Children.Add(new TextBlock { Text="控制台是独立普通窗口；不代表组件任务栏行为。\n请手动测试 Win+D、Explorer 重启和混合 DPI；不输入个人资料。", TextWrapping=TextWrapping.Wrap, Margin=new Thickness(0,0,0,10) });
-        var buttons=new WrapPanel(); Grid.SetRow(buttons,1); grid.Children.Add(buttons);
-        void Add(string label,string command) { var b=new Button { Content=label, Padding=new Thickness(10,6,10,6), Margin=new Thickness(0,0,8,8) }; b.Click+=(_,_)=>Send(command); buttons.Children.Add(b); }
-        Add("桌面宿主（默认）","desktop"); Add("WorkerW 壁纸对照","wallpaper"); Add("普通置底对照","bottom");
-        Add("始终置顶","topmost"); Add("安全回退 / 找回","fallback"); Add("下一显示器","next-monitor");
-        Add("记录状态","snapshot"); Add("模拟宿主丢失","simulate-loss");
-        var exit=new Button { Content="退出整个实验", Padding=new Thickness(10,6,10,6), Margin=new Thickness(0,0,8,8) }; exit.Click+=(_,_)=>Close(); buttons.Children.Add(exit);
-        Grid.SetRow(log,2); grid.Children.Add(log);
-        Loaded+=async (_,_)=> { Append("日志仅含窗口状态，不记录输入正文。" ); Start(false); pulse.Start(); if(selfTest) await TestSupervisor(); };
-        pulse.Tick+=(_,_)=>Send("snapshot",false);
+        var intro=new TextBlock { Text="应出现两个窗口：本控制台 + 浅色、有标题栏的“普通窗口诊断组件”。\n先在组件输入文字、点击计数并确认，才能启用桌面实验。若消失，点“重建普通窗口 / 找回”。",TextWrapping=TextWrapping.Wrap };
+        grid.Children.Add(intro);
+        var buttons=new WrapPanel { Margin=new Thickness(0,10,0,0) }; Grid.SetRow(buttons,1); grid.Children.Add(buttons);
+        void Add(string text,string command,bool gate=false)
+        {
+            var b=new Button { Content=text,Padding=new Thickness(10,7,10,7),Margin=new Thickness(0,0,8,8) };
+            b.Click+=async (_,_)=>await Send(command); buttons.Children.Add(b);
+            if(gate) { b.IsEnabled=false; experimentalButtons.Add(b); }
+        }
+        var rescue=new Button { Content="重建普通窗口 / 找回",Padding=new Thickness(10),Margin=new Thickness(0,0,8,8) };
+        rescue.Click+=async (_,_)=>await Rebuild(); buttons.Children.Add(rescue);
+        Add("恢复普通模式","normal"); Add("开始桌面嵌入","desktop",true);
+        Add("WorkerW 对照","wallpaper",true); Add("普通置底对照","bottom",true);
+        Add("始终置顶","topmost"); Add("下一显示器","next-monitor"); Add("完整诊断","snapshot");
+        Add("模拟宿主丢失","simulate-loss");
+        var exit=new Button { Content="退出整个实验",Padding=new Thickness(10),Margin=new Thickness(0,0,8,8) };
+        exit.Click+=(_,_)=>Close(); buttons.Children.Add(exit);
+        Grid.SetRow(summary,2); grid.Children.Add(summary);
+        Grid.SetRow(result,3); grid.Children.Add(result);
+        Grid.SetRow(log,4); grid.Children.Add(log);
+        Loaded+=async (_,_)=> {
+            Append("新诊断版本：先普通窗口。状态/渲染事件不等于屏幕可见；等待用户确认。");
+            await Start(); pulse.Start();
+            if(selfTest) await TestSupervisor();
+        };
+        pulse.Tick+=async (_,_)=> { if(!closing && !rebuilding && pending.Count==0 && child is { HasExited:false }) await Send("snapshot",false); };
         Closing+=async (_,e)=> {
             if(closing) return;
-            e.Cancel=true;
-            closing=true; pulse.Stop();
-            if(child is { HasExited:false } process)
-            {
-                try
-                {
-                    process.StandardInput.WriteLine("exit"); process.StandardInput.Close();
-                    await Task.WhenAny(process.WaitForExitAsync(),Task.Delay(3000));
-                    if(!process.HasExited)
-                    {
-                        // Only our own launched test child; never Explorer or another application.
-                        Append("实验组件未响应退出，结束本控制台启动的组件进程。"); process.Kill(); await process.WaitForExitAsync();
-                    }
-                }
-                catch(InvalidOperationException) {} catch(IOException) { if(!process.HasExited) process.Kill(); }
-            }
-            _=Dispatcher.BeginInvoke(Close); // do not reenter Close while its Closing event is still running
+            e.Cancel=true; closing=true; pulse.Stop(); await StopChild();
+            _=Dispatcher.BeginInvoke(Close);
         };
     }
     void Append(string text)
     {
         string line=$"{DateTimeOffset.Now:HH:mm:ss} {text}";
-        if(log.Text.Length>24000) log.Text=log.Text[^12000..];
+        if(log.Text.Length>26000) log.Text=log.Text[^12000..];
         log.AppendText(line+Environment.NewLine); log.ScrollToEnd();
-        try
-        {
-            if(File.Exists(logPath) && new FileInfo(logPath).Length>1024*1024) File.WriteAllText(logPath,"Log capped at 1 MiB; older diagnostics removed.\n");
+        try {
+            if(File.Exists(logPath)&&new FileInfo(logPath).Length>1024*1024) File.WriteAllText(logPath,"Old diagnostic log truncated.\n");
             File.AppendAllText(logPath,line+Environment.NewLine,Encoding.UTF8);
         }
-        catch(IOException) { /* UI remains available if diagnostic storage fails. */ }
+        catch(Exception ex) when(ex is IOException or UnauthorizedAccessException) { result.Text="诊断日志无法写入："+ex.Message; }
     }
-    void Start(bool fallback)
+    void UpdateSummary()
     {
-        intentionalExit=false;
-        latestMode="";
-        var start=new ProcessStartInfo(Environment.ProcessPath!,"--widget"+(fallback?" --fallback":"")) {
-            UseShellExecute=false,CreateNoWindow=true,RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true,
-            StandardOutputEncoding=Encoding.UTF8,StandardErrorEncoding=Encoding.UTF8 };
-        var process=new Process { StartInfo=start,EnableRaisingEvents=true }; child=process;
-        process.OutputDataReceived+=(_,e)=> { if(e.Data!=null) Dispatcher.BeginInvoke(()=> {
-            if(process!=child)return;
-            if(e.Data=="USER_EXIT") intentionalExit=true;
-            if(e.Data.StartsWith("mode mode=") || e.Data.StartsWith("safe-fallback mode=")) latestMode=e.Data.Contains("mode=fallback")?"fallback":"other";
-            Append(e.Data);
-        }); };
-        process.ErrorDataReceived+=(_,e)=> { if(e.Data!=null) Dispatcher.BeginInvoke(()=>Append("CHILD_ERROR "+e.Data)); };
-        process.Exited+=(_,_)=>Dispatcher.BeginInvoke(async ()=> {
-            await Task.Delay(250); // allow final stdout notification to drain
-            if(closing || process!=child) return;
-            Append($"组件进程已结束 code={process.ExitCode}");
-            if(!intentionalExit && !recovered) { recovered=true; Append("只自动重建一次普通回退窗口；不自动重挂 Explorer。输入内容不恢复。"); Start(true); }
-        });
-        try { process.Start(); process.BeginOutputReadLine(); process.BeginErrorReadLine(); Append($"组件 PID={process.Id}"); }
-        catch(Exception ex) { Append("启动失败："+ex.Message); child=null; }
+        string process=child==null?"未启动":child.HasExited?$"已退出 PID={child.Id}":$"存活 PID={child.Id}";
+        summary.Text=$"进程：{process}\n"+
+            (state==null?"HWND/WPF：尚无组件报告":$"HWND={state.Hwnd} | 模式={state.Mode} | WPF Loaded={state.Loaded} / ContentRendered={state.ContentRendered}\n内容={state.ContentWidth:0}×{state.ContentHeight:0} | parent={state.Parent} / host={state.Host} / 匹配={state.ParentMatches}\nWS_VISIBLE={state.NativeVisible} / WPF Visible={state.WpfVisible} / 最小化={state.Minimized} / DWM cloaked={state.Cloaked}\n矩形={state.Bounds} / DPI={state.Dpi}\n遮挡采样：{state.Coverage}\n错误：{(state.Error==""?"无已报告错误":state.Error)}")+
+            "\n人工可见性："+(state?.HumanConfirmed==true?"用户已确认普通窗口；桌面嵌入仍需另验。":"未确认，不能据以上状态判为可见。");
+        foreach(var b in experimentalButtons) b.IsEnabled=!rebuilding && state is { HumanConfirmed:true,ContentRendered:true };
     }
-    void Send(string command,bool restart=true)
+    void Receive(Process process,string line)
     {
-        if(child==null || child.HasExited)
-        {
-            if(restart) { recovered=false; Start(true); Append("已启动安全窗口；请再次选择所需模式。"); }
-            return;
+        if(process!=child || closing) return;
+        try {
+            if(line.StartsWith("STATE ")) { state=JsonSerializer.Deserialize<ProbeState>(line[6..]); UpdateSummary(); }
+            else if(line.StartsWith("ACK "))
+            {
+                var reply=JsonSerializer.Deserialize<CommandReply>(line[4..])!;
+                if(pending.TryGetValue(reply.Id,out var waiter)) waiter.TrySetResult(reply);
+            }
+            else if(line=="USER_EXIT") intentionalExit=true;
+            Append(line);
         }
-        try { child.StandardInput.WriteLine(command); child.StandardInput.Flush(); }
-        catch(IOException ex) { Append("控制通道已关闭："+ex.Message); }
+        catch(JsonException ex) { result.Text="组件诊断格式错误："+ex.Message; Append("PROTOCOL_ERROR "+ex.Message); }
+    }
+    async Task Start()
+    {
+        intentionalExit=false; state=null;
+        var process=new Process {
+            StartInfo=new ProcessStartInfo(Environment.ProcessPath!,"--widget"+(selfTest?" --test-commands":"")) {
+                UseShellExecute=false,WindowStyle=ProcessWindowStyle.Normal,RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true,
+                StandardOutputEncoding=Encoding.UTF8,StandardErrorEncoding=Encoding.UTF8 },
+            EnableRaisingEvents=true
+        };
+        child=process;
+        process.OutputDataReceived+=(_,e)=> { if(e.Data!=null) _=Dispatcher.BeginInvoke(()=>Receive(process,e.Data)); };
+        process.ErrorDataReceived+=(_,e)=> { if(e.Data!=null) _=Dispatcher.BeginInvoke(()=> { if(process==child) { result.Text="子进程错误："+e.Data; Append(result.Text); } }); };
+        process.Exited+=(_,_)=>_=Dispatcher.BeginInvoke(async ()=> {
+            await Task.Delay(250);
+            if(process!=child || closing || rebuilding) return;
+            UpdateSummary(); Append($"PROCESS_EXIT pid={process.Id} code={process.ExitCode}");
+            if(!intentionalExit && !recovered) { recovered=true; Append("意外退出：只重建一次普通窗口，不自动嵌入。"); await Rebuild(false); }
+        });
+        try {
+            if(!process.Start()) throw new InvalidOperationException("Process.Start 返回 false");
+            process.BeginOutputReadLine(); process.BeginErrorReadLine();
+            Append($"PROCESS_STARTED pid={process.Id}; waiting for HWND_CREATED / WPF_LOADED / CONTENT_RENDERED");
+            UpdateSummary();
+            await Wait(()=>state is { ContentRendered:true,Loaded:true } || process.HasExited,10000);
+            if(process!=child) return;
+            if(state is not { ContentRendered:true,Loaded:true }) throw new InvalidOperationException("组件在首次内容渲染前退出");
+            result.Text="组件已报告 WPF 内容渲染；请亲眼检查并操作浅色普通窗口。这不是屏幕可见性认证。";
+        }
+        catch(Exception ex) { result.Text="启动/渲染未完成："+ex.Message+"；可点“重建普通窗口 / 找回”。"; Append(result.Text); }
+    }
+    async Task<CommandReply?> Send(string command,bool showResult=true)
+    {
+        if(child is not { HasExited:false } process) { if(showResult) result.Text="组件未运行；请重建普通窗口。"; return null; }
+        long id=++nextId; var waiter=new TaskCompletionSource<CommandReply>(TaskCreationOptions.RunContinuationsAsynchronously); pending[id]=waiter;
+        try {
+            if(showResult) result.Text=$"发送 #{id} {command}，等待组件确认…";
+            Append($"SEND id={id} command={command}");
+            await process.StandardInput.WriteLineAsync($"{id}|{command}").WaitAsync(TimeSpan.FromSeconds(2));
+            await process.StandardInput.FlushAsync().WaitAsync(TimeSpan.FromSeconds(2));
+            var reply=await waiter.Task.WaitAsync(TimeSpan.FromSeconds(8));
+            if(showResult) result.Text=$"#{id} {command}: {(reply.Ok?"已执行（非屏幕可见性证明）":"失败")}；mode={reply.Mode}；{reply.Error}";
+            return reply;
+        }
+        catch(Exception ex) when(ex is IOException or InvalidOperationException or TimeoutException) {
+            result.Text=$"#{id} {command} 未收到成功确认：{ex.Message}。请重建普通窗口。"; Append(result.Text); return null;
+        }
+        finally { pending.Remove(id); }
+    }
+    async Task StopChild()
+    {
+        if(child is not { HasExited:false } process) return;
+        intentionalExit=true;
+        try {
+            await process.StandardInput.WriteLineAsync($"{++nextId}|exit").WaitAsync(TimeSpan.FromSeconds(1));
+            process.StandardInput.Close();
+            await Task.WhenAny(process.WaitForExitAsync(),Task.Delay(2500));
+        }
+        catch(Exception ex) when(ex is IOException or InvalidOperationException or TimeoutException) { Append("STOP "+ex.Message); }
+        if(!process.HasExited) {
+            Append($"结束本控制台启动的实验组件 PID={process.Id}；不操作 Explorer。");
+            process.Kill(); await process.WaitForExitAsync();
+        }
+    }
+    async Task Rebuild(bool explicitRequest=true)
+    {
+        if(rebuilding || closing) return;
+        rebuilding=true;
+        try {
+            if(explicitRequest) recovered=false;
+            result.Text="正在销毁旧测试实例并新建普通窗口；测试文字清空。";
+            await StopChild();
+            await Start();
+        }
+        finally { rebuilding=false; UpdateSummary(); }
+    }
+    static async Task Wait(Func<bool> condition,int ms=6000)
+    {
+        for(int i=0;i<ms/100;i++) { if(condition())return; await Task.Delay(100); }
+        throw new TimeoutException("等待状态超时");
     }
     async Task TestSupervisor()
     {
-        var results=new System.Collections.Generic.List<string>(); int failures=0;
-        async Task Wait(Func<bool> condition)
-        {
-            for(int i=0;i<60;i++) { if(condition())return; await Task.Delay(100); }
-            throw new TimeoutException("Supervisor test timeout");
-        }
-        void Check(bool ok,string name) { results.Add((ok?"PASS ":"FAIL ")+name); if(!ok)failures++; }
-        try
-        {
-            await Wait(()=>latestMode!=""); int first=child!.Id;
-            Send("simulate-destroy");
-            await Wait(()=>child!=null && child.Id!=first && latestMode=="fallback");
-            Check(recovered && child!.Id!=first,"unexpected child window loss starts one independent fallback process");
-            int second=child!.Id; Send("simulate-destroy");
-            await Wait(()=>child!.HasExited); await Task.Delay(700);
-            Check(child!.Id==second && child.HasExited,"second loss does not cause respawn loop");
-            Send("fallback"); await Wait(()=>latestMode=="fallback" && child!=null && !child.HasExited);
-            Check(child!.Id!=second,"explicit rescue restarts a reachable ordinary window");
-            int third=child!.Id; Send("exit");
-            await Wait(()=>child!.HasExited); await Task.Delay(700);
-            Check(child!.Id==third && intentionalExit,"normal child exit does not trigger automatic restart");
+        var results=new List<string>(); int failures=0;
+        void Check(bool ok,string name) { results.Add((ok?"PASS ":"FAIL ")+name); if(!ok) failures++; }
+        try {
+            Check(state is { Mode:"normal",ContentRendered:true,Loaded:true,Parent:"0",HumanConfirmed:false },"new child reports ordinary HWND + loaded content + rendered, without claiming human visibility");
+            int first=child!.Id;
+            var ack=await Send("snapshot");
+            Check(ack is { Ok:true,Command:"snapshot" },"command ID round-trip acknowledged by child");
+            var bad=await Send("unknown-test-command");
+            Check(bad is { Ok:false } && bad.Error!="","unknown command has explicit error acknowledgement");
+            await Rebuild(); await Wait(()=>state is { ContentRendered:true,Mode:"normal" });
+            Check(child!.Id!=first && state is { Parent:"0",HumanConfirmed:false },"rescue starts fresh non-embedded process and resets human gate");
+            int second=child!.Id;
+            _=Send("simulate-destroy",false);
+            await Wait(()=>child!.Id!=second && state is { Mode:"normal",ContentRendered:true },10000);
+            Check(recovered,"unexpected window loss gets one ordinary restart");
+            int third=child!.Id;
+            _=Send("simulate-destroy",false);
+            await Wait(()=>child!.HasExited); await Task.Delay(500);
+            Check(child!.Id==third,"second unexpected exit does not restart endlessly");
+            await Rebuild(); await Wait(()=>state is { Mode:"normal",ContentRendered:true });
+            var quit=await Send("exit"); await Wait(()=>child!.HasExited); await Task.Delay(500);
+            Check(quit is { Ok:true,Command:"exit" } && intentionalExit,"normal exit acknowledged before closing and does not respawn");
         }
         catch(Exception ex) { failures++; results.Add("FAIL "+ex); }
-        results.Add($"RESULT {results.Count-failures} PASS, {failures} FAIL; simulation only, not Explorer restart");
+        results.Add($"RESULT {results.Count-failures} PASS, {failures} FAIL; on-screen visibility still requires user");
         string dir=Path.Combine(Environment.CurrentDirectory,"artifacts"); Directory.CreateDirectory(dir);
         File.WriteAllLines(Path.Combine(dir,"p1.1-2-supervisor-checks.txt"),results);
-        Environment.ExitCode=failures==0?0:1;
-        Close();
+        TestExitCode=failures==0?0:1; Close();
     }
 }

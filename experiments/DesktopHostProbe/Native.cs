@@ -42,9 +42,25 @@ internal static class Native
     [DllImport("user32.dll")] internal static extern uint GetDpiForWindow(nint h);
     [DllImport("user32.dll")] internal static extern nint WindowFromPoint(Point p);
     [DllImport("user32.dll")] internal static extern nint GetAncestor(nint h,uint flags);
+    [DllImport("user32.dll")] internal static extern bool GetClientRect(nint h,out Rect rect);
+    [DllImport("user32.dll")] internal static extern bool ClientToScreen(nint h,ref Point pt);
+    [DllImport("dwmapi.dll")] static extern int DwmGetWindowAttribute(nint h,uint attribute,out int value,int size);
     [DllImport("user32.dll", CharSet=CharSet.Unicode)] internal static extern uint RegisterWindowMessage(string name);
     internal static string Class(nint h) { var s=new StringBuilder(128); GetClassName(h,s,s.Capacity); return s.ToString(); }
     internal static uint Pid(nint h) { GetWindowThreadProcessId(h,out uint pid); return pid; }
+    internal static string Cloaked(nint h) => DwmGetWindowAttribute(h,14,out int value,4)==0?value.ToString():"unknown";
+    internal static string Coverage(nint h)
+    {
+        var r=Bounds(h); int own=0;
+        var others=new HashSet<string>();
+        foreach(var p in new[]{new Point(r.Left+r.Width/2,r.Top+r.Height/2),new Point(r.Left+r.Width/4,r.Top+r.Height/4),new Point(r.Left+3*r.Width/4,r.Top+3*r.Height/4)})
+        {
+            nint hit=WindowFromPoint(p);
+            if(hit==h || GetAncestor(hit,2)==h) own++;
+            else others.Add($"{hit:X}/{Class(hit)}/PID={Pid(hit)}");
+        }
+        return $"ownHit={own}/3; possibleCover=[{string.Join(",",others)}] (hit samples, not pixel proof)";
+    }
     internal static Rect Bounds(nint h) { if (!GetWindowRect(h,out var r)) throw new InvalidOperationException("窗口矩形不可用"); return r; }
     internal static void SetStyle(nint h,int index,long value)
     {

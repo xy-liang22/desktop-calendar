@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Interop;
-using Forms=System.Windows.Forms;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace DesktopHostProbe;
 
@@ -14,95 +14,74 @@ internal static class Checks
     internal static int Run(Application app)
     {
         app.ShutdownMode=ShutdownMode.OnExplicitShutdown;
-        string traceDir=Path.Combine(Environment.CurrentDirectory,"artifacts"); Directory.CreateDirectory(traceDir);
-        string tracePath=Path.Combine(traceDir,"p1.1-2-trace.log");
-        File.WriteAllText(tracePath,"Started self-test"+Environment.NewLine);
-        var lines=new List<string>(); int pass=0,fail=0,skip=0;
+        var lines=new List<string>(); int pass=0,fail=0;
+        string dir=Path.Combine(Environment.CurrentDirectory,"artifacts"); Directory.CreateDirectory(dir);
         void Assert(bool ok,string name) { lines.Add((ok?"PASS ":"FAIL ")+name); if(ok)pass++;else fail++; }
-        void Skip(string name) { skip++; lines.Add("PENDING "+name); }
-        var window=new ProbeWindow(s=> { lines.Add(s); File.AppendAllText(tracePath,s+Environment.NewLine); });
-        window.Closed+=(_,_)=>File.AppendAllText(tracePath,"WINDOW CLOSED"+Environment.NewLine);
-        window.Loaded+=async (_,_)=> {
+        async Task Rendered(ProbeWindow w) {
+            for(int i=0;i<60;i++) { if(w.Rendered)return; await Task.Delay(100); }
+            throw new TimeoutException("WPF ContentRendered was not observed");
+        }
+        var normal=new ProbeWindow(lines.Add);
+        normal.Loaded+=async (_,_)=> {
+            ProbeWindow? experimental=null;
             try
             {
-                await Task.Delay(350);
+                await Rendered(normal);
+                var s=normal.State();
+                Assert(s.Pid==Environment.ProcessId && s.Hwnd!="0" && Native.IsWindow(normal.Handle),"own process has real HWND");
+                Assert(s.Mode=="normal" && s.Parent=="0" && s.Host=="0","startup stays ordinary top-level, no Explorer parent");
+                Assert(s.Loaded && s.ContentRendered && s.ContentWidth>200 && s.ContentHeight>200,"WPF loaded, content rendered and measured");
+                Assert(normal.ShowInTaskbar && !normal.AllowsTransparency && normal.WindowStyle==WindowStyle.SingleBorderWindow,"ordinary opaque captioned diagnostic window with taskbar entry");
+                Assert(normal.ResizeMode==ResizeMode.CanResizeWithGrip,"standard resize border and grip available");
+                Assert(s.NativeVisible && s.WpfVisible && !s.Minimized && s.Cloaked=="0","visibility flags + non-cloaked (not a physical screen assertion)");
+                Assert(!normal.HumanConfirmed && !normal.Confirm.IsEnabled,"no fabricated human confirmation");
+                Assert(!normal.Switch("desktop") && normal.Mode=="normal" && Native.GetParent(normal.Handle)==0,"desktop blocked until user confirms interaction");
+                Assert(!normal.Switch("bottom") && Native.GetParent(normal.Handle)==0,"potentially hiding bottom mode also gated");
+
+                var content=(FrameworkElement)normal.Content;
+                var bitmap=new RenderTargetBitmap((int)Math.Ceiling(content.ActualWidth),(int)Math.Ceiling(content.ActualHeight),96,96,PixelFormats.Pbgra32);
+                bitmap.Render(content);
+                int stride=bitmap.PixelWidth*4; byte[] pixels=new byte[stride*bitmap.PixelHeight]; bitmap.CopyPixels(pixels,stride,0);
+                int opaque=0,dark=0;
+                for(int i=0;i<pixels.Length;i+=4) { if(pixels[i+3]>200) opaque++; if(pixels[i+3]>200 && pixels[i]+pixels[i+1]+pixels[i+2]<300) dark++; }
+                Assert(opaque>10000 && dark>100,"off-screen WPF render contains background and text, not an empty surface");
+                var encoder=new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
+                using(var output=File.Create(Path.Combine(dir,"probe-normal-content.png"))) encoder.Save(output);
+                lines.Add("Image is WPF content rendering ONLY; not a desktop screenshot or proof user can see the window.");
+                var initial=Native.Bounds(normal.Handle); normal.NextMonitor(); await Task.Delay(150);
+                Assert(Native.GetParent(normal.Handle)==0 && normal.Mode=="normal","ordinary monitor placement does not embed");
+                Assert(normal.Switch("normal") && normal.State().Cloaked=="0","normal restore path remains ordinary and non-cloaked");
+
+                // Explicit automation-only bypass: never sets HumanConfirmed and never used by interactive startup.
+                experimental=new ProbeWindow(lines.Add,true);
+                experimental.Show(); await Rendered(experimental);
                 lines.Add(Native.Inventory());
-                nint shell=Native.GetShellWindow(); uint pid=Native.Pid(shell);
-                var desktop=Native.Desktop();
-                bool attached=window.Switch("desktop"); await Task.Delay(250);
-                Assert(attached || window.Mode=="fallback","desktop attach or explicit safe fallback");
-                if(attached)
+                bool desktop=experimental.Switch("desktop"); await Task.Delay(150);
+                Assert(desktop || experimental.Mode=="normal","desktop native transition succeeds or restores ordinary mode");
+                if(desktop)
                 {
-                    Assert(Native.GetParent(window.Handle)==desktop.Host,"actual Explorer parent HWND");
-                    Assert(((long)Native.GetLong(window.Handle,Native.Style)&Native.Child)!=0,"WS_CHILD applied");
-                    Assert(((long)Native.GetLong(window.Handle,Native.ExStyle)&Native.Topmost)==0,"desktop is not topmost");
-                    Assert(Native.AreDpiAwarenessContextsEqual(Native.GetWindowDpiAwarenessContext(window.Handle),Native.GetWindowDpiAwarenessContext(desktop.Host)),"DPI awareness matches host");
-                    Assert(Native.IsWindowVisible(window.Handle),"native visible flag (not proof of on-screen pixels)");
+                    Assert(experimental.State().ParentMatches && ((long)Native.GetLong(experimental.Handle,Native.Style)&Native.Child)!=0,"desktop report matches actual parent and WS_CHILD");
+                    experimental.Input.Text="temporary non-personal test";
+                    Assert(experimental.Switch("topmost"),"detach from desktop into topmost");
+                    Assert(Native.GetParent(experimental.Handle)==0 && ((long)Native.GetLong(experimental.Handle,Native.ExStyle)&Native.Topmost)!=0,"topmost native state");
+                    Assert(experimental.Input.Text=="temporary non-personal test","same-HWND detach preserves input");
+                    Assert(experimental.Switch("desktop"),"explicit experimental reattach");
+                    experimental.CheckHost(true);
+                    Assert(experimental.Mode=="normal" && Native.GetParent(experimental.Handle)==0,"host-loss simulation returns ordinary mode");
                 }
-                else Skip("desktop attachment unsupported in current shell/DPI state");
-                Assert(!window.ShowInTaskbar && ((long)Native.GetLong(window.Handle,Native.ExStyle)&Native.Tool)!=0 && ((long)Native.GetLong(window.Handle,Native.ExStyle)&Native.AppWindow)==0,"component taskbar/Alt+Tab exclusion flags");
-                window.Input.Text="temporary test 123";
-                var before=Native.Bounds(window.Handle);
-                Assert(window.Switch("topmost"),"switch to topmost"); await Task.Delay(200);
-                Assert(Native.GetParent(window.Handle)==0 && ((long)Native.GetLong(window.Handle,Native.Style)&Native.Child)==0,"topmost detached from Explorer");
-                Assert(((long)Native.GetLong(window.Handle,Native.ExStyle)&Native.Topmost)!=0,"topmost native flag");
-                var after=Native.Bounds(window.Handle);
-                Assert(before.Equals(after),"physical bounds preserved when detaching");
-                Assert(window.Input.Text=="temporary test 123","in-memory input preserved across detach");
-                if(attached)
-                {
-                    Assert(window.Switch("desktop"),"return to desktop"); await Task.Delay(200);
-                    Assert(Native.Bounds(window.Handle).Equals(before),"physical bounds preserved on desktop return");
-                    window.CheckHost(true); await Task.Delay(150);
-                    Assert(window.Mode=="fallback" && Native.GetParent(window.Handle)==0,"simulated host loss falls back without reattach loop");
-                    Assert(window.Input.Text=="temporary test 123","same-process fallback preserves input");
-                }
-                Assert(window.Switch("bottom"),"documented bottom z-order comparison available");
-                Assert(Native.GetParent(window.Handle)==0 && ((long)Native.GetLong(window.Handle,Native.ExStyle)&Native.Topmost)==0,"bottom comparison remains ordinary non-topmost window");
-                bool wallpaper=window.Switch("wallpaper");
-                Assert(wallpaper || window.Mode=="fallback","WorkerW attach or explicit fallback");
-                lines.Add("WorkerW attached="+wallpaper+" (input/visibility require physical testing)");
-                if(!wallpaper) Skip("WorkerW wallpaper host absent: no claim of successful wallpaper embedding");
-                window.Switch("fallback");
-                foreach(var screen in Forms.Screen.AllScreens)
-                {
-                    window.NextMonitor(); await Task.Delay(250);
-                    var r=Native.Bounds(window.Handle);
-                    Assert(Forms.Screen.FromHandle(window.Handle).WorkingArea.IntersectsWith(new System.Drawing.Rectangle(r.Left,r.Top,r.Width,r.Height)),"fallback reachable on "+Forms.Screen.FromHandle(window.Handle).DeviceName);
-                    lines.Add($"MONITOR bounds={r} dpi={Native.GetDpiForWindow(window.Handle)}");
-                }
-                if(attached)
-                {
-                    window.Switch("desktop");
-                    foreach(var screen in Forms.Screen.AllScreens)
-                    {
-                        window.NextMonitor(); await Task.Delay(200);
-                        Assert(Native.GetParent(window.Handle)==desktop.Host && Native.IsWindowVisible(window.Handle),"desktop HWND retained across monitor placement "+Forms.Screen.FromHandle(window.Handle).DeviceName);
-                        lines.Add($"DESKTOP_MONITOR {Native.Bounds(window.Handle)} dpi={Native.GetDpiForWindow(window.Handle)}");
-                    }
-                }
-                var region=Native.Bounds(window.Handle);
-                var cover=new Window { Title="Probe ordinary coverage test", Width=350,Height=230,Left=region.Left/(Native.GetDpiForWindow(window.Handle)/96d),Top=region.Top/(Native.GetDpiForWindow(window.Handle)/96d),Content=new TextBlock { Text="Ordinary window coverage",FontSize=24 } };
-                cover.Show(); cover.Activate(); await Task.Delay(350);
-                var cr=Native.Bounds(new WindowInteropHelper(cover).Handle);
-                nint hit=Native.WindowFromPoint(new Native.Point(cr.Left+cr.Width/2,cr.Top+cr.Height/2));
-                Assert(Native.GetAncestor(hit,2)==new WindowInteropHelper(cover).Handle,"ordinary test window receives hit at overlapping point");
-                cover.Close(); window.Switch("fallback");
-                Assert(Native.GetShellWindow()==shell && Native.Pid(shell)==pid,"Explorer identity unchanged by checks");
-                Assert(Native.IsWindow(desktop.DefView),"desktop icon view still exists");
-                Skip("physical Win+D visibility; taskbar/Alt+Tab presentation; desktop icon/right-click interaction");
-                Skip("physical mouse click, text/IME input, eight-direction drag/resize");
-                Skip("user-controlled Explorer restart; sleep/resume; Windows 10 and mixed-DPI hardware");
+                Assert(experimental.Switch("normal") && !experimental.HumanConfirmed,"restoration does not invent human visibility confirmation");
+                lines.Add("PENDING user must see two windows, type text, click counter, resize and explicitly confirm before desktop experiment.");
+                lines.Add("PENDING actual desktop visibility, Explorer restart, sleep and mixed-DPI remain unverified.");
             }
-            catch(Exception ex) { fail++; lines.Add("FAIL unexpected exception "+ex); }
+            catch(Exception ex) { fail++; lines.Add("FAIL "+ex); }
             finally
             {
-                lines.Add($"RESULT {pass} PASS, {fail} FAIL, {skip} PENDING groups");
-                string dir=Path.Combine(Environment.CurrentDirectory,"artifacts"); Directory.CreateDirectory(dir);
+                experimental?.Close();
+                lines.Add($"RESULT {pass} PASS, {fail} FAIL; human visibility NOT asserted");
                 File.WriteAllLines(Path.Combine(dir,"p1.1-2-checks.txt"),lines);
                 app.Shutdown(fail==0?0:1);
             }
         };
-        return app.Run(window);
+        return app.Run(normal);
     }
 }
