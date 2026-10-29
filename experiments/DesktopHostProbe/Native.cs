@@ -36,6 +36,7 @@ internal static class Native
     [DllImport("user32.dll")] internal static extern bool GetCursorPos(out Point pt);
     [DllImport("user32.dll")] internal static extern bool IsWindow(nint h);
     [DllImport("user32.dll")] internal static extern bool IsChild(nint parent,nint child);
+    [DllImport("user32.dll",EntryPoint="SendMessageW")] internal static extern nint SendMessage(nint h,uint msg,nint wp,nint lp);
     [DllImport("user32.dll")] internal static extern bool IsWindowVisible(nint h);
     [DllImport("user32.dll")] internal static extern bool IsIconic(nint h);
     [DllImport("user32.dll")] internal static extern nint GetWindowDpiAwarenessContext(nint h);

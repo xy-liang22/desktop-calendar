@@ -109,6 +109,9 @@ internal static class Checks
                 Assert(native.PaintCount>0 && Native.IsWindowVisible(nativeHwnd),"E: GDI paint callback and visible bit (not actual screen evidence)");
                 Assert(Native.Class(native.Input.Handle).Contains("EDIT",StringComparison.OrdinalIgnoreCase) && Native.Class(native.Counter.Handle).Contains("BUTTON",StringComparison.OrdinalIgnoreCase),"E: native EDIT and BUTTON child handles exist");
                 Assert(((long)Native.GetLong(nativeHwnd,Native.ExStyle)&0x80000)==0,"E: opaque non-layered native baseline");
+                var titlePoint=native.PointToScreen(new System.Drawing.Point(35,35));
+                nint titlePosition=unchecked((nint)((uint)(ushort)titlePoint.X|((uint)(ushort)titlePoint.Y<<16)));
+                Assert(Native.SendMessage(nativeHwnd,0x84,0,titlePosition)==2,"E: painted title uses native caption hit test for moving");
                 Assert(!native.Attach() && native.Host==0 && native.Error!="","F blocked until E interaction is manually confirmed");
                 native.Input.Text="temporary native test"; native.Counter.PerformClick();
                 Assert(!native.HumanConfirmed && !native.Confirm.Enabled,"programmatic text/click does not fabricate E manual confirmation");

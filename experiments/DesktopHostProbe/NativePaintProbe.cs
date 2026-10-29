@@ -72,6 +72,16 @@ internal sealed class NativePaintProbe : Forms.Form
         MouseCaptureChanged+=(_,_)=> { if(!Capture)dragEdge=null; };
     }
     void UpdateConfirm() => Confirm.Enabled=!HumanConfirmed && inputEdited && clicks>0;
+    protected override void WndProc(ref Forms.Message m)
+    {
+        base.WndProc(ref m);
+        // E has a real top-level frame: let Windows move it from the painted title area.
+        // Preserve native caption buttons/borders and leave F's unverified child input path unchanged.
+        if(m.Msg!=0x84 || Mode!="native-normal" || m.Result!=1)return;
+        long packed=(long)m.LParam;
+        var point=PointToClient(new Point(unchecked((short)packed),unchecked((short)(packed>>16))));
+        if(point.X>=12 && point.X<ClientSize.Width-12 && point.Y>=12 && point.Y<90)m.Result=2;
+    }
     void LayoutControls()
     {
         int width=Math.Max(200,ClientSize.Width-48);
