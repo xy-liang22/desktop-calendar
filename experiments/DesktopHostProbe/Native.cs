@@ -44,11 +44,27 @@ internal static class Native
     [DllImport("user32.dll")] internal static extern nint GetAncestor(nint h,uint flags);
     [DllImport("user32.dll")] internal static extern bool GetClientRect(nint h,out Rect rect);
     [DllImport("user32.dll")] internal static extern bool ClientToScreen(nint h,ref Point pt);
+    [DllImport("user32.dll")] internal static extern int GetSystemMetrics(int index);
     [DllImport("dwmapi.dll")] static extern int DwmGetWindowAttribute(nint h,uint attribute,out int value,int size);
     [DllImport("user32.dll", CharSet=CharSet.Unicode)] internal static extern uint RegisterWindowMessage(string name);
     internal static string Class(nint h) { var s=new StringBuilder(128); GetClassName(h,s,s.Capacity); return s.ToString(); }
     internal static uint Pid(nint h) { GetWindowThreadProcessId(h,out uint pid); return pid; }
     internal static string Cloaked(nint h) => DwmGetWindowAttribute(h,14,out int value,4)==0?value.ToString():"unknown";
+    internal static string ClientBounds(nint h)
+    {
+        if(!GetClientRect(h,out var r)) return "unavailable";
+        var p=new Point(0,0); if(!ClientToScreen(h,ref p))return "unavailable";
+        return $"{p.X},{p.Y} {r.Width}x{r.Height}";
+    }
+    internal static string HostIntersection(nint h,nint parent)
+    {
+        if(parent==0)return "top-level (no host clipping)";
+        if(!GetClientRect(parent,out var cr))return "unknown";
+        var p=new Point(0,0); ClientToScreen(parent,ref p); var r=Bounds(h);
+        int width=Math.Max(0,Math.Min(r.Right,p.X+cr.Width)-Math.Max(r.Left,p.X));
+        int height=Math.Max(0,Math.Min(r.Bottom,p.Y+cr.Height)-Math.Max(r.Top,p.Y));
+        return $"hostClient={p.X},{p.Y} {cr.Width}x{cr.Height}; intersect={width}x{height} (rectangular geometry only)";
+    }
     internal static string Coverage(nint h)
     {
         var r=Bounds(h); int own=0;

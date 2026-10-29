@@ -1,5 +1,62 @@
 # P1.1-2：桌面宿主实验与测试平台修复
 
+## 当前：黑屏诊断 A–D 对照（2026-10-30）
+
+**用户新增反馈：桌面宿主中有组件矩形且能缩放，但内容纯黑、不能读取或操作；任务栏和 Alt+Tab 排除符合预期。桌面模式人工验收仍失败。** 用户正通过远程桌面测试，本轮按要求暂不做混合 DPI、Explorer 重启或休眠。
+
+已核对先前代码及本地日志：发生这次黑屏的组件是 `AllowsTransparency=false` 的非透明 WPF 窗口，不能将原因直接归为透明窗口。WorkerW 请求日志有 `MODE_ERROR 没有符合条件的现存宿主`，ACK 为 `Ok=false, Mode=normal`；用户看到普通窗口是**实际回退**，并非成功进入 WorkerW。
+
+### 启动与本轮操作（优先于下方历史步骤）
+
+关闭旧实验后，双击 `experiments\DesktopHostProbe\bin\Release\net10.0-windows\DesktopHostProbe.exe`；或在项目根执行 `powershell -NoProfile -ExecutionPolicy Bypass -File .\experiments\DesktopHostProbe\Start-Probe.ps1`。默认仍先显示控制台和 A 顶层组件两个窗口。
+
+| 选项 | 实际实验 | 操作顺序 |
+|---|---|---|
+| A 非透明顶层 / 重建找回 | 非透明 WPF，标准标题栏，parent=0，非 LAYERED | 新进程启动；输入、点击计数、点确认 |
+| B 透明顶层 / 重建 | WPF `AllowsTransparency=true`、无系统标题栏、WPF 自建圆角半透明表面，parent=0、LAYERED | 新进程启动；输入、计数、点确认；紫色标题区域可拖动，四边四角可缩放 |
+| C 非透明嵌入 | A 的同一个 HWND 挂入现存桌面宿主；CHILD=true、POPUP=false、非 LAYERED | 先确认 A，再点 C；不重建，不更改渲染偏好 |
+| D 透明嵌入 | B 的同一个 HWND 挂入相同宿主；CHILD=true、POPUP=false、保留 WPF 自己设置的 LAYERED | 先确认 B，再点 D；不手动翻转 LAYERED |
+| 软件渲染对照 | 在新组件启动前设置该子进程 `RenderOptions.ProcessRenderMode=SoftwareOnly` | 勾选后重新点 A/B，再对应进入 C/D；设置不会改变已经运行的组件或系统 |
+
+全部使用相同的红绿蓝色条、紫色标题、输入框、计数与退出按钮。**B/D 继续验证半透明和圆角要求，非透明路径只用于定位。** 透明组件不会自动进入嵌入；C/D 入口只在相应顶层组件被用户确认后启用。
+
+建议先不勾软件选项，按 **A→C→重建 A→B→D** 观察；然后勾选软件选项，重新走 **A→C、B→D**。在每个模式点控制台“记录：可见可操作 / 黑屏 / 不可见”；记录附带案例、模式、PID、渲染偏好，不含输入正文。嵌入黑屏时无需等待，点 **A 非透明顶层 / 重建找回**。测试文字会清空；退出整个实验继续清理其自身组件。
+
+“WorkerW 对照”是额外宿主实验；本机未发现可用宿主时，控制台明确显示请求 `wallpaper`、实际 `normal`、失败 ACK 和原因。不要把普通回退算作 WorkerW 成功。软件选项的 Default 代表默认偏好，**不是强制 GPU**；实际渲染可能受运行时及会话条件影响。
+
+### 诊断证据及其边界
+
+- 新增记录实际 STYLE/EXSTYLE、AllowsTransparency、LAYERED/CHILD/POPUP、请求模式与实际模式、组件 client 屏幕矩形、宿主 client 矩形和相交尺寸、HwndTarget 渲染偏好、进程渲染偏好、WPF tier、SM_REMOTESESSION 及 RDP 加速开关；继续保留 PID/HWND、Loaded、ContentRendered、cloaked、父子关系、命令编号/ACK/错误。
+- “采样 WPF 内容”只在显式点击时执行一次 RenderTargetBitmap，报告 RGB 色块数量与透明像素；**不截图桌面、不证明真实 HWND 已成功合成或 RDP 已显示**。没有周期重绘、强制焦点、LAYERED 反复切换或重挂循环。
+- 本机最终自动检查：Default **31 PASS / 0 FAIL**，SoftwareOnly **31 PASS / 0 FAIL**，控制台 **10 PASS / 0 FAIL**；完整脚本退出码 0，构建 0 警告/错误。测试报告在根 `artifacts/`，运行日志在实验 bin 下，均不提交。
+- A/B parent=0；C/D 确实挂到 Progman，C 非 LAYERED，D 保留 LAYERED，均 CHILD=true、POPUP=false。A–D 的离屏 RGB 数量均非零，B/D 有大量非全透明 alpha 像素。由此仅能排除“本次测试的 WPF 视觉树完全没有彩色内容”和“D 实际未启用 layered”的情况，**不能排除真实呈现链路失败**。
+- 当前自动进程报告 `SM_REMOTESESSION=false`、tier=2，RDP 加速开关未显式设置；用户报告远程连接，二者分别记录。该指标只描述运行进程所见会话，不能据此否认远程传输、认定等同用户 RDP 环境或比较已完成。
+- 本次 C/D 的窗口矩形与宿主 client 矩形有完整矩形交集；三个命中采样点中有两个命中浏览器子窗口，另一个命中组件。已在检查器中隐藏/关闭其他普通对照组件，减少测试自身遮挡。几何相交只能排除完全落在宿主矩形外，不能排除其他兄弟层、区域裁剪、DWM/DirectX 或远程编码问题。WindowFromPoint 是命中线索，不是像素采样。
+- 暂未捕获到托管异常或命令错误能解释黑屏；“无异常”不等于 GPU、合成器或远程路径健康。默认/软件对照仍需用户逐项看见并操作，再判断是否存在偏好相关差异。
+
+### 如何解释下一轮结果与替代方向
+
+- A/B 都正常而 C/D 黑：优先研究宿主子窗口呈现及跨进程重挂；不能仅归因透明度。
+- C 正常、D 黑：增加 layered/per-pixel alpha 与宿主合成路径的证据；仍需同会话软件对照。
+- 软件 C/D 正常、默认黑：是渲染路径相关线索；不直接证明驱动有错，且应评估 CPU 与 RDP 性能后再决定是否采用。
+- B 顶层也黑：先排查透明顶层及远程显示路径，不继续把问题限定为 Explorer。
+- 离屏 RGB 非空但屏幕黑：说明内容可生成，尚未区分 HWND 呈现、宿主合成、遮挡或远程输出失败。
+
+**目前没有证据支持“WPF 透明嵌入存在已证明的根本限制”，也没有证据支持“黑屏已经修复”。** 若 A–D 人工结果仍不能区分，再在同宿主加入独立 Win32/GDI 子窗口对照：GDI 可见而 WPF 黑才增强 WPF 呈现链路线索，两者均黑则增强宿主/遮挡线索。本轮未实现该额外路径，避免在 A–D 人工结果到来前扩大实验。
+
+可维护替代候选包括创建时就绑定宿主的 HwndSource（避免修改现存顶层 HWND 的呈现契约），或 Win32 宿主加可交互的 WPF 子内容；它们的透明合成和键盘焦点仍需独立验证。不能把截图贴图、不可编辑壁纸或取消半透明圆角当作最终方案。未选择或整合替代框架。
+
+### 本轮查证来源
+
+- [WPF 互操作渲染区域](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/advanced/technology-regions-overview)：WPF 使用 DirectX，layered 与其他 HWND 互操作需遵循 Win32 呈现规则；不是对本项目具体黑屏的根因证明。
+- [WPF 硬件/软件管线](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/advanced/optimizing-performance-taking-advantage-of-hardware)与[ProcessRenderMode](https://learn.microsoft.com/en-us/dotnet/api/system.windows.media.renderoptions.processrendermode?view=windowsdesktop-10.0)：软件偏好仅作用当前进程；tier/偏好不能直接说明每帧实际用了 GPU。
+- [现代 .NET WPF 的 RDP 配置](https://learn.microsoft.com/en-us/dotnet/core/runtime-config/wpf)：.NET 8 起有 RDP 硬件加速开关，未设置时 RDP 默认软件渲染。本实验只读取并记录，不改配置或系统策略。
+- [WPF 渲染线程故障排查](https://learn.microsoft.com/en-us/troubleshoot/developer/dotnet/framework/general/wpf-render-thread-failures)：软件渲染可作为排查手段，不能单凭黑色矩形判定驱动缺陷。
+- [Win32 窗口特性](https://learn.microsoft.com/en-us/windows/win32/winmsg/window-features)：Windows 8 起支持 layered 子窗口，故不能笼统说 Win10/11 完全不允许 CHILD+LAYERED；WPF/Explorer/RDP 组合仍须实测。
+- [.NET WPF issue #7724](https://github.com/dotnet/wpf/issues/7724)记录的是共享窗口时透明内容黑屏，属于不同场景的已有报告；不能直接当作本次 RDP+Explorer 的已知根因。
+
+## 以下为前一轮普通入口修复记录（历史）
+
 更新：2026-10-30（Asia/Shanghai）。**初版因组件不可见，人工验收未通过。新版普通诊断组件已由用户确认可见、输入和计数可用；桌面嵌入仍未验收，不批准主窗口整合。**
 
 ## 当前结论

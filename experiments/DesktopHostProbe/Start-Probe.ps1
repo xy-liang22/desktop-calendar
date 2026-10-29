@@ -14,7 +14,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Offline restore failed' }
 if ($LASTEXITCODE -ne 0) { throw 'Probe build failed' }
 $exe = Join-Path $PSScriptRoot 'bin/Release/net10.0-windows/DesktopHostProbe.exe'
 if ($Test) {
-    foreach ($testCase in @(@('--self-test','p1.1-2-checks.txt'), @('--supervisor-test','p1.1-2-supervisor-checks.txt'))) {
+    foreach ($testCase in @(@('--self-test','p1.1-2-checks.txt'), @('--self-test --software','p1.1-2-software-checks.txt'), @('--supervisor-test','p1.1-2-supervisor-checks.txt'))) {
         $startedAt = [DateTime]::UtcNow
         $process = Start-Process -FilePath $exe -ArgumentList $testCase[0] -WorkingDirectory $projectRoot -WindowStyle Hidden -Wait -PassThru
         $report = Join-Path $projectRoot ('artifacts/' + $testCase[1])

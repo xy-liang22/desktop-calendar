@@ -8,6 +8,8 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
+using System.Windows.Media;
+using System.Windows.Interop;
 
 namespace DesktopHostProbe;
 
@@ -19,6 +21,7 @@ internal static class Program
     {
         try
         {
+            if(Array.IndexOf(args,"--software")>=0) RenderOptions.ProcessRenderMode=RenderMode.SoftwareOnly;
             var app=new Application { ShutdownMode=ShutdownMode.OnMainWindowClose };
             if(Array.IndexOf(args,"--self-test")>=0) return Checks.Run(app);
             if(Array.IndexOf(args,"--widget")>=0)
@@ -26,7 +29,7 @@ internal static class Program
                 Console.OutputEncoding=new UTF8Encoding(false);
                 void Report(string text) { Console.WriteLine(text); Console.Out.Flush(); }
                 Report($"BOOT pid={Environment.ProcessId}; startup=normal; no desktop attach");
-                var widget=new ProbeWindow(Report,Array.IndexOf(args,"--test-commands")>=0);
+                var widget=new ProbeWindow(Report,Array.IndexOf(args,"--test-commands")>=0,Array.IndexOf(args,"--transparent")>=0);
                 _=Task.Run(async ()=> {
                     try
                     {
@@ -72,6 +75,8 @@ internal sealed class Controller : Window
     readonly TextBlock result=new() { TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,0,0,8),Text="尚无控制命令；等待组件启动及渲染报告。" };
     readonly TextBox log=new() { IsReadOnly=true,AcceptsReturn=true,TextWrapping=TextWrapping.Wrap,VerticalScrollBarVisibility=ScrollBarVisibility.Auto };
     readonly List<Button> experimentalButtons=new();
+    readonly CheckBox software=new() { Content="软件渲染对照（仅新建 A/B 子进程生效；不改系统）",Margin=new Thickness(0,4,10,8) };
+    bool transparentChild;
     readonly string logPath=Path.Combine(AppContext.BaseDirectory,"probe-session.log");
     readonly DispatcherTimer pulse=new() { Interval=TimeSpan.FromSeconds(3) };
     internal int TestExitCode { get; private set; }
@@ -80,11 +85,11 @@ internal sealed class Controller : Window
     {
         this.selfTest=selfTest;
         Title="Desktop Calendar — 实验控制台（保留找回入口）";
-        Width=740; Height=640; Left=40; Top=60;
+        Width=940; Height=920; Left=40; Top=40;
         var grid=new Grid { Margin=new Thickness(16) }; Content=grid;
         for(int i=0;i<4;i++) grid.RowDefinitions.Add(new RowDefinition { Height=GridLength.Auto });
         grid.RowDefinitions.Add(new RowDefinition());
-        var intro=new TextBlock { Text="应出现两个窗口：本控制台 + 浅色、有标题栏的“普通窗口诊断组件”。\n先在组件输入文字、点击计数并确认，才能启用桌面实验。若消失，点“重建普通窗口 / 找回”。",TextWrapping=TextWrapping.Wrap };
+        var intro=new TextBlock { Text="A→确认→C：非透明顶层/嵌入；B→确认→D：透明顶层/嵌入。应见红绿蓝色块、文字和控件。\nA/B 会重建并清空测试文字。软件选项只在新建 A/B 时生效；Default 不等于强制 GPU。黑屏时从控制台重建 A 找回。",TextWrapping=TextWrapping.Wrap };
         grid.Children.Add(intro);
         var buttons=new WrapPanel { Margin=new Thickness(0,10,0,0) }; Grid.SetRow(buttons,1); grid.Children.Add(buttons);
         void Add(string text,string command,bool gate=false)
@@ -93,19 +98,30 @@ internal sealed class Controller : Window
             b.Click+=async (_,_)=>await Send(command); buttons.Children.Add(b);
             if(gate) { b.IsEnabled=false; experimentalButtons.Add(b); }
         }
-        var rescue=new Button { Content="重建普通窗口 / 找回",Padding=new Thickness(10),Margin=new Thickness(0,0,8,8) };
+        var rescue=new Button { Content="A 非透明顶层 / 重建找回",Padding=new Thickness(10),Margin=new Thickness(0,0,8,8) };
         rescue.Click+=async (_,_)=>await Rebuild(); buttons.Children.Add(rescue);
-        Add("恢复普通模式","normal"); Add("开始桌面嵌入","desktop",true);
+        var transparentButton=new Button { Content="B 透明顶层 / 重建",Padding=new Thickness(10),Margin=new Thickness(0,0,8,8) };
+        transparentButton.Click+=async (_,_)=>await Rebuild(true,true); buttons.Children.Add(transparentButton);
+        Add("恢复当前顶层","normal"); Add("C 非透明嵌入","desktop",true); experimentalButtons[^1].Tag=false;
+        Add("D 透明嵌入","desktop",true); experimentalButtons[^1].Tag=true;
         Add("WorkerW 对照","wallpaper",true); Add("普通置底对照","bottom",true);
         Add("始终置顶","topmost"); Add("下一显示器","next-monitor"); Add("完整诊断","snapshot");
         Add("模拟宿主丢失","simulate-loss");
+        Add("采样 WPF 内容（非截图）","sample");
+        foreach(string observation in new[]{"可见可操作","黑屏","不可见"}) {
+            var b=new Button { Content="记录："+observation,Padding=new Thickness(8),Margin=new Thickness(0,0,8,8) };
+            b.Click+=(_,_)=> { string message=$"USER_OBSERVATION case={state?.Case} mode={state?.Mode} render={state?.RenderPreference} pid={state?.Pid}: {observation}"; Append(message); result.Text=message; };
+            buttons.Children.Add(b);
+        }
+        buttons.Children.Add(software);
         var exit=new Button { Content="退出整个实验",Padding=new Thickness(10),Margin=new Thickness(0,0,8,8) };
         exit.Click+=(_,_)=>Close(); buttons.Children.Add(exit);
-        Grid.SetRow(summary,2); grid.Children.Add(summary);
+        var details=new ScrollViewer { Content=summary,MaxHeight=245,VerticalScrollBarVisibility=ScrollBarVisibility.Auto };
+        Grid.SetRow(details,2); grid.Children.Add(details);
         Grid.SetRow(result,3); grid.Children.Add(result);
         Grid.SetRow(log,4); grid.Children.Add(log);
         Loaded+=async (_,_)=> {
-            Append("新诊断版本：先普通窗口。状态/渲染事件不等于屏幕可见；等待用户确认。");
+            Append("A–D 渲染对照：先 A 顶层，用户确认后嵌入。状态与离屏采样均不证明屏幕可见。");
             await Start(); pulse.Start();
             if(selfTest) await TestSupervisor();
         };
@@ -132,8 +148,9 @@ internal sealed class Controller : Window
         string process=child==null?"未启动":child.HasExited?$"已退出 PID={child.Id}":$"存活 PID={child.Id}";
         summary.Text=$"进程：{process}\n"+
             (state==null?"HWND/WPF：尚无组件报告":$"HWND={state.Hwnd} | 模式={state.Mode} | WPF Loaded={state.Loaded} / ContentRendered={state.ContentRendered}\n内容={state.ContentWidth:0}×{state.ContentHeight:0} | parent={state.Parent} / host={state.Host} / 匹配={state.ParentMatches}\nWS_VISIBLE={state.NativeVisible} / WPF Visible={state.WpfVisible} / 最小化={state.Minimized} / DWM cloaked={state.Cloaked}\n矩形={state.Bounds} / DPI={state.Dpi}\n遮挡采样：{state.Coverage}\n错误：{(state.Error==""?"无已报告错误":state.Error)}")+
-            "\n人工可见性："+(state?.HumanConfirmed==true?"用户已确认普通窗口；桌面嵌入仍需另验。":"未确认，不能据以上状态判为可见。");
-        foreach(var b in experimentalButtons) b.IsEnabled=!rebuilding && state is { HumanConfirmed:true,ContentRendered:true };
+            (state==null?"":$"\n实际案例={state.Case} / 请求模式={state.RequestedMode} / AllowsTransparency={state.Transparent}\nSTYLE={state.Style} EX={state.ExStyle} | CHILD={state.Child} POPUP={state.Popup} LAYERED={state.Layered}\nclient={state.ClientBounds}; {state.HostIntersection}\n渲染偏好={state.RenderPreference} HWND偏好={state.HwndRenderMode} tier={state.RenderTier} | RemoteSession={state.RemoteSession} RDP加速配置={state.RdpAcceleration}\n{state.SurfaceEvidence}")+
+            "\n人工可见性："+(state?.HumanConfirmed==true?"用户已确认当前顶层；嵌入仍需另验。":"未确认，不能据以上状态判为可见。");
+        foreach(var b in experimentalButtons) b.IsEnabled=!rebuilding && state is { HumanConfirmed:true,ContentRendered:true } && (b.Tag is not bool expected || expected==state.Transparent);
     }
     void Receive(Process process,string line)
     {
@@ -154,7 +171,7 @@ internal sealed class Controller : Window
     {
         intentionalExit=false; state=null;
         var process=new Process {
-            StartInfo=new ProcessStartInfo(Environment.ProcessPath!,"--widget"+(selfTest?" --test-commands":"")) {
+            StartInfo=new ProcessStartInfo(Environment.ProcessPath!,"--widget"+(selfTest?" --test-commands":"")+(transparentChild?" --transparent":"")+(software.IsChecked==true?" --software":"")) {
                 UseShellExecute=false,WindowStyle=ProcessWindowStyle.Normal,RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true,
                 StandardOutputEncoding=Encoding.UTF8,StandardErrorEncoding=Encoding.UTF8 },
             EnableRaisingEvents=true
@@ -213,7 +230,7 @@ internal sealed class Controller : Window
             process.Kill(); await process.WaitForExitAsync();
         }
     }
-    async Task Rebuild(bool explicitRequest=true)
+    async Task Rebuild(bool explicitRequest=true,bool transparent=false)
     {
         if(rebuilding || closing) return;
         rebuilding=true;
@@ -221,6 +238,7 @@ internal sealed class Controller : Window
             if(explicitRequest) recovered=false;
             result.Text="正在销毁旧测试实例并新建普通窗口；测试文字清空。";
             await StopChild();
+            transparentChild=transparent;
             await Start();
         }
         finally { rebuilding=false; UpdateSummary(); }
@@ -241,6 +259,13 @@ internal sealed class Controller : Window
             Check(ack is { Ok:true,Command:"snapshot" },"command ID round-trip acknowledged by child");
             var bad=await Send("unknown-test-command");
             Check(bad is { Ok:false } && bad.Error!="","unknown command has explicit error acknowledgement");
+            await Rebuild(true,true); await Wait(()=>state is { ContentRendered:true,Case:"B" });
+            Check(state is { Transparent:true,Layered:true,HumanConfirmed:false } && child!.Id!=first,"B selector starts fresh layered top-level without carrying human confirmation");
+            software.IsChecked=true; await Rebuild(true,true); await Wait(()=>state is { ContentRendered:true,Case:"B" });
+            Check(state?.RenderPreference=="SoftwareOnly","software option affects only new test child process");
+            var sample=await Send("sample");
+            Check(sample is { Ok:true } && state!.SurfaceEvidence.StartsWith("offscreen="),"explicit content sample returns acknowledgement and labels off-screen evidence");
+            software.IsChecked=false;
             await Rebuild(); await Wait(()=>state is { ContentRendered:true,Mode:"normal" });
             Check(child!.Id!=first && state is { Parent:"0",HumanConfirmed:false },"rescue starts fresh non-embedded process and resets human gate");
             int second=child!.Id;

@@ -1,5 +1,29 @@
 # 阶段验证记录
 
+## P1.1-2 黑屏：A–D 渲染对照（2026-10-30）
+
+**人工结论：前版桌面宿主出现可缩放的纯黑组件；内容不可操作，验收失败。用户确认任务栏/Alt+Tab 排除符合预期。** 用户当前远程连接，混合 DPI、Explorer 重启及休眠按要求暂缓。本轮只改实验及本测试记录/研究说明，不修改主程序。
+
+已确认前版组件是非透明 WPF；WorkerW 请求实际返回 `Ok=false / normal / 没有符合条件的现存宿主`，并非 WorkerW 成功。当前用 A 非透明顶层、B 透明顶层、C 非透明嵌入、D 透明嵌入控制变量对照；每轮 A/B 重建，C/D 复用对应 HWND。B/D 保留半透明圆角、WPF 自动 layered，禁止定时重绘或手动 layered 翻转掩盖问题。
+
+自动结果：Default **31 PASS / 0 FAIL**、SoftwareOnly **31 PASS / 0 FAIL**、控制台 **10 PASS / 0 FAIL**，整套脚本退出码 0。Release 构建 0 警告/错误，无依赖安装。
+
+| 证据 | 当前结果与限度 |
+|---|---|
+| A/B HWND | parent=0；A 非 layered，B AllowsTransparency=true 且 layered |
+| C/D HWND | 实际父窗口为 Progman；CHILD=true、POPUP=false；C 非 layered、D layered 保留 |
+| RGB/透明采样 | 默认及软件 A–D 离屏红绿蓝均非零，B/D 半透明像素保留；只证明 WPF 内容可以生成，不证明屏幕显示 |
+| 几何与遮挡 | C/D 与宿主 client 矩形有交集；三个命中点有浏览器遮挡线索，不能据此认定整个黑色矩形都是遮挡 |
+| 会话 | 自动进程报告 RemoteSession=false、tier=2、RDP 加速配置 unset；用户远程会话单独记录，不能冒充已在相同 RDP 条件下完成视觉验证 |
+| 命令/找回 | B 新进程透明样式、SoftwareOnly 新进程隔离、内容采样 ACK、新进程找回与退出通过；保留人工确认门槛 |
+| 用户观察 | 增加可见可操作/黑屏/不可见记录按钮，附实际案例、模式、PID和偏好；当前新 A–D 视觉结果仍待用户反馈 |
+
+前一轮自动矩阵曾同时显示普通对照组件，遮挡采样受到测试自身影响；已改为测试 C/D 前隐藏/关闭其他对照组件后复验。仍有外部浏览器覆盖采样点，未移动/关闭用户应用。没有抓取桌面截图或记录输入正文。
+
+复现：`powershell -NoProfile -ExecutionPolicy Bypass -File .\experiments\DesktopHostProbe\Start-Probe.ps1 -Test`。报告为 `artifacts/p1.1-2-checks.txt`、`p1.1-2-software-checks.txt`、`p1.1-2-supervisor-checks.txt`，均忽略提交。运行日志在实验 bin 内；最终黑屏是否改善以人工结果为准，未宣称修复。
+
+人工步骤：启动同一个 DesktopHostProbe.exe，先 A 输入/计数/确认后选 C；重建 A 找回，再 B 输入/计数/确认后选 D。记录各案例颜色、文字、输入是否可用；勾软件选项后重新创建 A/B，再比较 C/D。WorkerW 看请求/实际模式与失败原因，不能把普通回退算通过。详细解释和来源见 [研究报告](DESKTOP_MODE_RESEARCH.md)。不进入 P1.1-3。
+
 ## P1.1-2 修复：先普通窗口，再嵌入（2026-10-30）
 
 **人工结论：初版不可见、验收失败；新版普通组件已由用户确认“能看到，输入和计数可用”。仅此三项通过，不等于桌面模式验收通过。** 本次只改实验和文档，不改主程序或其构建文件。
