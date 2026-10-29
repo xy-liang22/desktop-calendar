@@ -1,5 +1,50 @@
 # 阶段验证记录
 
+## P1.1-2：独立桌面宿主实验（2026-10-29）
+
+状态：**26 项原生窗口检查 + 4 项控制台恢复检查通过，0 FAIL；4 组未满足/待人工事项，不是完整桌面验收通过。** 主窗口没有整合或改变。方案、来源、限制与人工步骤见 [DESKTOP_MODE_RESEARCH](DESKTOP_MODE_RESEARCH.md)。
+
+环境：Windows build 26200，.NET SDK 10.0.403，Windows 本机 PowerShell；两块显示器（包含负 X），实际 DPI 均为 144。没有修改系统缩放、注册表、Snap 或 Explorer 设置。实验与主项目 Release 构建均成功，0 编译警告/错误；无新增依赖。主项目只增加实验目录排除项，本阶段不重复运行 P1 的 91 项 GUI 检查。
+
+| 验证项 | 本阶段结果及证据边界 |
+|---|---|
+| 桌面宿主 | 本机找到 Progman / SHELLDLL_DefView；真实 SetParent 后父 HWND 与目标相等，WS_CHILD 生效，非 TOPMOST |
+| WorkerW 壁纸路径 | 未发现符合条件的现存 WorkerW，返回明确失败并安全回退；未验证成功嵌入 |
+| Win+D 后可见 | **待人工**；native visible=true 不证明屏幕像素可见，不自动发送 Win+D |
+| 普通应用覆盖 | 自动创建普通 WPF 对照窗口，重叠点 WindowFromPoint 命中该普通窗口；外部应用实际视觉覆盖仍待人工 |
+| 点击、输入、拖动、八方向缩放 | 实验提供真实控件和输入事件，但**物理操作待人工**；测试中的 TextBox 赋值不算键盘/IME 测试 |
+| 桌面 → 置顶 → 桌面 | 真实 HWND 父子/样式变换通过；物理矩形及内存测试文字保持；可视及焦点体验待人工 |
+| 任务栏 / Alt+Tab | 组件 TOOLWINDOW、非 APPWINDOW、ShowInTaskbar=false 断言通过；实际 UI 待人工。控制台故意有正常入口 |
+| 多显示器 | 桌面和回退模式分别在两块真实显示器原生定位通过；均为 144 DPI，不能代表混合 DPI 字体/命中/拖动通过 |
+| 宿主失效回退 | 模拟检测异常后脱离为普通窗口通过，未破坏本次内存文字；这不是 Explorer 重启 |
+| 子窗口销毁恢复 | 真的关闭实验子窗口（不动 Explorer），控制台自动重建一次回退；第二次丢失不循环重启；明确找回及正常退出不误重启，4 项通过 |
+| 退出 | 自动检查组件正常退出及控制台正常关闭；实际按钮与任务栏找回体验待人工；未验证挂死强制清理分支 |
+| 桌面图标 / 右键 | 自动确认原 DefView 仍存在、Explorer 身份不变；不能证明图标与菜单交互不受影响。组件区域内会遮住下方图标 |
+| Explorer 重启 / 休眠恢复 | **待用户手动测试**；程序有检查与回退路径，未宣称实机通过 |
+| Win10、其他 Win11 build、混合 DPI、长期运行 | **未验证** |
+
+4 组未满足/待人工事项：①现存 WorkerW 缺失；②Win+D/任务栏/图标右键；③真实输入/拖动/缩放；④Explorer 重启/休眠/Win10/混合 DPI。不能用通过数量抵消这些核心缺口。
+
+实际发现并修正的实验问题：
+
+- 初次 SourceInitialized 捕获的窗口样式尚无 WS_VISIBLE，重新应用会隐藏组件；恢复可见位后 native visible 检查通过。
+- 脱离后把已为零的原生 owner 再设零，会返回 1400；与 WPF 官方源码注释相符，改为仅在非零时清除。最早的 7 PASS/4 FAIL、8 PASS/3 FAIL 已被后续修正复验覆盖，不能当作最终成功记录。
+- 控制台在 Closing 回调同步再次 Close 导致重入；改为事件结束后排队关闭，最终整套脚本退出码 0。只看四个恢复断言通过而忽略进程异常退出是不合格的。
+- 测试显式关闭应用，并检查报告更新时间及退出码，防止提前退出却复用旧报告。
+
+电脑交互验证阻碍：computer-use 的 `list_windows` 初次、等待重试及重置后重试均返回 `Computer Use native pipe is unavailable ... os error 2`。停止该交互路径，没有用猜测坐标或其他脚本替代；因此未提供或声称看过当前实验屏幕截图。
+
+复现（先退出其他实验实例）：
+
+```powershell
+cd D:\projects\desktop-calendar
+powershell -NoProfile -ExecutionPolicy Bypass -File .\experiments\DesktopHostProbe\Start-Probe.ps1 -Test
+```
+
+输出：`artifacts/p1.1-2-checks.txt`（26 PASS / 0 FAIL / 4 PENDING groups）、`artifacts/p1.1-2-supervisor-checks.txt`（4 PASS / 0 FAIL）、`artifacts/p1.1-2-trace.log`；控制台日志在实验 `bin/Release/net10.0-windows/probe-session.log`。均忽略提交，输入正文不记录。重跑需交互式 Windows 会话，不是无桌面的 CI 测试。
+
+人工检查五组操作：[启动和人工验收](DESKTOP_MODE_RESEARCH.md#启动和人工验收)。先检查 Win+D 与普通覆盖，再输入/拖动/八方向、模式往返，最后由用户做 Explorer 重启及休眠/混合 DPI。每项记录通过/失败/未测；本阶段等待反馈，不进入 P1.1-3。
+
 ## P1.1-1：基线与文档（2026-10-29）
 
 范围：仅 Git/忽略规则/README/PRD/DECISIONS/本记录；不改窗口代码，不进入 P1.1-2。下文 91 项结果属于历史 P1，本阶段不重新启动 GUI 或声称已修复人工问题。
@@ -24,7 +69,7 @@
 | 左下、右上角匀速缩小明显抖动 | 用户实测；历史尺寸变化检查不证明平滑，待 P1.1-4 根因定位及八方向连续缩放 |
 | 不同 DPI 显示器间拖动轻微抖动 | 用户反馈；此前两块同为 144 DPI，不能当作混合 DPI 通过 |
 | 贴边未触发、容易触发 Windows Snap | 用户实测；内部指针事件测试不能代替真实拖动，待 P1.1-4 重现及修复 |
-| 桌面层及 Explorer/休眠恢复 | 尚未实现、未验证；须 P1.1-2 独立技术验证后决定，不能声称兼容 |
+| 桌面层及 Explorer/休眠恢复 | 主程序尚未实现；P1.1-2 已提供独立实验及模拟回退检查，真实 Explorer/休眠恢复仍未验证，见本文件上方矩阵 |
 
 本阶段不修复上述问题；保留历史测试证据，但不以“91 PASS”推翻人工反馈。
 

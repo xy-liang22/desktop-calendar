@@ -12,4 +12,11 @@
     <!-- WPF owns the process DPI manifest; WinForms is used only for NotifyIcon/Screen. -->
     <NoWarn>$(NoWarn);WFO0003</NoWarn>
   </PropertyGroup>
+  <!-- Keep the independently runnable desktop experiment out of the P1 application. -->
+  <ItemGroup>
+    <Compile Remove="experiments\**\*.cs" />
+    <Page Remove="experiments\**\*.xaml" />
+    <EmbeddedResource Remove="experiments\**\*" />
+    <None Remove="experiments\**\*" />
+  </ItemGroup>
 </Project>

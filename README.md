@@ -2,7 +2,7 @@
 
 面向 Windows 的本地日历、计划与实际时间记录工具。产品目标是融入桌面的组件：待办表示计划，Activity 表示实际发生的时间，两者可关联但状态独立。
 
-**当前代码为 P1 WPF 交互原型，使用固定模拟内容；桌面组件模式尚未实现。** 当前阶段是 P1.1-1（基线、Git 与文档），不修改窗口行为。P1 已交付，但用户人工测试发现的问题仍待修复；历史 91 项自动检查通过不代表这些问题已解决。
+**主程序仍为 P1 WPF 交互原型，使用固定模拟内容；尚未整合桌面组件模式。** P1.1-2 已新增独立桌面宿主实验，自动检查通过，关键人工验收待反馈，不代表已满足全部桌面需求。P1 的人工问题仍待修复；历史 91 项自动检查通过不代表这些问题已解决。
 
 ## 当前功能与 Planned
 
@@ -14,7 +14,7 @@
 | 右上角“待办”紧凑标签、恢复 | 已实现，仅标签，不是今日待办列表 |
 | 普通窗口置顶、常驻托盘、隐藏/显示/退出 | 已实现，仍为 P1 旧语义 |
 | 左右贴边收起 | 已有实现与内部事件检查；用户实测未触发，存在 Snap 冲突，不能视为可靠可用 |
-| 默认桌面层、Win+D 后可见、免任务栏/Alt+Tab、可选托盘 | **Planned**：先独立验证，确认后整合 |
+| 默认桌面层、Win+D 后可见、免任务栏/Alt+Tab、可选托盘 | 主程序 **Planned**；独立宿主实验已提供，Win+D/真实输入及兼容性仍待人工验收 |
 | 桌面/置顶切换、今日待办折叠及恢复记忆 | **Planned**：先做模拟数据与窗口偏好，不提前实现业务数据存储 |
 | 月历按高度显示多条待办 | **Planned**：当前只显示一条或数量提示 |
 | Ctrl+滚轮缩放时间轴 | **Planned**：当前每小时固定为 50 DIP；普通滚轮可滚动 |
@@ -76,7 +76,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\Start-Prototype.ps1
 
 ## 数据、图片、备份及隐私
 
-当前原型不创建真实日程、不保存模拟待办或窗口偏好、不访问网络。模拟内容在 `DemoContent.cs`；检查结果/渲染图在 `artifacts/`，构建缓存在 `bin/`、`obj/` 及临时 CLI 目录。这些不是用户记录，不上传 Git。
+当前原型不创建真实日程、不保存模拟待办或窗口偏好、不访问网络。模拟内容在 `DemoContent.cs`；检查结果/渲染图在 `artifacts/`，构建缓存在 `bin/`、`obj/` 及临时 CLI 目录。独立实验只记录窗口状态、点击数和输入字符数，不记录输入正文；日志在实验 `bin/` 内。这些不是用户记录，不上传 Git。
 
 未来用户数据默认放在 `%LOCALAPPDATA%\DesktopCalendar`，独立于代码及部署目录。以下均为 **Planned**：
 
@@ -105,6 +105,8 @@ Start-Prototype.ps1           启动已构建原型
 docs/PRD.md                  已确认需求与 Planned 目标
 docs/DECISIONS.md            变更原因、授权及技术决定
 docs/TESTING.md              历史检查、人工问题与阶段验证
+docs/DESKTOP_MODE_RESEARCH.md 桌面方案比较、风险、证据及人工步骤
+experiments/DesktopHostProbe/ 独立实验、控制台与无依赖检查器
 ```
 
 ## 测试与已知限制
@@ -115,7 +117,22 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -Test
 
 检查器会短暂显示窗口，结束后退出，失败返回非零码。结果为 `artifacts/p1-checks.txt`，渲染图只含模拟内容。历史 P1 结果为 91 PASS / 0 FAIL；P1.1-1 只整理 Git 和文档，不把历史结果当作新增功能验收。
 
-人工问题：月历增高仍只显示一条；右上/左下角缩小抖动；跨 DPI 移动轻微抖动；贴边未触发且可能与 Snap 冲突。尚未验证 Explorer 重启、休眠恢复及桌面层交互，因为桌面层方案尚未选择或实现。详见 [TESTING](docs/TESTING.md)。
+人工问题：月历增高仍只显示一条；右上/左下角缩小抖动；跨 DPI 移动轻微抖动；贴边未触发且可能与 Snap 冲突。主窗口行为未改。独立实验已验证本机 HWND 嵌入、模式切换和模拟回退，实际 Win+D、鼠标/输入、Explorer 重启及休眠仍待人工检查。详见 [TESTING](docs/TESTING.md)。
+
+## 独立桌面模式实验（P1.1-2）
+
+本实验不会启动或替换原日历。默认尝试现存 Explorer 图标宿主嵌入；不支持时回退。尚不能宣称可安全整合，推荐先按 [研究报告的五组步骤](docs/DESKTOP_MODE_RESEARCH.md#启动和人工验收) 测试。
+
+```powershell
+cd D:\projects\desktop-calendar
+powershell -NoProfile -ExecutionPolicy Bypass -File .\experiments\DesktopHostProbe\Start-Probe.ps1
+```
+
+已有构建可直接双击 `experiments\DesktopHostProbe\bin\Release\net10.0-windows\DesktopHostProbe.exe`。加 `-Test` 运行两组自动检查；加 `-BuildOnly` 仅构建。均使用现有 SDK 离线构建，不安装依赖。
+
+控制台保留普通任务栏入口，用于模式切换、记录状态、找回和“退出整个实验”；组件自身不显示任务栏按钮。控制台不是需要验收的桌面组件。关闭控制台会同时结束其组件，组件“退出组件”只结束自身。测试文字不保存；组件进程销毁后的回退不保留文字和位置，不用于真实记录。
+
+本机最终结果：原生窗口检查 **26 PASS**，控制台恢复检查 **4 PASS**，**0 FAIL**；另有 4 组未满足/待人工事项。WorkerW 壁纸宿主未找到，测试验证的是安全回退；不应理解成 WorkerW 嵌入成功。两屏都是 144 DPI，混合 DPI 未验。Win+D、实际 Explorer 重启与休眠由用户手动测试，不由实验程序自动执行。
 
 ## 分支与后续计划
 
@@ -123,6 +140,6 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -Test
 - `dev/p1.1`：后续开发分支；未经人工验收不标记为已验收版本。
 - 远程历史变化或分支冲突时停止说明，不强推、不覆盖、不自动合并无关历史。GitHub 认证由用户本人完成。
 
-P1.1-1 基线/Git/文档 → P1.1-2 独立桌面层验证 → P1.1-3 模式与今日待办折叠 → P1.1-4 抖动与贴边 → P1.1-5 动态行数及时间轴缩放 → P1.1-6 Logo/开始菜单 → P1.1-7 综合验收。**每步单独批准，当前不进入 P1.1-2 或 P2。**
+P1.1-1 基线/Git/文档 → P1.1-2 独立桌面层验证（当前等待人工反馈）→ P1.1-3 模式与今日待办折叠 → P1.1-4 抖动与贴边 → P1.1-5 动态行数及时间轴缩放 → P1.1-6 Logo/开始菜单 → P1.1-7 综合验收。**每步单独批准，当前不进入 P1.1-3 或 P2。**
 
 P2–P8 的数据可靠性、待办/Activity、周计划与总结、Markdown 图片、离线历法、完整双语及备份恢复仍保留在 [PRD](docs/PRD.md)，未删减。
