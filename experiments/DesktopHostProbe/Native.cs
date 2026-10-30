@@ -27,6 +27,8 @@ internal static class Native
     [DllImport("user32.dll")] internal static extern nint GetShellWindow();
     [DllImport("user32.dll")] internal static extern uint GetWindowThreadProcessId(nint h, out uint pid);
     [DllImport("user32.dll")] internal static extern nint GetParent(nint h);
+    [DllImport("user32.dll")] static extern nint GetWindow(nint h,uint command);
+    [DllImport("gdi32.dll")] internal static extern int GetClipBox(nint dc,out Rect rect);
     [DllImport("user32.dll", SetLastError=true)] static extern nint SetParent(nint child, nint parent);
     [DllImport("user32.dll", EntryPoint="GetWindowLongPtrW")] internal static extern nint GetLong(nint h, int index);
     [DllImport("user32.dll", EntryPoint="SetWindowLongPtrW", SetLastError=true)] static extern nint SetLong(nint h, int index, nint value);
@@ -123,5 +125,28 @@ internal static class Native
     {
         var d=Desktop();
         return $"OS={Environment.OSVersion.Version}; shell={GetShellWindow():X}; host={d.Host:X}/{Class(d.Host)}; defView={d.DefView:X}; wallpaper={d.Wallpaper:X}; hostDpi={GetDpiForWindow(d.Host)}; hostContext={GetWindowDpiAwarenessContext(d.Host)}";
+    }
+    // Read-only shell metadata, no titles, pixel capture, messages, style or Z-order changes.
+    internal static string ShellTopology()
+    {
+        var output=new StringBuilder(Inventory()); var desktop=Desktop();
+        void Append(nint window,string prefix) {
+            if(window==0 || !IsWindow(window))return;
+            GetWindowRect(window,out var bounds);
+            output.Append($"\n{prefix} HWND={window:X} class={Class(window)} PID={Pid(window)} parent={GetParent(window):X} STYLE={(long)GetLong(window,Style):X} EX={(long)GetLong(window,ExStyle):X} visible={IsWindowVisible(window)} cloaked={Cloaked(window)} bounds={bounds} DPI={GetDpiForWindow(window)} context={GetWindowDpiAwarenessContext(window)}");
+        }
+        void Children(nint parent,int depth) {
+            if(depth>3)return;
+            var seen=new HashSet<nint>(); int order=0;
+            for(nint h=GetWindow(parent,5);h!=0 && order<40 && seen.Add(h);h=GetWindow(h,2)) {
+                Append(h,$"depth={depth} z={order++}");
+                // Only descend within Explorer; leave another process' controls/content private.
+                if(Pid(h)==Pid(GetShellWindow()))Children(h,depth+1);
+            }
+        }
+        Append(desktop.Host,"HOST"); if(desktop.Host!=0)Children(desktop.Host,1);
+        if(desktop.Wallpaper!=0 && GetParent(desktop.Wallpaper)!=desktop.Host)Append(desktop.Wallpaper,"WALLPAPER");
+        output.Append("\nMetadata/rectangle/Z-order evidence only; does not prove on-screen pixels or identify the black-screen root cause.");
+        return output.ToString();
     }
 }

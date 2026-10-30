@@ -1,5 +1,48 @@
 # P1.1-2：桌面宿主实验与测试平台修复
 
+## 最新：F 人工确认黑屏与宿主对照（2026-10-30）
+
+**用户最新结果：F 画面黑屏，输入和计数因不可见而无法判断；移动和缩放正常；返回 E 成功。** 原生 GDI 也未通过桌面视觉验收。与 C 非透明 WPF 黑屏、D 透明 WPF 不可见、B 透明顶层正常合并判断：黑屏现象不限于 WPF/DirectX 或透明度。不能据此断言所有 WPF 原因都被排除，也不能将输入记为失败或通过；准确状态是未能验证。
+
+### 本轮进一步检查（代理自行执行，无需重复人工操作）
+
+新增只读 `--host-inventory`，记录当前 Shell 进程内 Progman/WorkerW、直接子窗口及至多三层的 Explorer 子树：HWND、类名、PID、父窗口、兄弟 Z 序、样式、矩形、可见位、cloaked 和 DPI。最多每层 40 项，不取其他应用标题/内容，不发送 Explorer 私有消息，不改变宿主样式/层级。F 挂载也输出同类诊断。
+
+本机 Windows build 26200：实际宿主是 Progman，EX=0x200080（含 WS_EX_NOREDIRECTIONBITMAP 和 TOOLWINDOW）；其 SHELLDLL_DefView 的 EX=0x80000（LAYERED）。未发现可用壁纸 WorkerW。自动挂载时 F 是 Progman 的 z=0 子窗口，DefView 在 z=1；几何范围与宿主客户区完整相交。**这削弱了“F 只是放在 DefView 后面/完全落在宿主之外”的解释，不证明真实像素可见或排除合成遮挡。**
+
+GDI 诊断新增最后一次 OnPaint 的模式、GetClipBox 结果及无效区域；本轮 F 的一次回调为 NULLREGION/0×0。其他普通应用确有遮挡采样，N 本地宿主也会出现空更新区域；因此空 clip 是绘制时机/可见区域线索，不能独立认定黑屏根因。没有反复重绘、抢焦点或强制抬高窗口。
+
+为检验“宿主 NOREDIRECTIONBITMAP 样式本身是否足够造成黑屏”，增加 **完全属于实验进程** 的 R/N 最小宿主，GDI 内容仍使用同一 NativePaintProbe：
+
+| 对照 | 实际观察 | 限度 |
+|---|---|---|
+| R：普通自有宿主 | 代理通过宿主窗口实际截图看见子窗口红绿蓝色条、标题、输入框和按钮 | 仅验证像素内容；本轮未在 R/N 中另做键盘、移动、Win+D 验收 |
+| N：自有宿主创建时带 NOREDIRECTIONBITMAP | 代理实际截图同样看见上述内容，EX=0x250100 含指定标志 | 该标志单独在此同进程对照未复现黑屏；不能推定与 Explorer 跨进程环境等价 |
+| F：实际 Progman 宿主 | 用户已确认黑屏；返回 E 可恢复 | 仍失败，不将 R/N 可见冒充 F 修复 |
+
+R/N 只通过自有窗口的 CreateParams 设置样式，不修改 Explorer。初始化检查曾发现 Show/Shown 前挂载会拿到未完成显示的样式；现明确拒绝 Shown 前挂载，独立对照在 Shown 后执行。另修正自有宿主位于不同屏幕时子窗口必须落入其客户区的问题，加入几何断言。上述定位工具修复不被当成用户 F 黑屏已修复的证据。
+
+### 复现与本阶段结论
+
+关闭已有实验再从根目录运行 `Start-Probe.ps1 -Test`，或只构建；默认 EXE 仍先普通 A/控制台，不自动嵌入。新增定位入口（不需要用户重复测试）：
+
+```powershell
+$probeExe = 'D:\projects\desktop-calendar\experiments\DesktopHostProbe\bin\Release\net10.0-windows\DesktopHostProbe.exe'
+# 只读层级元数据；WinExe 输出需显式重定向。
+Start-Process -FilePath $probeExe -ArgumentList '--host-inventory' -Wait -RedirectStandardOutput '.\artifacts\shell-topology.txt'
+# 各自仅创建自有宿主及子窗口，用宿主右上角 × / Alt+F4 正常退出。
+Start-Process -FilePath $probeExe -ArgumentList '--local-host-check'
+Start-Process -FilePath $probeExe -ArgumentList '--local-host-check --no-redirection'
+```
+
+最新自动检查：Default **53 PASS / 0 FAIL**、SoftwareOnly **53 PASS / 0 FAIL**、控制台 **13 PASS / 0 FAIL**。新增确认 Shown 前拒绝、R/N 创建标志、同 HWND 挂载、客户区定位与输入保留。最终构建 0 警告/错误；测试报告/元数据日志仍在被忽略的 artifacts，不提交截图或输入正文。初次对照有一处 Size 类型歧义编译错误及旧实验 EXE 占用重试，均修正后重新构建；不作为通过结果隐去。
+
+构建诊断说明：一次临时沙箱构建未完整设置 SDK 的禁首次证书变量，SDK 输出了开发证书安装提示；只读检查当前执行用户证书库未发现当日新增 ASP.NET 证书，无法据该输出断言用户交互账户证书库改变。后续构建均使用禁证书/禁 PATH 添加等变量，没有信任或删除证书，也未修改系统证书设置。
+
+**目前推荐结论：暂停将当前 Progman 挂载方案作为可整合候选；只保留普通窗口的安全回退和显式实验。** R/N 结果排除了“此样式单独必然黑屏”的简单解释，不能定位唯一根因；尚未区分 Explorer 特有宿主合成、跨进程挂载与远程输出。下一步若继续研究，应先做可控的跨进程自有宿主对照，保持只修改实验；涉及改变 Explorer 结构/私有消息的新方案仍须事先说明并获批准。现阶段不改 Explorer，不改主窗口，不进入 P1.1-3；无需用户重复 C/F 测试。
+
+官方定义见文末来源中的 Extended Window Styles；GetClipBox 的 NULLREGION 仅表示该 DC 当前剪裁区域为空，不能替代屏幕视觉验收。补充来源：[GetClipBox](https://learn.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-getclipbox)、[GetWindow 的子窗口及兄弟 Z 序](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getwindow)。
+
 ## 最新：代理直接操作电脑的验证与限制（2026-10-30）
 
 用户授权可由代理自行操作电脑验证，减少重复人工测试。本轮 computer-use 已成功连接，不再沿用此前“连接失败”的状态。仅通过已提供的窗口选择、截图、鼠标和键盘接口操作实验；未修改主程序、系统设置或 Explorer，未安装依赖。实际操作发现并修复了 E 普通窗口的紫色标题区移动问题；桌面嵌入黑屏仍未解决。

@@ -103,6 +103,7 @@ internal static class Checks
                 // E/F are GDI-painted Forms with native EDIT/BUTTON HWNDs, no WPF visual tree.
                 System.Windows.Forms.Integration.WindowsFormsHost.EnableWindowsFormsInterop();
                 native=new NativePaintProbe(lines.Add,()=>{},Native.Bounds(normal.Handle));
+                Assert(!native.Attach(true) && native.Error.Contains("Shown") && !native.IsHandleCreated,"native attach rejects incomplete initialization without creating or mutating HWND");
                 native.Show(); await Task.Delay(200);
                 nint nativeHwnd=native.Handle;
                 Assert(Native.GetParent(nativeHwnd)==0 && !native.HumanConfirmed && native.Mode=="native-normal","E: independent normal native HWND, no false human confirmation");
@@ -124,6 +125,17 @@ internal static class Checks
                 }
                 native.Restore();
                 Assert(Native.GetParent(nativeHwnd)==0 && native.Mode=="native-normal" && native.Input.Text=="temporary native test","native normal restore preserves text and HWND");
+                foreach(bool noRedirection in new[]{false,true}) {
+                    using var local=new LocalHostProbe(noRedirection); local.Show();
+                    Assert((((long)Native.GetLong(local.Handle,Native.ExStyle)&0x200000)!=0)==noRedirection,"local host creation preserves requested redirection style: "+noRedirection);
+                    Assert(native.Attach(true,local) && Native.GetParent(nativeHwnd)==local.Handle,"same GDI child reparenting into own-process host: "+noRedirection);
+                    var childBounds=Native.Bounds(nativeHwnd); var clientPoint=new Native.Point(childBounds.Left,childBounds.Top); Native.ScreenToClient(local.Handle,ref clientPoint); Native.GetClientRect(local.Handle,out var clientBounds);
+                    Assert(clientPoint.X>=0 && clientPoint.Y>=0 && clientPoint.X+childBounds.Width<=clientBounds.Width && clientPoint.Y+childBounds.Height<=clientBounds.Height,"local child is placed within own host client, independent of monitor placement: "+noRedirection);
+                    await Task.Delay(100); lines.Add("LOCAL_CASE noRedirection="+noRedirection+"; "+native.Evidence());
+                    native.Restore();
+                    Assert(Native.GetParent(nativeHwnd)==0 && native.Input.Text=="temporary native test","own host detach keeps input and returns normal: "+noRedirection);
+                    local.Close();
+                }
                 if(native.Attach(true)) {
                     native.CheckHost(true);
                     Assert(native.Mode=="native-normal" && native.Host==0,"native simulated host loss safely restores E");

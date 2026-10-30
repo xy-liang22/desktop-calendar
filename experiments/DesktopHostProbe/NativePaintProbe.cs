@@ -9,7 +9,7 @@ namespace DesktopHostProbe;
 internal sealed class NativePaintProbe : Forms.Form
 {
     internal string Mode { get; private set; }="native-normal";
-    internal string Case => Mode=="native-desktop"?"F":"E";
+    internal string Case => Mode=="native-desktop"?"F":Mode=="native-local"?"L":"E";
     internal nint Host { get; private set; }
     internal bool HumanConfirmed { get; private set; }
     internal int PaintCount { get; private set; }
@@ -24,6 +24,7 @@ internal sealed class NativePaintProbe : Forms.Form
     long originalStyle;
     bool inputEdited,transitioning;
     int clicks;
+    string paintClip="not painted";
     uint shellPid;
     nint shell;
     Native.Point dragStart;
@@ -94,6 +95,8 @@ internal sealed class NativePaintProbe : Forms.Form
         nint dc=e.Graphics.GetHdc();
         try
         {
+            int clipType=Native.GetClipBox(dc,out var clip);
+            paintClip=$"lastPaintMode={Mode}; GDI clipType={clipType} box={clip}; paintUpdate={e.ClipRectangle} (not screen proof)";
             void Fill(int x,int y,int w,int h,uint color) {
                 var rect=new Native.Rect { Left=x,Top=y,Right=x+w,Bottom=y+h }; nint brush=CreateSolidBrush(color);
                 try { FillRect(dc,ref rect,brush); } finally { if(brush!=0)DeleteObject(brush); }
@@ -124,28 +127,35 @@ internal sealed class NativePaintProbe : Forms.Form
         }
         Native.Place(Handle,r,0,Native.NoActivate|Native.NoZOrder);
     }
-    internal bool Attach(bool automated=false)
+    internal bool Attach(bool automated=false,Forms.Form? localHost=null)
     {
         Error="";
+        if(originalStyle==0) { Error="普通原生窗口尚未完成 Shown，拒绝挂载"; return false; }
         if(!automated && !HumanConfirmed) { Error="请先在 E 中输入、计数并确认；F 未执行"; return false; }
         transitioning=true;
         try
         {
             if(Host!=0)Restore();
-            nint host=Native.Desktop().Host;
+            nint host=localHost?.Handle??Native.Desktop().Host;
+            if(localHost!=null && Native.Pid(host)!=Environment.ProcessId)throw new InvalidOperationException("对照宿主必须由本实验进程拥有");
             if(host==0 || !Native.IsWindowVisible(host))throw new InvalidOperationException("无可用桌面宿主");
             if(!Native.AreDpiAwarenessContextsEqual(Native.GetWindowDpiAwarenessContext(Handle),Native.GetWindowDpiAwarenessContext(host)))
                 throw new InvalidOperationException("DPI awareness 不一致，拒绝原生挂载");
             var rect=Native.Bounds(Handle);
+            if(localHost!=null) {
+                Native.GetClientRect(host,out var client); var origin=new Native.Point(0,0); Native.ClientToScreen(host,ref origin);
+                int width=Math.Min(rect.Width,Math.Max(1,client.Width-48)),height=Math.Min(rect.Height,Math.Max(1,client.Height-48));
+                rect.Left=origin.X+24; rect.Top=origin.Y+24; rect.Right=rect.Left+width; rect.Bottom=rect.Top+height;
+            }
             Native.SetStyle(Handle,Native.Style,(originalStyle|Native.Child)&~(Native.Popup|0x00C00000L|0x00040000L));
             Native.SetStyle(Handle,Native.ExStyle,((long)Native.GetLong(Handle,Native.ExStyle)|Native.Tool)&~Native.AppWindow);
             Native.Parent(Handle,host); Host=host; shell=Native.GetShellWindow(); shellPid=Native.Pid(host);
             Native.Place(Handle,rect,Native.Top,Native.NoActivate|Native.FrameChanged);
-            Mode="native-desktop"; Invalidate(); // One ordinary content change, never a refresh loop.
+            Mode=localHost==null?"native-desktop":"native-local"; Invalidate(); // One ordinary content change, never a refresh loop.
             return true;
         }
         catch(Exception ex) { Error=ex.Message; try { Restore(); } catch(Exception fallback) { Error+="; restore="+fallback.Message; } return false; }
-        finally { transitioning=false; report("NATIVE_ATTACH "+Evidence()); }
+        finally { transitioning=false; report("NATIVE_ATTACH "+Evidence()); if(localHost==null)report("SHELL_TOPOLOGY "+Native.ShellTopology()); }
     }
     internal void Restore()
     {
@@ -169,7 +179,7 @@ internal sealed class NativePaintProbe : Forms.Form
             catch(Exception ex) { Error="宿主丢失找回失败："+ex.Message+"；请点 A 重建"; report(Error); }
         }
     }
-    internal string Evidence() => IsDisposed?"closed":$"case={Case}; mode={Mode}; PID={Environment.ProcessId}; HWND={Handle:X}; parent={Native.GetParent(Handle):X}; host={Host:X}; match={Host!=0 && Native.GetParent(Handle)==Host}; style={(long)Native.GetLong(Handle,Native.Style):X}; ex={(long)Native.GetLong(Handle,Native.ExStyle):X}; visible={Native.IsWindowVisible(Handle)}; cloaked={Native.Cloaked(Handle)}; bounds={Native.Bounds(Handle)}; {Native.HostIntersection(Handle,Host)}; {Native.Coverage(Handle)}; GDI paint callbacks={PaintCount} (NOT screen proof); EDIT={Native.Class(Input.Handle)}; BUTTON={Native.Class(Counter.Handle)}; humanConfirmed={HumanConfirmed}; error={Error}";
+    internal string Evidence() => IsDisposed?"closed":$"case={Case}; mode={Mode}; PID={Environment.ProcessId}; HWND={Handle:X}; parent={Native.GetParent(Handle):X}; host={Host:X}; match={Host!=0 && Native.GetParent(Handle)==Host}; style={(long)Native.GetLong(Handle,Native.Style):X}; ex={(long)Native.GetLong(Handle,Native.ExStyle):X}; visible={Native.IsWindowVisible(Handle)}; cloaked={Native.Cloaked(Handle)}; bounds={Native.Bounds(Handle)}; {Native.HostIntersection(Handle,Host)}; {Native.Coverage(Handle)}; GDI paint callbacks={PaintCount} (NOT screen proof); {paintClip}; EDIT={Native.Class(Input.Handle)}; BUTTON={Native.Class(Counter.Handle)}; humanConfirmed={HumanConfirmed}; error={Error}";
 
     internal sealed class TestInput : Forms.TextBox
     {

@@ -21,8 +21,12 @@ internal static class Program
     {
         try
         {
+            if(Array.IndexOf(args,"--host-inventory")>=0) {
+                Console.OutputEncoding=new UTF8Encoding(false); Console.WriteLine(Native.ShellTopology()); return 0;
+            }
             if(Array.IndexOf(args,"--software")>=0) RenderOptions.ProcessRenderMode=RenderMode.SoftwareOnly;
             var app=new Application { ShutdownMode=ShutdownMode.OnMainWindowClose };
+            if(Array.IndexOf(args,"--local-host-check")>=0)return LocalHostProbe.Run(app,Array.IndexOf(args,"--no-redirection")>=0);
             if(Array.IndexOf(args,"--self-test")>=0) return Checks.Run(app);
             if(Array.IndexOf(args,"--widget")>=0)
             {
