@@ -8,6 +8,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
 using System.Linq;
+using System.Threading.Tasks;
 using Forms = System.Windows.Forms;
 
 namespace DesktopCalendar;
@@ -23,6 +24,9 @@ public partial class MainWindow : Window
     internal bool Ready { get; private set; }
     internal bool LayerInitialized { get; set; }
     internal bool IsPinned => DesktopMode?.Layer == WindowLayer.Topmost;
+    internal bool PreferredPinned { get; private set; }
+    WindowPlacement? fullPlacement, compactPlacement;
+    bool changingView;
     private DisplayMode beforeTray = DisplayMode.Normal;
     private readonly DispatcherTimer edgeTimer = new() { Interval = TimeSpan.FromMilliseconds(200) };
     private DateTime outsideSince = DateTime.MaxValue;
@@ -36,7 +40,11 @@ public partial class MainWindow : Window
     internal MainWindow(DesktopSession session, WindowPreferences preferences)
     {
         Session = session;
+        PreferredPinned = preferences.Pinned;
+        fullPlacement = preferences.FullPlacement ?? (preferences.HasBounds ? WindowPlacement.Legacy(preferences.Bounds) : null);
+        compactPlacement = preferences.CompactPlacement;
         InitializeComponent();
+        GuiNextMonitorButton.Visibility = session.VisualChecks ? Visibility.Visible : Visibility.Collapsed;
         monthPage = PrototypeViews.Month();
         weekPage = PrototypeViews.Week();
         PageHost.Children.Add(monthPage);
@@ -46,29 +54,19 @@ public partial class MainWindow : Window
         EdgeToggle.IsChecked = preferences.EdgeAutoHide;
         OpacitySlider.Value = preferences.BackgroundOpacity;
         CompactDate.Text = DateTime.Today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
-        CompactItems.ItemsSource = DemoContent.Todos;
+        CompactItems.ItemsSource = DemoTodo.View(DemoContent.Todos);
         RestoreColumns(monthPage, preferences.MonthColumns);
         RestoreColumns(weekPage, preferences.WeekColumns);
         BuildResizeHandles();
         SourceInitialized += (_, _) =>
         {
             Handle = new WindowInteropHelper(this).Handle;
-            DesktopMode = new DesktopWindowMode(this, Handle);
+            DesktopMode = new DesktopWindowMode(this, Handle, session.VisualChecks);
             source = HwndSource.FromHwnd(Handle);
             source.AddHook(WindowMessage);
         };
         Loaded += (_, _) =>
         {
-            if (preferences.HasBounds)
-            {
-                var center = new System.Drawing.Point((int)(preferences.X + preferences.Width / 2), (int)(preferences.Y + preferences.Height / 2));
-                var area = Forms.Screen.FromPoint(center).WorkingArea;
-                NativeWindow.Place(Handle, WindowGeometry.Clamp(preferences.Bounds, new Rect(area.X, area.Y, area.Width, area.Height)));
-            }
-            FitToScreen();
-            SavedBounds = NativeWindow.Bounds(Handle);
-            Ready = true;
-            if (preferences.Collapsed) EnterCompact();
             edgeTimer.Start();
         };
         LocationChanged += (_, _) => Remember();
@@ -79,20 +77,63 @@ public partial class MainWindow : Window
         Closed += (_, _) => { Ready = false; edgeTimer.Stop(); source?.RemoveHook(WindowMessage); };
         Surface.SizeChanged += (_, _) => Surface.Clip = new RectangleGeometry(new Rect(0, 0, Surface.ActualWidth, Surface.ActualHeight), Mode == DisplayMode.Normal ? 18 : 12, Mode == DisplayMode.Normal ? 18 : 12);
     }
-    private void Remember() { if (Ready && !dragging) Session.Changed(); }
+    internal async Task RestoreStartup(WindowPreferences preferences)
+    {
+        // ContentRendered and owner initialization must finish before taking any snapshots.
+        // WPF can apply its initial placement / WM_DPICHANGED after Loaded.
+        if (fullPlacement != null) ApplyPlacement(fullPlacement, false);
+        else FitToScreen();
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ContextIdle);
+        if (fullPlacement != null) ApplyPlacement(fullPlacement, false);
+        fullPlacement = WindowPlacement.Capture(Handle); SavedBounds = fullPlacement.Bounds;
+        if (preferences.Collapsed)
+        {
+            EnterCompact();
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ContextIdle);
+            ApplyPlacement(compactPlacement!, true);
+            compactPlacement = WindowPlacement.Capture(Handle);
+        }
+        Ready = true;
+    }
+    void ApplyPlacement(WindowPlacement placement, bool compact)
+    {
+        var screen = placement.Target(); var area = screen.WorkingArea;
+        var work = new Rect(area.X, area.Y, area.Width, area.Height);
+        // Move onto the target monitor first so GetDpiForWindow reflects that monitor.
+        NativeWindow.Place(Handle, WindowGeometry.Clamp(new Rect(work.X + 24, work.Y + 24, placement.Width, placement.Height), work));
+        double dpi = NativeWindow.GetDpiForWindow(Handle);
+        MinWidth = Math.Min(compact ? 320 : 880, work.Width * 96 / dpi);
+        MinHeight = Math.Min(compact ? 240 : 520, work.Height * 96 / dpi);
+        NativeWindow.Place(Handle, placement.Resolve(work, dpi, screen.DeviceName == placement.Display, compact));
+    }
+    private void Remember()
+    {
+        if (Ready && !dragging && !changingView) { CapturePlacement(); Session.Changed(); }
+    }
+    void CapturePlacement()
+    {
+        if (!IsVisible || WindowState != WindowState.Normal || !DesktopWindowMode.IsWindow(Handle)) return;
+        var placement = WindowPlacement.Capture(Handle);
+        if (!placement.Valid()) return;
+        if (Mode == DisplayMode.Normal) { fullPlacement = placement; SavedBounds = placement.Bounds; }
+        else if (Mode == DisplayMode.Compact) compactPlacement = placement;
+    }
     internal void RefreshLayerStatus()
     {
         if (DesktopMode == null) return;
         PinToggle.IsChecked = IsPinned;
         ModeStatus.Text = Text(DesktopMode.Layer switch { WindowLayer.Desktop => "DesktopMode", WindowLayer.Topmost => "PinnedMode", _ => "FallbackMode" });
+        if (Session.VisualChecks) ModeStatus.Text = Text("GuiCheckTitle");
         SettingsNotice.Text = DesktopMode.Layer == WindowLayer.Fallback ? Text("FallbackNotice") : Text("SettingsNotice");
         if (Session.Notice.Length > 0) SettingsNotice.Text += "\n" + Text(Session.Notice);
     }
     internal WindowPreferences SnapshotPreferences()
     {
+        if (!changingView) CapturePlacement();
         var p = Session.Preferences with { Collapsed = Mode == DisplayMode.Compact || Mode == DisplayMode.Tray && beforeTray == DisplayMode.Compact,
-            Week = IsWeek, Pinned = IsPinned, EdgeAutoHide = EdgeToggle.IsChecked == true, BackgroundOpacity = OpacitySlider.Value };
-        p.SetBounds(Mode == DisplayMode.Normal ? NativeWindow.Bounds(Handle) : SavedBounds);
+            Week = IsWeek, Pinned = PreferredPinned, EdgeAutoHide = EdgeToggle.IsChecked == true, BackgroundOpacity = OpacitySlider.Value,
+            FullPlacement = fullPlacement, CompactPlacement = compactPlacement };
+        p.SetBounds(fullPlacement?.Bounds ?? SavedBounds);
         if (monthPage.IsVisible) p.MonthColumns = ColumnWidths(monthPage);
         if (weekPage.IsVisible) p.WeekColumns = ColumnWidths(weekPage);
         return p;
@@ -113,9 +154,16 @@ public partial class MainWindow : Window
         if (msg == 0x02E0 || msg == 0x007E)
             Dispatcher.BeginInvoke(() =>
             {
-                if (Mode == DisplayMode.Compact) NativeWindow.Place(Handle, WindowGeometry.Compact(NativeWindow.WorkArea(Handle), Scale));
+                if (!Ready || changingView) return;
+                if (Mode == DisplayMode.Compact)
+                {
+                    var work = NativeWindow.WorkArea(Handle);
+                    MinWidth = Math.Min(320, work.Width / Scale); MinHeight = Math.Min(240, work.Height / Scale);
+                    NativeWindow.Place(Handle, WindowGeometry.Clamp(NativeWindow.Bounds(Handle), work));
+                }
                 else if (Mode == DisplayMode.EdgeHandle) RestoreNormal();
                 else if (Mode == DisplayMode.Normal) FitToScreen();
+                Remember();
             });
         return IntPtr.Zero;
     }
@@ -151,6 +199,7 @@ public partial class MainWindow : Window
     private void PinChanged(object sender, RoutedEventArgs e) => SetPinned(PinToggle.IsChecked == true);
     internal void SetPinned(bool enabled)
     {
+        PreferredPinned = enabled;
         DesktopMode.Apply(enabled);
         RefreshLayerStatus(); Remember();
     }
@@ -158,6 +207,16 @@ public partial class MainWindow : Window
     private void SettingsClose(object sender, RoutedEventArgs e) => SettingsPanel.Visibility = Visibility.Collapsed;
     private void ExitClick(object sender, RoutedEventArgs e) => Exit();
     private void SafeLocateClick(object sender, RoutedEventArgs e) => Session.Locate(true);
+    private void GuiNextMonitorClick(object sender, RoutedEventArgs e)
+    {
+        if (!Session.VisualChecks) return;
+        var screens = Forms.Screen.AllScreens;
+        int current = Array.FindIndex(screens, s => s.DeviceName == Forms.Screen.FromHandle(Handle).DeviceName);
+        var work = screens[(current + 1) % screens.Length].WorkingArea;
+        var bounds = NativeWindow.Bounds(Handle);
+        NativeWindow.Place(Handle, WindowGeometry.Clamp(new Rect(work.X + 90, work.Y + 90, bounds.Width, bounds.Height), new Rect(work.X, work.Y, work.Width, work.Height)));
+        Remember();
+    }
     internal void OpenSettings() { RefreshLayerStatus(); SettingsPanel.Visibility = Visibility.Visible; SettingsCloseButton.Focus(); }
     private void EdgeChanged(object sender, RoutedEventArgs e)
     {
@@ -192,20 +251,24 @@ public partial class MainWindow : Window
         if (Mode == DisplayMode.Compact) return;
         CompactDate.Text = DateTime.Today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
         SaveNormalBounds();
+        CapturePlacement(); changingView = true;
         SmallMode(DisplayMode.Compact);
         CompactContent.Visibility = Visibility.Visible;
         ResizeHandles.Visibility = Visibility.Visible;
         MinWidth = 320; MinHeight = 240;
-        NativeWindow.Place(Handle, WindowGeometry.Compact(NativeWindow.WorkArea(Handle), Scale));
-        Show(); RestoreFullButton.Focus(); Remember();
+        if (compactPlacement != null) ApplyPlacement(compactPlacement, true);
+        else NativeWindow.Place(Handle, WindowGeometry.Compact(NativeWindow.WorkArea(Handle), Scale));
+        Show(); RestoreFullButton.Focus();
+        compactPlacement = WindowPlacement.Capture(Handle); changingView = false; Remember();
     }
     internal void HideToTray()
     {
         SaveNormalBounds();
+        CapturePlacement();
         if (Mode != DisplayMode.Tray) beforeTray = Mode == DisplayMode.Compact ? DisplayMode.Compact : DisplayMode.Normal;
         SettingsPanel.Visibility = Visibility.Collapsed;
         Mode = DisplayMode.Tray;
-        Hide(); Remember();
+        Hide(); Remember(); if (Ready) Session.Save();
     }
     internal void ShowComponent()
     {
@@ -217,6 +280,7 @@ public partial class MainWindow : Window
     internal void RestoreNormal()
     {
         bool needsRestore = Mode != DisplayMode.Normal;
+        CapturePlacement(); changingView = true;
         Mode = DisplayMode.Normal;
         FullContent.Visibility = Visibility.Visible;
         ResizeHandles.Visibility = Visibility.Visible;
@@ -226,13 +290,12 @@ public partial class MainWindow : Window
         Shell.CornerRadius = new CornerRadius(18);
         if (needsRestore)
         {
-            var center = new System.Drawing.Point((int)(SavedBounds.X + SavedBounds.Width / 2), (int)(SavedBounds.Y + SavedBounds.Height / 2));
-            var area = Forms.Screen.FromPoint(center).WorkingArea;
-            NativeWindow.Place(Handle, WindowGeometry.Clamp(SavedBounds, new Rect(area.X, area.Y, area.Width, area.Height)));
+            ApplyPlacement(fullPlacement ?? WindowPlacement.Legacy(SavedBounds), false);
         }
         Show(); FitToScreen(); Activate(); (IsWeek ? WeekButton : MonthButton).Focus();
         outsideSince = DateTime.MaxValue;
         suppressEdgeUntil = DateTime.UtcNow.AddSeconds(1.2);
+        changingView = false;
         Remember();
     }
     internal void CollapseToEdge(DockSide side)

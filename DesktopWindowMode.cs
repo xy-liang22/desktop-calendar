@@ -13,6 +13,7 @@ internal sealed class DesktopWindowMode
 {
     readonly Window window;
     readonly IntPtr hwnd;
+    readonly bool diagnostic;
     IntPtr desktopOwner;
     uint desktopPid;
     internal WindowLayer Layer { get; private set; } = WindowLayer.Fallback;
@@ -21,14 +22,14 @@ internal sealed class DesktopWindowMode
     internal IntPtr Owner => GetWindow(hwnd, 4);
     internal bool NativeTopmost => (NativeWindow.GetWindowLong(hwnd, -20) & 8) != 0;
     internal int LayerChanges { get; private set; }
-    internal DesktopWindowMode(Window window, IntPtr hwnd) { this.window = window; this.hwnd = hwnd; }
+    internal DesktopWindowMode(Window window, IntPtr hwnd, bool diagnostic = false) { this.window = window; this.hwnd = hwnd; this.diagnostic = diagnostic; }
 
     internal bool Apply(bool topmost)
     {
         try
         {
             IntPtr owner = IntPtr.Zero;
-            if (!topmost)
+            if (!topmost && !diagnostic)
             {
                 owner = GetShellWindow();
                 if (!IsWindow(owner) || Class(owner) != "Progman" || Pid(owner) == 0)
@@ -66,8 +67,11 @@ internal sealed class DesktopWindowMode
     }
     void ConfigureToolWindow()
     {
-        window.ShowInTaskbar = false;
-        SetLongChecked(-20, (NativeWindow.GetWindowLong(hwnd, -20) | 0x80L) & ~0x40000L);
+        // Explicit isolated GUI-check mode only: make the same real UI selectable by
+        // computer-use. It never proves desktop/Win+D behavior and is never the default.
+        window.ShowInTaskbar = diagnostic;
+        long style = NativeWindow.GetWindowLong(hwnd, -20);
+        SetLongChecked(-20, diagnostic ? (style & ~0x80L) | 0x40000L : (style | 0x80L) & ~0x40000L);
     }
     void SetTopmost(bool enabled)
     {

@@ -32,6 +32,8 @@ internal static class PrototypeChecks
         bool Near(Rect a, Rect b) => Math.Abs(a.X - b.X) <= 3 && Math.Abs(a.Y - b.Y) <= 3 && Math.Abs(a.Width - b.Width) <= 3 && Math.Abs(a.Height - b.Height) <= 3;
         try
         {
+            for (int i = 0; i < 100 && !window.Ready; i++) await Task.Delay(50);
+            Check("startup restore completed before checks", window.Ready);
             // Start-Process -WindowStyle Hidden suppresses the very first native Show.
             // Re-show before checking styles that depend on a mapped desktop window.
             window.Hide(); window.Show();
@@ -180,8 +182,10 @@ internal static class PrototypeChecks
                 results.Add("Monitor transition DPI=" + NativeWindow.GetDpiForWindow(window.Handle) + "; X=" + a.X);
                 var moved = NativeWindow.Bounds(window.Handle);
                 Check("monitor bounds " + a.X, work.Contains(moved));
+                var compactPlacement = window.SnapshotPreferences().CompactPlacement!;
                 window.EnterCompact(); await Task.Delay(80);
-                Check("monitor compact " + a.X, Near(NativeWindow.Bounds(window.Handle), WindowGeometry.Compact(work, window.Scale)));
+                var compactScreen = compactPlacement.Target(); var compactArea = compactScreen.WorkingArea;
+                Check("monitor compact retains its saved display " + a.X, Near(NativeWindow.Bounds(window.Handle), compactPlacement.Resolve(new Rect(compactArea.X, compactArea.Y, compactArea.Width, compactArea.Height), NativeWindow.GetDpiForWindow(window.Handle), compactScreen.DeviceName == compactPlacement.Display, true)));
                 window.RestoreNormal(); await Task.Delay(80);
                 Check("monitor restore " + a.X, Near(NativeWindow.Bounds(window.Handle), moved));
             }
@@ -213,21 +217,22 @@ internal static class PrototypeChecks
             Check("atomic first preferences save", store.Save(settings));
             settings.BackgroundOpacity = .8;
             Check("atomic replacement retains backup", store.Save(settings) && File.Exists(prefsPath + ".bak") && !File.Exists(prefsPath + ".tmp"));
-            Check("preferences round trip stable schema/id", store.Load() is { SchemaVersion:1, Id:"desktop-calendar-window", Collapsed:true, Week:true, BackgroundOpacity:.8 });
+            Check("preferences round trip stable schema/id", store.Load() is { SchemaVersion:2, Id:"desktop-calendar-window", Collapsed:true, Week:true, BackgroundOpacity:.8 });
             File.WriteAllText(prefsPath, "broken");
             Check("corrupt primary recovers backup", store.Load() is { Collapsed:true, Week:true, BackgroundOpacity:.96 } && store.Notice == "PreferencesRecovered");
             File.WriteAllText(prefsPath, JsonSerializer.Serialize(settings with { SchemaVersion = 99 }));
             var futureStore = new WindowPreferencesStore(prefsPath); futureStore.Load();
             Check("future schema is not overwritten", !futureStore.CanSave && !futureStore.Save(settings) && File.ReadAllText(prefsPath).Contains("99"));
             File.WriteAllText(prefsPath, "broken"); File.WriteAllText(prefsPath + ".bak", "broken");
-            Check("corrupt primary and backup use defaults", new WindowPreferencesStore(prefsPath).Load() is { SchemaVersion:1, Collapsed:false, Week:false });
+            Check("corrupt primary and backup use defaults", new WindowPreferencesStore(prefsPath).Load() is { SchemaVersion:2, Collapsed:false, Week:false });
             Check("invalid geometry cannot overwrite preferences", !new WindowPreferencesStore(prefsPath).Save(settings with { Width = double.NaN }));
             Check("no mock business data in preferences JSON", !JsonSerializer.Serialize(settings).Contains(DemoContent.TodoNames[0]));
+            await RevisionChecks.Run(window, Check);
             window.SetPage(true); window.EnterCompact();
             var session = window.Session;
             var previous = window;
             session.TestWindowLoss();
-            for (int i = 0; i < 80 && (session.Window == previous || !session.Window.LayerInitialized); i++) await Task.Delay(100);
+            for (int i = 0; i < 80 && (session.Window == previous || !session.Window.Ready); i++) await Task.Delay(100);
             window = session.Window;
             Check("component recreation keeps tray, collapsed preference and page", window != previous && window.LayerInitialized && window.Mode == DisplayMode.Compact && window.IsWeek && window.TrayVisible);
             Check("component recreation safely falls back without auto owner", window.DesktopMode.Layer == WindowLayer.Fallback && !window.DesktopMode.NativeTopmost && window.DesktopMode.Owner == IntPtr.Zero);

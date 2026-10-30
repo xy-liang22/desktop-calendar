@@ -5,6 +5,9 @@
  <s:String x:Key="Opacity">背景透明度</s:String><s:String x:Key="Compact">待办</s:String>
  <s:String x:Key="CompactTip">折叠为今日待办</s:String><s:String x:Key="TrayTip">隐藏到托盘 · 双击托盘图标找回</s:String>
  <s:String x:Key="TodayTodos">今日待办</s:String><s:String x:Key="RestoreFull">展开完整日历</s:String>
+ <s:String x:Key="GuiCheckTitle">Desktop Calendar — GUI 检查（普通窗口，非桌面验收）</s:String>
+ <s:String x:Key="GuiNextMonitor">GUI 检查：移到下一显示器</s:String>
+ <s:String x:Key="SubtaskProgressFormat">子任务 {0} / {1}</s:String>
  <s:String x:Key="CompactDemoNotice">模拟待办 · 勾选仅在本次运行有效</s:String>
  <s:String x:Key="Locate">显示 / 定位组件</s:String><s:String x:Key="SafeLocate">安全找回（普通窗口）</s:String>
  <s:String x:Key="Settings">设置</s:String><s:String x:Key="CloseSettings">关闭设置</s:String>

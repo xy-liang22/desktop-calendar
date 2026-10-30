@@ -3,6 +3,30 @@
   <ResourceDictionary.MergedDictionaries><ResourceDictionary Source="Strings.zh-CN.xaml" /></ResourceDictionary.MergedDictionaries>
   <SolidColorBrush x:Key="Ink" Color="#EDF2F5"/><SolidColorBrush x:Key="Muted" Color="#A2AFBC"/>
   <SolidColorBrush x:Key="Accent" Color="#A3D9C4"/>
+  <DataTemplate x:Key="TodoLineTemplate">
+   <TextBlock TextWrapping="Wrap" Margin="4,0,0,0">
+    <Run Text="{Binding TimePrefix, Mode=OneWay}" FontWeight="SemiBold" Foreground="{StaticResource Accent}"/><Run Text="{Binding Title, Mode=OneWay}"/>
+    <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Foreground" Value="{StaticResource Ink}"/><Style.Triggers>
+     <DataTrigger Binding="{Binding Completed}" Value="True"><Setter Property="TextDecorations" Value="Strikethrough"/><Setter Property="Opacity" Value="0.6"/></DataTrigger>
+    </Style.Triggers></Style></TextBlock.Style>
+   </TextBlock>
+  </DataTemplate>
+  <DataTemplate x:Key="ChildTodoTemplate">
+   <CheckBox IsChecked="{Binding Completed, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Content="{Binding}" ContentTemplate="{StaticResource TodoLineTemplate}" HorizontalContentAlignment="Stretch" Margin="0,0,0,9" FontSize="11"/>
+  </DataTemplate>
+  <DataTemplate x:Key="FullTodoTemplate">
+   <Border BorderBrush="#17FFFFFF" BorderThickness="0,0,0,1" Padding="0,0,0,13" Margin="0,0,0,15">
+    <StackPanel>
+     <CheckBox IsChecked="{Binding Completed, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Content="{Binding}" ContentTemplate="{StaticResource TodoLineTemplate}" HorizontalContentAlignment="Stretch" Margin="0"/>
+     <TextBlock Text="{Binding Meta}" FontSize="10" Foreground="{StaticResource Muted}" Margin="22,7,0,0"/>
+     <ItemsControl ItemsSource="{Binding ChildrenView}" ItemTemplate="{StaticResource ChildTodoTemplate}" Margin="22,10,0,0"/>
+     <StackPanel Margin="22,0,0,0"><StackPanel.Style><Style TargetType="StackPanel"><Style.Triggers><DataTrigger Binding="{Binding Children.Length}" Value="0"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></StackPanel.Style>
+      <ProgressBar Value="{Binding ChildProgress, Mode=OneWay}" Height="3" Margin="0,3,10,6" Foreground="{StaticResource Accent}" Background="#263B45" BorderThickness="0"/>
+      <TextBlock Text="{Binding ChildSummary}" FontSize="10" Foreground="{StaticResource Accent}"/>
+     </StackPanel>
+    </StackPanel>
+   </Border>
+  </DataTemplate>
   <Style TargetType="TextBlock"><Setter Property="Foreground" Value="{StaticResource Ink}"/><Setter Property="TextTrimming" Value="CharacterEllipsis"/></Style>
   <Style TargetType="Button">
    <Setter Property="Foreground" Value="{StaticResource Ink}"/><Setter Property="Background" Value="#17FFFFFF"/>

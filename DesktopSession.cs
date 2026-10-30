@@ -17,12 +17,16 @@ internal sealed class DesktopSession : IDisposable
     internal MainWindow Window { get; private set; } = null!;
     internal WindowPreferences Preferences { get; private set; }
     internal bool Testing { get; }
+    internal bool VisualChecks { get; }
     internal bool TrayVisible => tray.Visible;
     internal string Notice => store.Notice;
-    internal DesktopSession(bool testing)
+    internal DesktopSession(bool testing, bool visualChecks = false, bool restartCheck = false)
     {
         Testing = testing;
-        string directory = testing ? Path.Combine(Path.GetTempPath(), "DesktopCalendar-Checks-" + Guid.NewGuid().ToString("N"))
+        VisualChecks = visualChecks;
+        string directory = restartCheck ? RevisionChecks.RestartDirectory
+            : visualChecks ? Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "artifacts", "ui-check-preferences"))
+            : testing ? Path.Combine(Path.GetTempPath(), "DesktopCalendar-Checks-" + Guid.NewGuid().ToString("N"))
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DesktopCalendar");
         store = new WindowPreferencesStore(Path.Combine(directory, "window-preferences.json"));
         Preferences = store.Load();
@@ -43,13 +47,15 @@ internal sealed class DesktopSession : IDisposable
     {
         var settings = Preferences;
         var window = new MainWindow(this, settings);
+        if (VisualChecks) window.Title = MainWindow.Text("GuiCheckTitle");
         Window = window; Application.Current.MainWindow = window;
-        window.ContentRendered += (_, _) =>
+        window.ContentRendered += async (_, _) =>
         {
             if (window.DesktopMode == null || window.LayerInitialized) return;
             window.LayerInitialized = true;
             if (fallback) window.DesktopMode.Fallback();
             else window.DesktopMode.Apply(settings.Pinned);
+            await window.RestoreStartup(settings);
             window.RefreshLayerStatus(); Changed();
         };
         window.Closed += (_, _) =>
@@ -69,7 +75,8 @@ internal sealed class DesktopSession : IDisposable
     }
     internal void Save()
     {
-        if (Window.Ready && DesktopWindowMode.IsWindow(Window.Handle)) Preferences = Window.SnapshotPreferences();
+        if (!Window.Ready) return;
+        if (DesktopWindowMode.IsWindow(Window.Handle)) Preferences = Window.SnapshotPreferences();
         if (!store.Save(Preferences)) Window.RefreshLayerStatus();
     }
     internal void Locate(bool safe = false)
@@ -77,8 +84,9 @@ internal sealed class DesktopSession : IDisposable
         if (!DesktopWindowMode.IsWindow(Window.Handle)) { recovered = false; CreateWindow(true); return; }
         Window.ShowComponent();
         if (safe) Window.DesktopMode.Fallback();
-        else Window.DesktopMode.Apply(Window.IsPinned);
+        else Window.DesktopMode.Apply(Window.PreferredPinned);
         Window.RefreshLayerStatus(); Window.Activate();
+        Changed();
     }
     internal void ShellSignal()
     {

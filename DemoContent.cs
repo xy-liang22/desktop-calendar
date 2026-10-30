@@ -1,5 +1,7 @@
 using System.ComponentModel;
 using System.Linq;
+using System;
+using System.Windows.Data;
 
 namespace DesktopCalendar;
 
@@ -9,9 +11,11 @@ internal static class DemoContent
     internal static readonly string[] Weekdays = { "周一", "周二", "周三", "周四", "周五", "周六", "周日" };
     internal static readonly string[] CalendarTasks = { "阅读与摘录", "整理设计思路", "散步 30 分钟", "完成方案初稿", "每周回顾", "准备晚餐", "留给自己的时间" };
     internal static readonly string[] TodoNames = { "完成桌面日历视觉方案", "梳理本周阅读笔记", "出门散步，放松一下", "整理工作区" };
-    internal static readonly string[] TodoMeta = { "09:00 · 工作 · 重要", "14:00 · 学习", "无计划时间 · 生活", "无计划时间 · 生活" };
-    internal static readonly DemoTodo[] Todos = TodoNames.Select((title, i) => new DemoTodo("demo-todo-" + i, title, i == 3)).ToArray();
+    internal static readonly string[] TodoMeta = { "工作 · 重要", "学习", "生活", "生活" };
+    internal static readonly DemoTodo[] Todos = TodoNames.Select((title, i) => new DemoTodo("demo-todo-" + i, title, i, i == 3,
+        i == 0 ? new TimeSpan(9, 30, 0) : i == 1 ? new TimeSpan(14, 0, 0) : null, TodoMeta[i])).ToArray();
     internal static readonly string[] Subtasks = { "确定布局与留白", "检查小尺寸可读性" };
+    static DemoContent() => Todos[0].Children = Subtasks.Select((title, i) => new DemoTodo("demo-sub-" + i, title, i, i == 1)).ToArray();
     internal static readonly string[] GoalNames = { "完成一个值得展示的作品", "阅读与思考", "给生活留一点空间" };
     internal static readonly string[] GoalProgress = { "2 / 3 项 · 演示", "4 / 6 小时 · 演示", "3 / 5 次 · 演示" };
     internal const string WeekRibbon = "本周的一个小目标";
@@ -39,12 +43,58 @@ internal sealed class DemoTodo : INotifyPropertyChanged
 {
     public string Id { get; }
     public string Title { get; }
+    public int OriginalOrder { get; }
+    public TimeSpan? PlannedTime { get; }
+    public double TimeSortKey => PlannedTime?.TotalMinutes ?? double.MaxValue;
+    static long completionSequence;
+    long completionOrder;
+    public double ActiveTimeSortKey => Completed ? 0 : TimeSortKey;
+    public long DisplayOrder => Completed ? completionOrder : OriginalOrder;
+    public string TimePrefix => PlannedTime?.ToString(@"hh\:mm", System.Globalization.CultureInfo.InvariantCulture) is string time ? time + " " : "";
+    public string Meta { get; }
+    DemoTodo[] children = Array.Empty<DemoTodo>();
+    public DemoTodo[] Children
+    {
+        get => children;
+        internal set
+        {
+            foreach (var child in children) child.PropertyChanged -= ChildChanged;
+            children = value;
+            foreach (var child in children) child.PropertyChanged += ChildChanged;
+        }
+    }
+    public ICollectionView ChildrenView => View(Children);
+    public double ChildProgress => Children.Length == 0 ? 0 : Children.Count(c => c.Completed) * 100.0 / Children.Length;
+    public string ChildSummary => string.Format(System.Globalization.CultureInfo.CurrentCulture, MainWindow.Text("SubtaskProgressFormat"), Children.Count(c => c.Completed), Children.Length);
+    void ChildChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(Completed)) return;
+        PropertyChanged?.Invoke(this, new(nameof(ChildProgress))); PropertyChanged?.Invoke(this, new(nameof(ChildSummary)));
+    }
     bool completed;
     public bool Completed
     {
         get => completed;
-        set { if (completed == value) return; completed = value; PropertyChanged?.Invoke(this, new(nameof(Completed))); }
+        set
+        {
+            if (completed == value) return;
+            if (value) completionOrder = ++completionSequence;
+            completed = value;
+            foreach (string property in new[] { nameof(Completed), nameof(ActiveTimeSortKey), nameof(DisplayOrder) }) PropertyChanged?.Invoke(this, new(property));
+        }
     }
-    internal DemoTodo(string id, string title, bool completed) { Id = id; Title = title; this.completed = completed; }
+    internal DemoTodo(string id, string title, int order, bool completed = false, TimeSpan? plannedTime = null, string meta = "")
+    { Id = id; Title = title; OriginalOrder = order; this.completed = completed; completionOrder = completed ? ++completionSequence : 0; PlannedTime = plannedTime; Meta = meta; }
+    internal static ICollectionView View(DemoTodo[] siblings, bool byTime = false)
+    {
+        var source = new CollectionViewSource { Source = siblings, IsLiveSortingRequested = true };
+        source.SortDescriptions.Add(new SortDescription(nameof(Completed), ListSortDirection.Ascending));
+        if (byTime) source.SortDescriptions.Add(new SortDescription(nameof(ActiveTimeSortKey), ListSortDirection.Ascending));
+        source.SortDescriptions.Add(new SortDescription(nameof(DisplayOrder), ListSortDirection.Ascending));
+        source.LiveSortingProperties.Add(nameof(Completed));
+        source.LiveSortingProperties.Add(nameof(DisplayOrder));
+        source.LiveSortingProperties.Add(nameof(ActiveTimeSortKey));
+        return source.View;
+    }
     public event PropertyChangedEventHandler? PropertyChanged;
 }

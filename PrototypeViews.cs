@@ -116,39 +116,11 @@ internal static class PrototypeViews
         Add(root, Panel(calendar)); Add(root, Splitter(), 0, 1); Add(root, Panel(todo), 0, 2); Add(root, Splitter(), 0, 3); Add(root, Panel(actual), 0, 4);
         return root;
     }
-    private static StackPanel TodoList()
+    private static ItemsControl TodoList() => new()
     {
-        var stack = new StackPanel();
-        for (int i = 0; i < DemoContent.TodoNames.Length; i++)
-        {
-            var row = new Grid { Margin = new Thickness(0, 0, 0, 13) };
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(23) }); row.ColumnDefinitions.Add(new ColumnDefinition { Width = Star });
-            var fixture = DemoContent.Todos[i];
-            var marker = new CheckBox { DataContext = fixture, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 2, 4, 0), ToolTip = T("CompactDemoNotice") };
-            marker.SetBinding(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, new System.Windows.Data.Binding(nameof(DemoTodo.Completed)) { Mode = System.Windows.Data.BindingMode.TwoWay });
-            Add(row, marker);
-            var content = new StackPanel();
-            var title = Label(DemoContent.TodoNames[i], 13, i == 3 ? "#8998A6" : "#EDF2F5"); title.TextWrapping = TextWrapping.Wrap;
-            title.ClearValue(TextBlock.ForegroundProperty);
-            var titleStyle = new Style(typeof(TextBlock));
-            titleStyle.Setters.Add(new Setter(TextBlock.ForegroundProperty, Brush("#EDF2F5")));
-            var completed = new DataTrigger { Binding = new System.Windows.Data.Binding(nameof(DemoTodo.Completed)) { Source = fixture }, Value = true };
-            completed.Setters.Add(new Setter(TextBlock.TextDecorationsProperty, TextDecorations.Strikethrough));
-            completed.Setters.Add(new Setter(TextBlock.ForegroundProperty, Brush("#8998A6")));
-            titleStyle.Triggers.Add(completed); title.Style = titleStyle;
-            content.Children.Add(title);
-            var meta = Label(DemoContent.TodoMeta[i], 10, "#A2AFBC"); meta.Margin = new Thickness(0, 7, 0, 0); content.Children.Add(meta);
-            if (i == 0)
-            {
-                foreach (var sub in DemoContent.Subtasks) { var child = Label("· " + sub, 11, "#A2AFBC"); child.Margin = new Thickness(0, 9, 0, 0); content.Children.Add(child); }
-                var progress = new ProgressBar { Value = 50, Height = 3, Margin = new Thickness(0, 12, 10, 6), Foreground = Brush("#A3D9C4"), Background = Brush("#263B45"), BorderThickness = new Thickness(0) }; content.Children.Add(progress);
-                content.Children.Add(Label(DemoContent.TodoProgress, 10, "#A3D9C4"));
-            }
-            Add(row, content, 0, 1);
-            stack.Children.Add(new Border { Child = row, BorderBrush = Brush("#17FFFFFF"), BorderThickness = new Thickness(0, 0, 0, 1), Margin = new Thickness(0, 0, 0, 15) });
-        }
-        return stack;
-    }
+        ItemsSource = DemoTodo.View(DemoContent.Todos),
+        ItemTemplate = (DataTemplate)Application.Current.FindResource("FullTodoTemplate")
+    };
     internal static Grid Week()
     {
         var root = new Grid();

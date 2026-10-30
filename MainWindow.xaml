@@ -42,9 +42,7 @@
     <ItemsControl x:Name="CompactItems">
      <ItemsControl.ItemTemplate><DataTemplate>
       <CheckBox IsChecked="{Binding Completed, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,14" HorizontalContentAlignment="Stretch">
-       <TextBlock Text="{Binding Title}" TextWrapping="Wrap" Margin="6,0,0,0">
-        <TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding Completed}" Value="True"><Setter Property="TextDecorations" Value="Strikethrough"/><Setter Property="Foreground" Value="#8998A6"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
-       </TextBlock>
+       <ContentControl Content="{Binding}" ContentTemplate="{StaticResource TodoLineTemplate}"/>
       </CheckBox>
      </DataTemplate></ItemsControl.ItemTemplate>
     </ItemsControl>
@@ -68,6 +66,7 @@
     <TextBlock Text="{DynamicResource Opacity}" Foreground="{StaticResource Muted}" Margin="0,0,0,8"/>
     <Slider x:Name="OpacitySlider" Minimum="0.65" Maximum="0.98" Value="0.96" VerticalAlignment="Center" ValueChanged="OpacityChanged"/>
     <Button Content="{DynamicResource SafeLocate}" Click="SafeLocateClick" Margin="0,18,0,8"/>
+    <Button x:Name="GuiNextMonitorButton" Content="{DynamicResource GuiNextMonitor}" Click="GuiNextMonitorClick" Visibility="Collapsed" Margin="0,0,0,8"/>
     <Button Content="{DynamicResource Exit}" Click="ExitClick"/>
    </StackPanel></ScrollViewer>
   </Border>
