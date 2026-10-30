@@ -1,5 +1,116 @@
 # P1.1-2：桌面宿主实验与测试平台修复
 
+## 最新：开源源码复核与候选路线（2026-10-30，等待实验批准）
+
+**本轮只完成公开源码、许可证和 issue/PR 调研，不运行参考软件，不复制实现代码，不增加实验或依赖，不修改主日历窗口。推荐先批准候选 1；候选 2 只作为有边界的后备，需要单独批准事件监听及临时层级调整。** 当前没有新方案通过本机视觉验收，旧 C/F 黑屏、D 不可见的结果继续有效；不重跑 A–F，不进入 P1.1-3。下方旧记录中的“下一步跨进程自有宿主对照”不再是当前优先路线。
+
+### 需求与证据边界
+
+- 验收以行为为准，不要求某种宿主技术：无任务栏按钮、无 Alt+Tab、Win+D 后持续可见且不被最小化、默认非置顶且普通应用能覆盖、可直接点击/输入/编辑/移动/缩放。点击组件可以正常取得输入焦点；普通应用激活后，组件不能持续压在其上。
+- 托盘可以保留，安全隐藏只是软偏好，不是硬性门槛；可靠的找回、设置、退出入口不能省略。当前默认常驻管理入口仍是可用的产品规划，不为隐藏图标增加风险。Windows 10/11 都是最终目标，本轮不宣称完成全平台兼容。
+- 区分四层证据：README 主张、源码机制、外部 issue/PR 的反馈、我们自己的实机验证。前三层不能替代第四层；本轮仅前三层。没有新建“自动通过”或“人工通过”结果。
+- 阅读的是下表固定提交，不保证以后版本相同；未下载发布 EXE、未安装 Qt/Electron/Rainmeter。只读取源码并用自己的文字描述，没有将第三方源文件或片段纳入仓库。
+
+| 项目 | 本次核对提交 | 仓库 LICENSE |
+|---|---|---|
+| VaticUI/DeskWidgets | `e37bf4eb3427e2dc5c76937f3c6bf1bd27255ad3` | MIT |
+| tanxestudio/Windows-desktop-Tasks-Widget | `32322d2e649a7271722a17a4eac44ac9189e1ca0` | MIT |
+| Felix-au/DeskX-Wallpaper-Engine | `2a78908b99ea7a1a8dcacf36aa672a44f6e13ca6` | MIT |
+| rainmeter/rainmeter | `54df7737c615ebe5a6b1d63e539aec171b54aec7` | GNU GPL v2 |
+
+### 1. DeskWidgets：顶层窗口的 owner，不是 SetParent 子窗口
+
+**README 主张**：Win10/11 桌面组件、位于普通应用下方、Win+D 可见、可编辑便签和提醒。
+
+**实际源码**：[core.py](https://github.com/VaticUI/DeskWidgets/blob/e37bf4eb3427e2dc5c76937f3c6bf1bd27255ad3/core.py#L412-L483) 的 `WidgetWindow` 使用 Qt 无框工具窗口、WindowStaysOnBottomHint、透明背景和显示时不激活；`pin()` 找 Progman，再对**自己的顶层 HWND** 调用 `SetWindowLongPtrW(GWLP_HWNDPARENT)`，并用 `GW_OWNER` 检查拥有者。这里没有把组件改成 WS_CHILD，也不是把整个窗口 SetParent 给 Explorer。`showEvent` 延后执行 pin；tick 每隔超过五秒检查 owner，只有不符才重设 owner/置底；`WM_WINDOWPOSCHANGING` 又会将层级变更改成 HWND_BOTTOM。它不是单纯“设置一次 owner 就全部解决”。
+
+**输入与视觉**：[kinds.py](https://github.com/VaticUI/DeskWidgets/blob/e37bf4eb3427e2dc5c76937f3c6bf1bd27255ad3/kinds.py#L775-L878) 的便签用 QPlainTextEdit，编辑时主动 `activateWindow()` / `setFocus()`；因此 ShowWithoutActivating 不等于永久禁止输入激活。Qt/QPainter 和透明背景证明其实现路径，不能证明相同 owner 对 WPF 的呈现、中文输入法或八方向缩放已经兼容。尺寸是预设档位，并非我们需要的连续缩放。
+
+**实际外部证据**：[issue #1](https://github.com/VaticUI/DeskWidgets/issues/1) 在 2026-10-23 报告其他虚拟桌面中可见但不能点击，2026-10-24 已关闭；本次接口返回没有评论，未取得可核对的修复说明，不能把“closed”当作问题已解决或输入全面通过。也没有取得覆盖本项目全部核心要求的可复现实机矩阵。
+
+**对本项目的价值**：值得独立验证 owner 与 parent 的差异，可保留已经可见的透明顶层 WPF 呈现路径。不能原样采用它的定期修正和每次层级变更强制置底，这与本项目的行为约束不符；删去这些机制后是否仍能通过 Win+D，必须重新作为新候选验证。
+
+### 2. Desktop Tasks Widget：事件监听可借鉴，锁定语义不适用
+
+**README 主张**：无需用户开启 Always on Top 也能抵抗 Win+D；锁定时只读/穿透，解锁后拖动、缩放及编辑。
+
+**实际源码**：[DesktopOverlay.xaml.cs](https://github.com/tanxestudio/Windows-desktop-Tasks-Widget/blob/32322d2e649a7271722a17a4eac44ac9189e1ca0/Windows/DesktopOverlay.xaml.cs#L108-L200) 调用 `SetWinEventHook(EVENT_SYSTEM_FOREGROUND, WINEVENT_OUTOFCONTEXT)`，将前台窗口类名为 WorkerW 视为 Show Desktop，临时设 TOPMOST；前台换成其他类后取消。只有 `_isLocked && !_isAlwaysOnTop` 才执行；它还拦截锁定状态的 SC_MINIMIZE，并在 StateChanged 中把最小化改回 Normal。仅凭 WorkerW 类名不是可靠的 Win+D 状态识别，当前机器此前实际宿主是 Progman。
+
+**输入与透明限制**：[ApplyAllStates](https://github.com/tanxestudio/Windows-desktop-Tasks-Widget/blob/32322d2e649a7271722a17a4eac44ac9189e1ca0/Windows/DesktopOverlay.xaml.cs#L243-L337) 在锁定时设 NOACTIVATE、TRANSPARENT、禁止命中和缩放；解锁虽恢复交互，却退出上述 Show Desktop 事件分支。解锁还手动清除 LAYERED，而 XAML 使用 AllowsTransparency=True；不把这种样式变更当作可维护的 WPF 透明方案。文件虽声明 SetParent，核对的实现没有实际调用，不能据声明说它使用了桌面嵌入。
+
+**托盘与证据**：[App.xaml.cs](https://github.com/tanxestudio/Windows-desktop-Tasks-Widget/blob/32322d2e649a7271722a17a4eac44ac9189e1ca0/App.xaml.cs#L18-L90) 确实创建常驻 NotifyIcon，提供锁定、置顶、最简和退出；不是本项目完整的找回/设置菜单。本次仓库 issue 查询无结果，这既不是通过证据，也不表示没有问题。没有证据证明其“始终可直接编辑 + Win+D 可见”同时成立。
+
+**对本项目的价值**：事件订阅和清理方式与 WPF 可配合；不采纳锁定才能抵抗 Win+D、禁用编辑、最小化后反复恢复或清除 WPF LAYERED 的实现。
+
+### 3. DeskX：壁纸与交互层分离有价值，维护策略不可照搬
+
+**README 主张**：WorkerW 壁纸、独立透明交互 overlay；组件可分处普通应用下、任务栏上或所有窗口上方。
+
+**实际源码**：[wallpaper-manager.js](https://github.com/Felix-au/DeskX-Wallpaper-Engine/blob/2a78908b99ea7a1a8dcacf36aa672a44f6e13ca6/src/main/wallpaper-manager.js#L38-L333) 将非交互壁纸 BrowserWindow 与透明、focusable 的 overlay 分开；后者是独立顶层窗口，不随壁纸一同 SetParent。`win32-wallpaper.js` 的 [壁纸路径](https://github.com/Felix-au/DeskX-Wallpaper-Engine/blob/2a78908b99ea7a1a8dcacf36aa672a44f6e13ca6/src/main/win32-wallpaper.js#L142-L283) 会发送私有 0x052C、SetParent 到 WorkerW，失败则每 500ms 压底；overlay 每 30 秒重设层级，focus/blur 后又延迟 50ms 重设。以上都不作为本项目候选实现。
+
+**Win+D 与输入**：[overlay helpers](https://github.com/Felix-au/DeskX-Wallpaper-Engine/blob/2a78908b99ea7a1a8dcacf36aa672a44f6e13ca6/src/main/win32-wallpaper.js#L369-L568) 设 TOOLWINDOW/NOACTIVATE/LAYERED，前台类为 Progman/WorkerW 时，200ms 后恢复并重排；另有 minimize 后 100ms 恢复。任务栏层通过 TOPMOST→NOTOPMOST 配对调用，注释声称的精确相对层级不是 Windows API 的保证。[index.js](https://github.com/Felix-au/DeskX-Wallpaper-Engine/blob/2a78908b99ea7a1a8dcacf36aa672a44f6e13ca6/src/main/index.js#L221-L265) 的命中 IPC 切换鼠标穿透，编辑 IPC 会 focus/blur overlay；这证明存在输入意图，不能证明 NOACTIVATE、异步压底、键盘焦点和 Win+D 往返在本机稳定。
+
+**证据与 WPF 适配**：本次仓库 issue 查询无结果，未取得核心行为的外部测试矩阵。架构上“交互窗口不必嵌入壁纸宿主”有参考意义；Electron/Koffi 不是当前依赖，也没有必要为了这个分层概念引入它们。私有消息、定时层级维护及恢复链路超出本轮可采用边界。
+
+### 4. Rainmeter：最有价值的兼容性证据，不能当作 WPF 现成模块
+
+**README 主张**：Windows 桌面定制工具；README 本身不提供本项目所有行为的保证。
+
+**实际源码**：[Skin.cpp](https://github.com/rainmeter/rainmeter/blob/54df7737c615ebe5a6b1d63e539aec171b54aec7/Library/Skin.cpp#L292-L306) 创建 `WS_POPUP + WS_EX_LAYERED + WS_EX_TOOLWINDOW` 顶层 skin，所查皮肤桌面层级路径不通过 SetParent。透明绘制使用 UpdateLayeredWindow，并非 WPF 视觉树。[ChangeZPos / OnWindowPosChanging](https://github.com/rainmeter/rainmeter/blob/54df7737c615ebe5a6b1d63e539aec171b54aec7/Library/Skin.cpp#L999-L1118) 根据桌面状态在辅助窗口附近或底部排序；桌面/底部模式还在 WindowPosChanging 中阻止自动改变层级（该处理在同文件 L4702–4725）。自定义输入 meter 点击后 SetFocus（L5066–5096），并非所有模式永久 NOACTIVATE。
+
+[System.cpp](https://github.com/rainmeter/rainmeter/blob/54df7737c615ebe5a6b1d63e539aec171b54aec7/Library/System.cpp#L60-L130) 有两个自建工具辅助窗口、全桌面 OUTOFCONTEXT 前台事件监听；还保留 250/100ms 桌面状态检测计时器。`CheckDesktopState` 只在状态改变时重排，不是每次计时器回调都强制压底；`PrepareHelperWindow` 在 Show Desktop 状态可能使用 topmost 辅助层，退出后回到底部。不能把它简化成“无需 Shell 依赖、纯事件、从不碰 topmost”。
+
+**明确的历史问题和修复**：[issue #377](https://github.com/rainmeter/rainmeter/issues/377) 报告 Win11 24H2 Win+D 隐藏 skin；维护者说明 Show Desktop 与 Restore Windows 必须区分，单纯强制恢复可能破坏第二次 Win+D 的还原行为。[PR #413](https://github.com/rainmeter/rainmeter/pull/413) 于 **2025-04-09** 合并，提交 `b1128fb21ee21a0370997f3fabf050915ff911a1`，将新构建的桌面参考从 WorkerW 调整为 Shell 窗口，并更改事件分支。当前代码用 `GetCurrentMonitorTopologyId` 导出是否存在作为分支启发式，仍依赖 Explorer 层级/未公开实现细节，不是微软支持的桌面固定契约。这是具体风险与修复证据，不是我们 WPF 程序已通过的证据。
+
+**对本项目的价值**：优先借鉴“保留顶层渲染 + 明确桌面状态 + 层级与输入分开管理”的思路；不直接移植其计时器、层级拦截或 GPL 代码，也不使用那个未公开导出做本项目的版本承诺。
+
+### 官方语义：需要避免的三种误判
+
+1. [SetWindowLongPtrW](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowlongptrw) 的 GWLP_HWNDPARENT 对**顶层窗口设置 owner**，不是对 child 设置 parent。检查新候选必须分别记录 WS_CHILD、`GetWindow(GW_OWNER)`、`GetAncestor(GA_PARENT/GA_ROOT)`；[GetParent](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getparent) 对某些顶层 popup 会返回 owner，不能沿用旧实验“GetParent 非零就是嵌入”的判定。所谓 desktop-owned 是一种所有权尝试，并非新的受支持桌面组件 API；[GetShellWindow](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getshellwindow) 与 GetDesktopWindow 的语义也不能混用。
+2. [Owned Windows](https://learn.microsoft.com/en-us/windows/win32/winmsg/window-features#owned-windows) 规定 owned 窗口在 owner 上方，owner 最小化时随之隐藏、owner 销毁时随之销毁。它**没有保证普通应用总能盖住组件、Win+D 排除或 Explorer 重启不丢 HWND**；特别要防 owner 变动/置顶带来的层级传播。[SetWindowPos](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowpos) 的 TOPMOST/NOTOPMOST、NOACTIVATE、NOOWNERZORDER 是层级/激活控制，不是桌面成员身份。
+3. [SetWinEventHook](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwineventhook) OUTOFCONTEXT 是异步事件回调、不将 DLL 注入目标进程；PID/TID 为 0 会监听当前桌面所有进程/线程，仍属于全桌面事件订阅，不能偷偷当作无钩子方案。[EVENT_SYSTEM_FOREGROUND](https://learn.microsoft.com/en-us/windows/win32/winauto/event-constants) 只表示前台改变，既不是专用 Win+D 通知，也不能区分 Win+D、普通点击桌面与还原。事件回调需防重入、过期事件和反馈循环；仅凭窗口类名判断不能获得可靠桌面状态。
+
+### 最多两个候选及推荐顺序（尚未实现）
+
+| 候选 | 拟验证机制 | 主要收益 | 主要风险 / 失败条件 |
+|---|---|---|---|
+| **1，优先：桌面 owner 的 WPF 顶层工具窗口** | 保留透明圆角顶层 WPF，WS_CHILD=false；经 Shell HWND/PID 校验，仅设置自身 GWLP_HWNDPARENT；显示/模式切换时单次置底，普通应用激活导致自身 Deactivated 时至多一次不激活的层级调整；不安装全桌面事件钩子 | 改动最小，绕开当前子窗口跨进程绘制路径；直接保留 TextBox/按钮、键盘焦点与连续缩放 | owner/Win+D 没有兼容保证；删去 Qt 的定期修正/层级拦截后可能失败；Shell 提升/隐藏及 owner 生命周期有耦合。若需要持续压底、抢焦点或禁止输入才能工作，就判失败 |
+| **2，后备：无 Explorer owner 的顶层 WPF + 事件驱动桌面层级** | 保持自己的窗口/辅助窗口，不 SetParent、不设置外部 owner；只订阅前台事件并结合 Shell 身份及可观察层级推断状态，在进入/退出桌面状态时做有界层级切换 | 避开 Explorer 子窗口绘制和外部 owner 销毁关系；参考 Rainmeter 的独立呈现思路，可保留正常输入 | 检测仍受 Explorer 实现影响；事件延迟可能闪烁、压住新应用或损坏 Win+D 双向切换；Rainmeter 还有状态轮询，删除后能否可靠检测尚无证据。必须显式批准钩子和临时层级调整后才能实验 |
+
+候选 1 的启动/失焦排序必须带不激活及不移动 owner 的限制；用户在输入框点击时允许正常激活，不配置永久 NOACTIVATE，不在 Activated 时立即反复压底。普通应用再次激活后检查它确实能覆盖组件；原生 topmost 状态及焦点都要记录，不能只看 WPF 属性。独立控制台/托盘的存活不依赖组件 owner；找回可重建普通窗口，默认不再挂回实验模式。owner 生命周期风险保留到后续恢复门槛。
+
+候选 2 的授权边界：只允许 `SetWinEventHook(EVENT_SYSTEM_FOREGROUND, WINEVENT_OUTOFCONTEXT)` 的非注入观察，不读键盘/鼠标、不记录他人标题或内容、不操作他人窗口、不发 Explorer 私有消息；退出必须 Unhook。外部前台事件与本组件激活/失焦分开处理，以防忽略自身事件后输入状态失配。回调只排入本进程 UI 线程，合并重复事件；新的普通应用前台事件须取消过期的桌面动作，不抢回前台。
+
+**事件驱动不等于稳定保证**：拟限定每个确认的桌面状态转换最多一组层级操作，没有常驻刷新/置底计时器。若需要临时 TOPMOST，只允许转换中的一次提升与立即降级，并记录实际 TOPMOST 位；不得为了保持 Win+D 可见而在整个桌面状态维持 topmost。若降级即被遮挡、需要每次窗口变动强制纠正，或需要最小化后自动 Restore 循环，则候选 2 在这些约束下失败，不能悄悄放宽条件。即使不调用 SetForegroundWindow，异步层级变化仍可能闪烁，必须看真实画面。
+
+这里推荐的是**值得先试的最小假设**，不是四个参考项目已经验证过的删减版本。两种候选都保留半透明圆角要求，不用取消透明度、换渲染开关、反复重绘、GDI 参数调整来继续试错；暂不考虑更换 WPF。
+
+### 获批后的最小验证与停止条件（本轮不执行）
+
+每次只实现一个获批候选，复用独立实验的透明顶层测试表面、TextBox、计数按钮、拖动与八方向缩放、安全控制台和托盘找回/退出。使用自己的覆盖测试窗口，不操作用户文档或关闭用户应用。先确认普通透明窗口可见，再切入新模式，不复用 C/D/F 的子窗口嵌入流程。
+
+| 顺序 | 观察与预期 | 判失败 / 必须记录 |
+|---|---|---|
+| 1 | 透明圆角、文字/色条可见；点击输入中英文，计数、移动与八方向缩放正常 | 黑/不可见、失焦、输入到别的应用或需要锁定穿透才能显示 |
+| 2 | 实际任务栏与 Alt+Tab 中无组件；控制台属于实验找回入口，分别记录 | 不能仅以 TOOLWINDOW/ShowInTaskbar 属性断言；控制台不作为组件混淆 |
+| 3 | 覆盖测试窗口已打开时按 Win+D，组件持续可见、没有最小化；再按 Win+D，原应用正常还原并盖住组件；至少往返 5 组 | 记录 pixels、IsIconic、foreground、owner、TOPMOST 位、事件/层级调用时间；短暂消失后恢复也不标“不会被最小化”通过 |
+| 4 | 点击组件编辑，再激活覆盖窗口；关闭并重新打开覆盖窗口，重复至少 3 组 | 组件不得保持 topmost 或抢回焦点；检查正在输入的对象、应用覆盖、闪烁及事件反馈循环 |
+| 5 | 托盘/控制台明确找回为普通透明窗口；正常退出后无残留实验窗口、子进程或钩子 | 不用 visible=True 代替看见；不依赖 Explorer 组件 HWND 仍存活才能退出 |
+
+优先用现有 computer-use 对可选择的顶层窗口验证画面与鼠标/键盘；任务栏、Alt+Tab、Win+D 桌面像素若工具不能观察，只针对缺口给出简短人工步骤，不把 API 状态冒充视觉通过。本轮没有启动新的测试程序，没有新操作要求。混合 DPI、真实 Explorer 重启、休眠和 Windows 10 全量验证继续作为获批整合前的后续门槛，不擅自执行。
+
+**研究停止线**：候选 1 若失败，先给出事件/画面证据与归因范围，再由用户决定是否批准候选 2；两者都失败后停止新增路线。阶段性建议是保留 WPF 和可靠普通非置顶工具窗口作为需用户接受的过渡模式（明确 Win+D 不满足），把桌面模式隔离为独立模块。由于 WPF 与原生 GDI 在旧宿主都失败，仅凭此没有充分证据证明更换 UI 框架能解决问题；若以后确需换窗口实现，必须另提证据与迁移影响并获批准。
+
+### 许可证与本轮交付检查
+
+已读取固定提交的 [DeskWidgets LICENSE](https://github.com/VaticUI/DeskWidgets/blob/e37bf4eb3427e2dc5c76937f3c6bf1bd27255ad3/LICENSE)、[Desktop Tasks LICENSE](https://github.com/tanxestudio/Windows-desktop-Tasks-Widget/blob/32322d2e649a7271722a17a4eac44ac9189e1ca0/LICENSE)、[DeskX LICENSE](https://github.com/Felix-au/DeskX-Wallpaper-Engine/blob/2a78908b99ea7a1a8dcacf36aa672a44f6e13ca6/LICENSE) 与 [Rainmeter LICENSE](https://github.com/rainmeter/rainmeter/blob/54df7737c615ebe5a6b1d63e539aec171b54aec7/LICENSE)。前三者 MIT 的代码复用涉及保留版权及许可声明；Rainmeter 是 GPL v2，不能当成 MIT 片段直接移入。**本轮无代码复制，未来复用任何实现仍先获得用户批准并核对具体文件许可；不会用改写/翻译来规避要求。** 本节仅记录来源与采用边界，不决定本项目发布许可。
+
+本轮只修改此研究文档，检查固定提交/路径、PR 合并状态及文档差异；不运行 A–F 或新增自动窗口测试。Git 提交与推送记录以本次阶段反馈及 Git 历史为准，`main` 不变。等待用户批准**候选 1 的独立最小实验**，不自动进入候选 2 或 P1.1-3。
+
+---
+
+以下保留历史实验记录，后续路线选择以上节为准。
+
 ## 最新：F 人工确认黑屏与宿主对照（2026-10-30）
 
 **用户最新结果：F 画面黑屏，输入和计数因不可见而无法判断；移动和缩放正常；返回 E 成功。** 原生 GDI 也未通过桌面视觉验收。与 C 非透明 WPF 黑屏、D 透明 WPF 不可见、B 透明顶层正常合并判断：黑屏现象不限于 WPF/DirectX 或透明度。不能据此断言所有 WPF 原因都被排除，也不能将输入记为失败或通过；准确状态是未能验证。
