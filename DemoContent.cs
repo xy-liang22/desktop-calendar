@@ -1,3 +1,6 @@
+using System.ComponentModel;
+using System.Linq;
+
 namespace DesktopCalendar;
 
 // Deliberately static presentation fixtures, never persisted or presented as user records.
@@ -6,7 +9,8 @@ internal static class DemoContent
     internal static readonly string[] Weekdays = { "周一", "周二", "周三", "周四", "周五", "周六", "周日" };
     internal static readonly string[] CalendarTasks = { "阅读与摘录", "整理设计思路", "散步 30 分钟", "完成方案初稿", "每周回顾", "准备晚餐", "留给自己的时间" };
     internal static readonly string[] TodoNames = { "完成桌面日历视觉方案", "梳理本周阅读笔记", "出门散步，放松一下", "整理工作区" };
-    internal static readonly string[] TodoMeta = { "09:00 · 工作 · 重要", "14:00 · 学习", "无计划时间 · 生活", "已完成 · 生活" };
+    internal static readonly string[] TodoMeta = { "09:00 · 工作 · 重要", "14:00 · 学习", "无计划时间 · 生活", "无计划时间 · 生活" };
+    internal static readonly DemoTodo[] Todos = TodoNames.Select((title, i) => new DemoTodo("demo-todo-" + i, title, i == 3)).ToArray();
     internal static readonly string[] Subtasks = { "确定布局与留白", "检查小尺寸可读性" };
     internal static readonly string[] GoalNames = { "完成一个值得展示的作品", "阅读与思考", "给生活留一点空间" };
     internal static readonly string[] GoalProgress = { "2 / 3 项 · 演示", "4 / 6 小时 · 演示", "3 / 5 次 · 演示" };
@@ -28,4 +32,19 @@ internal static class DemoContent
         new(5,10,12,"自由阅读","一本喜欢的书",1), new(5,15,17,"城市漫步","探索熟悉的街道",2),
         new(6,9,10.5,"整理房间","清爽的新开始",2), new(6,16,17.5,"下周计划","留出弹性",0)
     };
+}
+
+// Shared view-only fixture state, discarded on process exit. Not the P2 Todo model.
+internal sealed class DemoTodo : INotifyPropertyChanged
+{
+    public string Id { get; }
+    public string Title { get; }
+    bool completed;
+    public bool Completed
+    {
+        get => completed;
+        set { if (completed == value) return; completed = value; PropertyChanged?.Invoke(this, new(nameof(Completed))); }
+    }
+    internal DemoTodo(string id, string title, bool completed) { Id = id; Title = title; this.completed = completed; }
+    public event PropertyChangedEventHandler? PropertyChanged;
 }

@@ -123,11 +123,19 @@ internal static class PrototypeViews
         {
             var row = new Grid { Margin = new Thickness(0, 0, 0, 13) };
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(23) }); row.ColumnDefinitions.Add(new ColumnDefinition { Width = Star });
-            var marker = Label(i == 3 ? "✓" : "○", 18, i == 3 ? "#879794" : DemoContent.Colors[i % 3]); marker.VerticalAlignment = VerticalAlignment.Top;
+            var fixture = DemoContent.Todos[i];
+            var marker = new CheckBox { DataContext = fixture, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 2, 4, 0), ToolTip = T("CompactDemoNotice") };
+            marker.SetBinding(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, new System.Windows.Data.Binding(nameof(DemoTodo.Completed)) { Mode = System.Windows.Data.BindingMode.TwoWay });
             Add(row, marker);
             var content = new StackPanel();
             var title = Label(DemoContent.TodoNames[i], 13, i == 3 ? "#8998A6" : "#EDF2F5"); title.TextWrapping = TextWrapping.Wrap;
-            if (i == 3) title.TextDecorations = TextDecorations.Strikethrough;
+            title.ClearValue(TextBlock.ForegroundProperty);
+            var titleStyle = new Style(typeof(TextBlock));
+            titleStyle.Setters.Add(new Setter(TextBlock.ForegroundProperty, Brush("#EDF2F5")));
+            var completed = new DataTrigger { Binding = new System.Windows.Data.Binding(nameof(DemoTodo.Completed)) { Source = fixture }, Value = true };
+            completed.Setters.Add(new Setter(TextBlock.TextDecorationsProperty, TextDecorations.Strikethrough));
+            completed.Setters.Add(new Setter(TextBlock.ForegroundProperty, Brush("#8998A6")));
+            titleStyle.Triggers.Add(completed); title.Style = titleStyle;
             content.Children.Add(title);
             var meta = Label(DemoContent.TodoMeta[i], 10, "#A2AFBC"); meta.Margin = new Thickness(0, 7, 0, 0); content.Children.Add(meta);
             if (i == 0)

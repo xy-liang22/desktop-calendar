@@ -14,7 +14,7 @@ internal static class WindowGeometry
         double w = Math.Min(bounds.Width, work.Width), h = Math.Min(bounds.Height, work.Height);
         return new Rect(Math.Clamp(bounds.X, work.Left, work.Right - w), Math.Clamp(bounds.Y, work.Top, work.Bottom - h), w, h);
     }
-    internal static Rect Compact(Rect work, double scale) => new(work.Right - 110 * scale - 12 * scale, work.Top + 12 * scale, 110 * scale, 44 * scale);
+    internal static Rect Compact(Rect work, double scale) => Clamp(new Rect(work.Right - 372 * scale, work.Top + 12 * scale, 360 * scale, 350 * scale), work);
     internal static DockSide Edge(Rect window, Rect work, double scale)
     {
         if (Math.Abs(window.Left - work.Left) <= 18 * scale) return DockSide.Left;
@@ -59,11 +59,6 @@ internal static class NativeWindow
     internal static void Place(IntPtr hwnd, Rect r)
     {
         if (!SetWindowPos(hwnd, IntPtr.Zero, (int)Math.Round(r.X), (int)Math.Round(r.Y), (int)Math.Round(r.Width), (int)Math.Round(r.Height), 0x0014))
-            throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
-    }
-    internal static void Pin(IntPtr hwnd, bool enabled)
-    {
-        if (!SetWindowPos(hwnd, new IntPtr(enabled ? -1 : -2), 0, 0, 0, 0, 0x0013))
             throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
     }
 }

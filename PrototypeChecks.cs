@@ -9,6 +9,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Text.Json;
 
 namespace DesktopCalendar;
 // Dependency-free executable checks; no test adapters or external package downloads.
@@ -60,6 +61,9 @@ internal static class PrototypeChecks
             Check("layered transparent HWND", (NativeWindow.GetWindowLong(window.Handle, -20) & 0x00080000) != 0);
             Check("transparent WPF surface", window.AllowsTransparency && window.WindowStyle == WindowStyle.None && window.BorderThickness == new Thickness(0));
             Check("eight resize grips", window.ResizeHandles.Children.Count == 8);
+            Check("default desktop owner is top-level", window.DesktopMode.Layer == WindowLayer.Desktop && window.DesktopMode.Owner != IntPtr.Zero && (NativeWindow.GetWindowLong(window.Handle, -16) & 0x40000000) == 0);
+            Check("desktop tool window styles", !window.ShowInTaskbar && (NativeWindow.GetWindowLong(window.Handle, -20) & 0x80) != 0 && (NativeWindow.GetWindowLong(window.Handle, -20) & 0x40000) == 0);
+            Check("desktop starts non-topmost and activatable", !window.DesktopMode.NativeTopmost && !window.Topmost && (NativeWindow.GetWindowLong(window.Handle, -20) & 0x08000000) == 0);
             await Task.Delay(250);
             var original = NativeWindow.Bounds(window.Handle);
             foreach (double width in new[] { 1240.0, 880.0 })
@@ -78,6 +82,15 @@ internal static class PrototypeChecks
                 }
             }
             NativeWindow.Place(window.Handle, original); window.SetPage(false); window.UpdateLayout();
+            var monthGrid = window.PageHost.Children.OfType<Grid>().First();
+            var splitter = Descendants(monthGrid).OfType<GridSplitter>().First();
+            double firstColumn = monthGrid.ColumnDefinitions[0].ActualWidth;
+            splitter.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(splitter)!, Environment.TickCount, Key.Right) { RoutedEvent = Keyboard.KeyDownEvent });
+            window.UpdateLayout(); await Task.Delay(60);
+            Check("built-in splitter changes column widths", Math.Abs(monthGrid.ColumnDefinitions[0].ActualWidth - firstColumn) > 1);
+            var widths = monthGrid.ColumnDefinitions.Select(c => c.Width).ToArray();
+            window.SetPinned(true); window.EnterCompact(); window.SetPinned(false); window.RestoreNormal(); window.UpdateLayout();
+            Check("splitter widths survive mode and view changes", monthGrid.ColumnDefinitions.Select(c => c.Width).SequenceEqual(widths));
             // This validates raster scaling, NOT an actual Windows DPI setting change.
             foreach (double scale in new[] { 1.25, 1.5, 2.0 }) Capture(window, Path.Combine(output, $"render-{scale}.png"), scale);
             var corner = Capture(window, Path.Combine(output, "alpha-check.png"), 1);
@@ -89,6 +102,15 @@ internal static class PrototypeChecks
             window.EnterCompact(); await Task.Delay(150);
             Check("compact hides full layout", window.Mode == DisplayMode.Compact && window.FullContent.Visibility == Visibility.Collapsed);
             Check("compact current work-area placement", Near(NativeWindow.Bounds(window.Handle), WindowGeometry.Compact(NativeWindow.WorkArea(window.Handle), window.Scale)));
+            Check("compact contains today's date and fixture list", window.CompactDate.Text == DateTime.Today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) && window.CompactItems.Items.Count == DemoContent.Todos.Length && window.CompactContent.Visibility == Visibility.Visible);
+            Check("compact inherits desktop and resizable grips", window.DesktopMode.Layer == WindowLayer.Desktop && !window.DesktopMode.NativeTopmost && window.ResizeHandles.Visibility == Visibility.Visible);
+            window.UpdateLayout(); Capture(window, Path.Combine(output, "today-folded.png"), 1);
+            bool done = DemoContent.Todos[0].Completed;
+            window.UpdateLayout();
+            var compactCheck = Descendants(window.CompactItems).OfType<CheckBox>().First();
+            compactCheck.IsChecked = !done; await Task.Delay(60);
+            Check("compact checkbox updates shared mock only", DemoContent.Todos[0].Completed == !done);
+            DemoContent.Todos[0].Completed = done;
             window.RestoreNormal(); await Task.Delay(100);
             Check("compact restores bounds", Near(NativeWindow.Bounds(window.Handle), before));
             window.PinToggle.IsChecked = true;
@@ -98,6 +120,21 @@ internal static class PrototypeChecks
             results.Add("Pin settled style=" + NativeWindow.GetWindowLong(window.Handle, -20).ToString("X") + "; WPF=" + window.Topmost);
             Check("topmost native flag", (NativeWindow.GetWindowLong(window.Handle, -20) & 8) != 0); window.SetPinned(false);
             Check("topmost disabled flag", (NativeWindow.GetWindowLong(window.Handle, -20) & 8) == 0);
+            var keptHandle = window.Handle;
+            window.SetPage(true); window.OpacitySlider.Value = .85;
+            for (int cycle = 0; cycle < 3; cycle++)
+            {
+                window.SetPinned(true); window.EnterCompact(); window.SetPinned(false); window.RestoreNormal();
+                Check("native TOPMOST cleared and desktop restored " + cycle, !window.DesktopMode.NativeTopmost && !window.Topmost && window.DesktopMode.Layer == WindowLayer.Desktop && window.DesktopMode.Owner != IntPtr.Zero);
+                Check("mode switch preserves HWND/view/opacity/bounds " + cycle, window.Handle == keptHandle && window.IsWeek && window.OpacitySlider.Value == .85 && Near(NativeWindow.Bounds(window.Handle), before));
+            }
+            window.SetPage(false); window.OpacitySlider.Value = .96;
+            int changes = window.DesktopMode.LayerChanges;
+            await Task.Delay(700);
+            Check("idle never repairs Z-order", window.DesktopMode.LayerChanges == changes);
+            Check("simulated owner loss enters explicit fallback", !window.DesktopMode.CheckOwner(true) && window.DesktopMode.Layer == WindowLayer.Fallback && !window.DesktopMode.NativeTopmost && window.DesktopMode.Owner == IntPtr.Zero);
+            window.Session.Locate();
+            Check("explicit locate retries desktop without changing view", window.DesktopMode.Layer == WindowLayer.Desktop && Near(NativeWindow.Bounds(window.Handle), before));
             int gripIndex = 0;
             foreach (string edge in new[] { "N", "S", "W", "E", "NW", "NE", "SW", "SE" })
             {
@@ -123,6 +160,17 @@ internal static class PrototypeChecks
             Check("tray icon registered", window.TrayVisible);
             window.HideToTray(); window.TestTrayShow();
             Check("tray menu show callback", window.IsVisible && window.Mode == DisplayMode.Normal);
+            window.Session.TestTrayPin();
+            Check("tray pin callback", window.DesktopMode.Layer == WindowLayer.Topmost && window.DesktopMode.NativeTopmost);
+            window.Session.TestTrayPin();
+            Check("tray returns to desktop and clears TOPMOST", window.DesktopMode.Layer == WindowLayer.Desktop && !window.DesktopMode.NativeTopmost);
+            window.Session.TestTraySettings();
+            Check("tray settings opens real settings panel", window.SettingsPanel.Visibility == Visibility.Visible);
+            window.UpdateLayout(); Capture(window, Path.Combine(output, "settings.png"), 1);
+            window.SettingsPanel.Visibility = Visibility.Collapsed;
+            window.EnterCompact(); window.HideToTray(); window.TestTrayShow();
+            Check("tray locate preserves collapsed view", window.Mode == DisplayMode.Compact && window.CompactContent.Visibility == Visibility.Visible);
+            window.RestoreNormal();
             foreach (var screen in System.Windows.Forms.Screen.AllScreens)
             {
                 var a = screen.WorkingArea;
@@ -158,8 +206,35 @@ internal static class PrototypeChecks
                 Check("edge hover expands " + side, window.Mode == DisplayMode.Normal);
             }
             window.EdgeToggle.IsChecked = false;
+            string prefsDir = Path.Combine(output, "preferences-checks-" + Guid.NewGuid().ToString("N"));
+            string prefsPath = Path.Combine(prefsDir, "window-preferences.json");
+            var store = new WindowPreferencesStore(prefsPath);
+            var settings = window.SnapshotPreferences() with { Collapsed = true, Week = true };
+            Check("atomic first preferences save", store.Save(settings));
+            settings.BackgroundOpacity = .8;
+            Check("atomic replacement retains backup", store.Save(settings) && File.Exists(prefsPath + ".bak") && !File.Exists(prefsPath + ".tmp"));
+            Check("preferences round trip stable schema/id", store.Load() is { SchemaVersion:1, Id:"desktop-calendar-window", Collapsed:true, Week:true, BackgroundOpacity:.8 });
+            File.WriteAllText(prefsPath, "broken");
+            Check("corrupt primary recovers backup", store.Load() is { Collapsed:true, Week:true, BackgroundOpacity:.96 } && store.Notice == "PreferencesRecovered");
+            File.WriteAllText(prefsPath, JsonSerializer.Serialize(settings with { SchemaVersion = 99 }));
+            var futureStore = new WindowPreferencesStore(prefsPath); futureStore.Load();
+            Check("future schema is not overwritten", !futureStore.CanSave && !futureStore.Save(settings) && File.ReadAllText(prefsPath).Contains("99"));
+            File.WriteAllText(prefsPath, "broken"); File.WriteAllText(prefsPath + ".bak", "broken");
+            Check("corrupt primary and backup use defaults", new WindowPreferencesStore(prefsPath).Load() is { SchemaVersion:1, Collapsed:false, Week:false });
+            Check("invalid geometry cannot overwrite preferences", !new WindowPreferencesStore(prefsPath).Save(settings with { Width = double.NaN }));
+            Check("no mock business data in preferences JSON", !JsonSerializer.Serialize(settings).Contains(DemoContent.TodoNames[0]));
+            window.SetPage(true); window.EnterCompact();
+            var session = window.Session;
+            var previous = window;
+            session.TestWindowLoss();
+            for (int i = 0; i < 80 && (session.Window == previous || !session.Window.LayerInitialized); i++) await Task.Delay(100);
+            window = session.Window;
+            Check("component recreation keeps tray, collapsed preference and page", window != previous && window.LayerInitialized && window.Mode == DisplayMode.Compact && window.IsWeek && window.TrayVisible);
+            Check("component recreation safely falls back without auto owner", window.DesktopMode.Layer == WindowLayer.Fallback && !window.DesktopMode.NativeTopmost && window.DesktopMode.Owner == IntPtr.Zero);
+            session.Locate(); window.RestoreNormal();
+            Check("recreated component can explicitly return to desktop", window.DesktopMode.Layer == WindowLayer.Desktop && window.FullContent.Visibility == Visibility.Visible);
             Check("no third-party assembly references", typeof(MainWindow).Assembly.GetReferencedAssemblies().All(a => a.Name!.StartsWith("System") || a.Name.StartsWith("Microsoft") || a.Name is "PresentationCore" or "PresentationFramework" or "WindowsBase"));
-            results.Add("MANUAL: Windows 10; other system DPI settings; actual tray double-click/exit; physical pointer edge-hover. Raster scaling is not an OS DPI test.");
+            results.Add("MANUAL: integrated Win+D, actual taskbar/AltTab, real owner-mode input/coverage/flicker and tray menu pixels; Windows 10, mixed DPI, Explorer restart, suspend/resume pending. P1.1-4 jitter/Snap and P1.1-5 row/zoom fixes NOT implemented. Raster scaling is not an OS DPI test.");
         }
         catch (Exception ex) { failed++; results.Add("FAIL unhandled check: " + ex); }
         results.Add("Failures: " + failed);

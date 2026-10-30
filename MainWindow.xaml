@@ -1,5 +1,5 @@
 <Window x:Class="DesktopCalendar.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- Title="{DynamicResource AppName}" Width="1240" Height="760" MinWidth="880" MinHeight="520"
+ Title="{DynamicResource AppName}" Width="1240" Height="760" MinWidth="880" MinHeight="520" ShowInTaskbar="False"
  WindowStyle="None" AllowsTransparency="True" Background="Transparent" BorderThickness="0" ResizeMode="CanResize"
  FontFamily="Segoe UI, Microsoft YaHei UI" FontSize="13" UseLayoutRounding="True" SnapsToDevicePixels="True" WindowStartupLocation="CenterScreen">
  <Grid x:Name="Surface">
@@ -13,17 +13,13 @@
       <Button x:Name="MonthButton" Content="{DynamicResource MonthTab}" Click="ShowMonth" Margin="0,0,4,0"/>
       <Button x:Name="WeekButton" Content="{DynamicResource WeekTab}" Click="ShowWeek" Margin="0,0,12,0"/>
       <Button Content="—" Width="36" Padding="0,7" ToolTip="{DynamicResource CompactTip}" AutomationProperties.Name="{DynamicResource CompactTip}" Click="CompactClick"/>
+      <Button Content="{DynamicResource Settings}" Click="SettingsClick" Margin="4,0"/>
       <Button Content="×" Width="36" Padding="0,4" FontSize="19" ToolTip="{DynamicResource TrayTip}" AutomationProperties.Name="{DynamicResource TrayTip}" Click="TrayClick"/>
      </StackPanel>
     </Grid>
     <Grid Grid.Row="1">
      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-     <WrapPanel Margin="16,0,16,16" VerticalAlignment="Center">
-      <CheckBox x:Name="PinToggle" Content="{DynamicResource Topmost}" Click="PinChanged"/>
-      <CheckBox x:Name="EdgeToggle" Content="{DynamicResource AutoHide}" Click="EdgeChanged" ToolTip="{DynamicResource CollapseHint}"/>
-      <TextBlock Text="{DynamicResource Opacity}" Foreground="{StaticResource Muted}" Margin="20,0,8,0" VerticalAlignment="Center"/>
-      <Slider x:Name="OpacitySlider" Minimum="0.65" Maximum="0.98" Value="0.96" Width="92" VerticalAlignment="Center" ValueChanged="OpacityChanged"/>
-     </WrapPanel>
+     <TextBlock x:Name="ModeStatus" Text="{DynamicResource DesktopMode}" Foreground="{StaticResource Muted}" Margin="16,0,16,12" FontSize="11"/>
      <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Padding="12,0,12,0">
       <Grid x:Name="PageHost" MinWidth="820" MinHeight="360" Width="{Binding ViewportWidth, RelativeSource={RelativeSource AncestorType=ScrollViewer}}" Height="{Binding ViewportHeight, RelativeSource={RelativeSource AncestorType=ScrollViewer}}"/>
      </ScrollViewer>
@@ -34,7 +30,46 @@
     </Grid>
    </Grid>
   </Border>
+  <Grid x:Name="CompactContent" Visibility="Collapsed" Margin="22,16">
+   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+   <Grid Background="Transparent" MouseLeftButtonDown="DragWindow">
+    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+    <TextBlock Text="{DynamicResource TodayTodos}" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center"/>
+    <Button Grid.Column="1" Content="{DynamicResource Settings}" Click="SettingsClick" Padding="8,5"/>
+   </Grid>
+   <TextBlock x:Name="CompactDate" Grid.Row="1" Foreground="{StaticResource Accent}" Margin="0,8,0,14"/>
+   <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+    <ItemsControl x:Name="CompactItems">
+     <ItemsControl.ItemTemplate><DataTemplate>
+      <CheckBox IsChecked="{Binding Completed, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,14" HorizontalContentAlignment="Stretch">
+       <TextBlock Text="{Binding Title}" TextWrapping="Wrap" Margin="6,0,0,0">
+        <TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding Completed}" Value="True"><Setter Property="TextDecorations" Value="Strikethrough"/><Setter Property="Foreground" Value="#8998A6"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+       </TextBlock>
+      </CheckBox>
+     </DataTemplate></ItemsControl.ItemTemplate>
+    </ItemsControl>
+   </ScrollViewer>
+   <StackPanel Grid.Row="3" Margin="0,10,0,0">
+    <TextBlock Text="{DynamicResource CompactDemoNotice}" FontSize="10" Foreground="{StaticResource Muted}" Margin="0,0,0,8"/>
+    <Button x:Name="RestoreFullButton" Content="{DynamicResource RestoreFull}" Click="RestoreClick"/>
+   </StackPanel>
+  </Grid>
   <Button x:Name="RestoreButton" Visibility="Collapsed" Content="{DynamicResource Compact}" Background="Transparent" FontSize="15" FontWeight="SemiBold" Click="RestoreClick" ToolTip="{DynamicResource CompactTip}"/>
   <Grid x:Name="ResizeHandles" IsHitTestVisible="True"/>
+  <Border x:Name="SettingsPanel" Visibility="Collapsed" Background="#FF202E3B" BorderBrush="#526474" BorderThickness="1" CornerRadius="12" Padding="16" Width="290" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="12" MaxHeight="440">
+   <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel>
+    <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+     <TextBlock Text="{DynamicResource Settings}" FontSize="17" VerticalAlignment="Center"/>
+     <Button x:Name="SettingsCloseButton" Grid.Column="1" Content="×" Click="SettingsClose" AutomationProperties.Name="{DynamicResource CloseSettings}" Padding="10,4"/>
+    </Grid>
+    <TextBlock x:Name="SettingsNotice" TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Muted}" Margin="0,14,0,14"/>
+    <CheckBox x:Name="PinToggle" Content="{DynamicResource Topmost}" Click="PinChanged" Margin="0,0,0,14"/>
+    <CheckBox x:Name="EdgeToggle" Content="{DynamicResource AutoHide}" Click="EdgeChanged" ToolTip="{DynamicResource CollapseHint}" Margin="0,0,0,14"/>
+    <TextBlock Text="{DynamicResource Opacity}" Foreground="{StaticResource Muted}" Margin="0,0,0,8"/>
+    <Slider x:Name="OpacitySlider" Minimum="0.65" Maximum="0.98" Value="0.96" VerticalAlignment="Center" ValueChanged="OpacityChanged"/>
+    <Button Content="{DynamicResource SafeLocate}" Click="SafeLocateClick" Margin="0,18,0,8"/>
+    <Button Content="{DynamicResource Exit}" Click="ExitClick"/>
+   </StackPanel></ScrollViewer>
+  </Border>
  </Grid>
 </Window>

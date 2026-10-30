@@ -36,6 +36,7 @@ Screenshots/
 # Personal planner data and Markdown attachments
 planner-data*.json
 planner-data*.json.*
+window-preferences.json*
 /user-data/
 /data/
 /assets/images/

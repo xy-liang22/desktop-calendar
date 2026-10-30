@@ -19,7 +19,12 @@ $shortcut.Description = 'Desktop Calendar P1'
 $shortcut.Save()
 if ($Test) {
     $exePath = Join-Path $PSScriptRoot 'bin\Release\net10.0-windows\DesktopCalendar.exe'
+    $startedAt = [DateTime]::UtcNow
     $testProcess = Start-Process -FilePath $exePath -ArgumentList '--self-test' -WindowStyle Hidden -PassThru -Wait
-    Get-Content (Join-Path $PSScriptRoot 'artifacts\p1-checks.txt') -Encoding UTF8
-    if ($testProcess.ExitCode -ne 0) { throw 'P1 checks failed.' }
+    $report = Join-Path $PSScriptRoot 'artifacts\p1-checks.txt'
+    if (!(Test-Path -LiteralPath $report) -or (Get-Item -LiteralPath $report).LastWriteTimeUtc -lt $startedAt) { throw 'No fresh check report.' }
+    $checks = Get-Content $report -Encoding UTF8
+    Write-Output ('PASS: ' + @($checks | Where-Object { $_ -match '^PASS ' }).Count)
+    $checks | Select-String -Pattern '^FAIL |^Failures:'
+    if ($testProcess.ExitCode -ne 0 -or ($checks | Select-String -Pattern '^FAIL ' -Quiet)) { throw 'P1 checks failed. See artifacts/p1-checks.txt.' }
 }
