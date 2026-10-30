@@ -1,6 +1,68 @@
 # P1.1-2：桌面宿主实验与测试平台修复
 
-## 最新：开源源码复核与候选路线（2026-10-30，等待实验批准）
+## 当前：候选 1，桌面 owner + 透明顶层 WPF（2026-10-30）
+
+**独立实验已交付；尚未取得 owner 模式的屏幕绘制、输入和 Win+D 验收证据，不能认定核心目标已实现。** 本轮只实现获批的候选 1，不整合主窗口，不进入 P1.1-3 或候选 2。旧 C/F 黑屏、D 不可见仍为历史失败；未重跑 A–F，不以新 owner 路径宣称旧子窗口黑屏已经修复。
+
+### 本次批准的范围优先于下方原研究提案
+
+- 复用 B 透明圆角 WPF 窗口。先按 WPF 正常流程显示、输入、计数并确认，再通过控制台显式进入 O；启动时不自动设置 owner。
+- 经 `GetShellWindow`、窗口有效性、Progman 类名及 PID 校验后，只对**本进程顶层组件 HWND** 设置 `GWLP_HWNDPARENT`，用 `GetWindow(GW_OWNER)` 核对；始终保留 WPF 的 `AllowsTransparency=true` 和 LAYERED。没有将组件改为 WS_CHILD，也没有调用 SetParent。`GW_OWNER`、`GA_PARENT`、`GA_ROOT` 分别展示；本机 owner 非零时 GetParent 仍为零，不能用旧字段混淆拥有关系和父子关系。
+- **不实现原提案中的单次置底或 Deactivated 修正**。本次没有 WinEventHook、全局键鼠钩子、最小化拦截/自动恢复、日常层级纠正、Explorer 私有消息、重绘循环或渲染开关调整。原有计时器只在 owner 模式读取诊断，`Host=0`，不会重设 owner/Z-order。
+- O 为非置顶工具窗口：ShowInTaskbar=false、TOOLWINDOW=true、APPWINDOW=false、无 NOACTIVATE；这只是配置，不证明实际任务栏/Alt+Tab 排除或 Win+D 可见。设置 owner 本身不请求 Z-order 调整。
+- 仅在用户明确选择“始终置顶（脱离 owner）”或返回 O/普通窗口时，才按实际 TOPMOST 位是否变化执行必要的 TOPMOST/NOTOPMOST 切换，带 NOACTIVATE 和 NOOWNERZORDER；这不是 Win+D 辅助机制。没有修改 Explorer 自身的样式或层级。
+- “恢复普通透明窗口”清除外部 owner，恢复可找回的普通窗口入口，保留本次输入/计数/HWND；失败可以从控制台或独立托盘**重建普通透明窗口**，这条路径清空测试文字并创建新 PID，不依赖旧 HWND 脱离成功。意外组件销毁只重建一次普通透明窗口，不自动设置 owner；正常退出不重生。
+- 实验控制台与组件在不同进程；控制台故意保留任务栏入口。托盘提示为“Desktop Calendar owner 实验（非主程序）”，提供显示控制台、重建找回和退出。它不是主程序或正式图标集成；托盘菜单本轮未通过电脑控制工具实际点击验收。
+
+### 实际电脑操作与自动证据分开记录
+
+本轮操作者是代理，通过 computer-use 的窗口选择、截图、鼠标和键盘接口执行，**不是用户亲自验收**。截图未保存/提交，输入仅为无隐私测试文字。
+
+| 项目 | 本轮结果 | 证据边界 |
+|---|---|---|
+| 普通透明组件 | 截图可见圆角半透明表面、紫色标题、RGB 色条、文本框和按钮；聚焦后实际输入中英文，点击计数 0→1，再点确认 | 通过的是设置 owner 前的基线；HumanConfirmed 在此由代理操作产生，不代表用户已认可 O |
+| 普通模式移动/缩放 | 右下角拖动后截图从 700×590 变为 640×540；标题空白区拖动后物理原点由 (-2445,602) 变为 (-2520,557)，内容和输入保留 | 最初标题文字区的一次拖动未见位移，重试空白区有效；不是八方向或 owner 模式拖动全部通过 |
+| O 命令 | ACK 为 owner；同一 HWND 550F6A，GW_OWNER=8C05A4/Progman/PID=23008，CHILD=false，GA_ROOT=自身、GA_PARENT=桌面；TOPMOST=false，首次 explicitModeZRequests=0、SetParentCalls=0 | **原生关系和样式检查通过，不是屏幕可见性证明** |
+| owner / 置顶往返 | 电脑控制台操作成功，ACK 和样式显示 owner→owner-topmost→owner；置顶时 owner 清零，返回时 TOPMOST 清除 | 工具无法选择 TOOLWINDOW 组件，未观察到置顶或 O 时的真实画面、输入及闪烁 |
+| 普通窗口找回 | 经 owner→置顶→owner→普通恢复后，相同 HWND 重新进入工具可选列表；截图可见原文字、计数 1 和透明彩色内容 | 证明恢复路径与状态保留，不能倒推 O 时也正常绘制 |
+| 普通遮挡对照 | 实际打开控制台进程中的普通非置顶珊瑚红窗口，画面可见；O 的三个 WindowFromPoint 采样均命中它，前台也为该窗口，O 仍非置顶；关闭后 ownHit 恢复 3/3 | 支持该时刻可被普通窗口覆盖；窗口捕获不是全桌面合成图，**未验证 O 内编辑后覆盖、关闭再打开的完整循环** |
+| 正常退出 | 实际点控制台“退出整个实验”，随后进程检查无 DesktopHostProbe 残留 | 未实际点击托盘退出菜单；后者仍待人工 |
+| O 绘制、输入、Win+D、任务栏/Alt+Tab | **待人工验证** | O 及 owner-topmost 在工具可选列表中消失；用工具先前返回的窗口 ID 重新绑定失败。不能据此判它黑屏，也不能据可见位、离屏色块或命中推定通过。当前 computer-use 不支持 Win 键，本轮未通过其他途径注入 Win+D |
+
+本机自动诊断仍报告 RemoteSession=false、DPI=144；用户此前说明通过远程连接操作。分别保留，不把该指标当成本地/RDP对照，也不否定远程传输影响。未开展混合 DPI、Explorer 重启、休眠和 Win10 验证，按本轮要求暂缓。
+
+### 自动验证与失败记录
+
+Windows PowerShell 从项目根运行，仅执行新增 owner 检查：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\experiments\DesktopHostProbe\Start-Probe.ps1 -OwnerTest
+```
+
+最终 Release 构建 **0 警告、0 错误**；owner 检查 **28 PASS / 0 FAIL**，控制台检查 **11 PASS / 0 FAIL**，脚本退出码 0。验证透明顶层初始化、确认门槛、owner 与 parent 区分、保留透明样式/无 NOACTIVATE、位置及控件状态、三次置顶往返、无 SetParent/首次无显式层级操作、空闲诊断不调整层级、拒绝混入旧 child 实验、普通恢复、新进程重建、有限意外恢复和正常退出。Shell 样式及矩形在该检查前后相同；未自动重启 Explorer。
+
+首次自动检查为 **27 PASS / 1 FAIL**：直接要求覆盖窗口中心的 WindowFromPoint 命中该窗口，但隐藏启动的自动检查实际被已有普通应用挡住，foregroundIsCover=false。改为独立断言两个自有窗口的相对原生 Z-order，保留中心命中/前台未达成的诊断，不声称已测到真实覆盖像素；随后另以电脑工具打开覆盖窗口验证上述有限证据。没有通过强制焦点、抬高 O 或降低验收标准隐藏失败。后续追加有限恢复检查后最终为 28+11；未重复运行历史 A–F。
+
+离屏 RenderTargetBitmap 在 owner 前后均有 RGB/alpha，只能说明 WPF 可生成内容，不能证明真实呈现。报告位于被忽略的 `artifacts/p1.1-2-owner-checks.txt` 和 `artifacts/p1.1-2-owner-supervisor-checks.txt`；运行日志在实验 bin，不提交截图、输入正文或私人数据。
+
+### 启动与本轮最短人工检查
+
+关闭旧实验，双击 **`D:\projects\desktop-calendar\experiments\DesktopHostProbe\bin\Release\net10.0-windows\DesktopHostProbe.exe`**。也可从项目根运行不带参数的 `Start-Probe.ps1` 离线构建启动。现在默认是 owner 专用控制台；历史菜单仅保留在 `--legacy-probe`，本轮不用。
+
+1. 应出现 **两个窗口**：白色“Desktop Calendar — owner 独立实验控制台”；圆角半透明浅蓝“Desktop Calendar — B 透明对照组件”，有紫色标题、红绿蓝条和输入/计数控件。输入无隐私文字、点计数、点确认，再点控制台 **O 设置桌面 owner（不嵌入）**。期望内容仍完整、可输入/计数、拖紫色标题空白区移动、拖边角缩放；O 后标题为“Desktop Calendar — O owner 透明顶层组件”。若 O 消失/黑屏，直接记失败并找回，不必重复旧 C/F。
+2. O 下最小化控制台，手动 **Win+D**，期望组件始终可见且可操作；再按一次检查还原不闪烁/不争焦点。检查任务栏、Alt+Tab 中**没有组件项**，控制台自身有入口是刻意设计；托盘是实验管理入口。仅点“完整诊断”不能代替此项。
+3. 打开控制台的 **普通遮挡测试窗口**，期望能盖住组件；关闭后点组件编辑，再打开普通窗口，应能再次盖住，组件不得长期压在上方。再试“始终置顶（脱离 owner）”→O，检查画面/文字/计数/尺寸保持、无明显闪烁或焦点争夺。
+4. 随时点 **恢复普通透明窗口**；仍看不见时点 **重建普通透明窗口 / 找回**（清空测试），或托盘同名菜单；最后 **退出整个实验**，应关闭所有实验窗口并移除实验托盘图标。不需要结束 Explorer、改缩放或运行主程序。
+
+反馈只需：O 画面/输入、Win+D、组件是否出现在任务栏/Alt+Tab、编辑后能否被普通窗口盖住、找回/退出，有异常注明步骤。**若纯 owner 不能满足核心条件，就将候选 1 记录为失败，不自行添加事件/Z-order补丁或候选 2。** 当前不能批准主窗口整合；等待本轮人工反馈。
+
+本轮重新核对的 API 语义：[SetWindowLongPtrW](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowlongptrw)、[GetWindow / GW_OWNER](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getwindow)、[Owned Windows](https://learn.microsoft.com/en-us/windows/win32/winmsg/window-features#owned-windows)。这些只定义 owner，不提供 Win+D 的兼容承诺。
+
+---
+
+## 历史研究提案：开源源码复核与候选路线（2026-10-30）
+
+> 以下为实施前提案，不是当前授权范围或当前测试结果。候选 1 已获批准，但其中单次置底/Deactivated 修正已被用户明确排除，实际实施以上节为准；候选 2 未批准、未实现。
 
 **本轮只完成公开源码、许可证和 issue/PR 调研，不运行参考软件，不复制实现代码，不增加实验或依赖，不修改主日历窗口。推荐先批准候选 1；候选 2 只作为有边界的后备，需要单独批准事件监听及临时层级调整。** 当前没有新方案通过本机视觉验收，旧 C/F 黑屏、D 不可见的结果继续有效；不重跑 A–F，不进入 P1.1-3。下方旧记录中的“下一步跨进程自有宿主对照”不再是当前优先路线。
 

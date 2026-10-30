@@ -17,7 +17,7 @@ internal sealed record ProbeState(int Pid,string Hwnd,string Mode,bool Loaded,bo
     string Bounds,uint Dpi,string Coverage,string Error,string Case,bool Transparent,string Style,string ExStyle,
     bool Layered,bool Child,bool Popup,string RequestedMode,string ClientBounds,string HostIntersection,
     string RenderPreference,int RenderTier,bool RemoteSession,string RdpAcceleration,string HwndRenderMode,string SurfaceEvidence,
-    string ActiveCase,string ActiveMode,string NativeEvidence,bool NativeConfirmed);
+    string ActiveCase,string ActiveMode,string NativeEvidence,bool NativeConfirmed,string OwnerEvidence);
 
 internal sealed class ProbeWindow : Window
 {
@@ -36,6 +36,9 @@ internal sealed class ProbeWindow : Window
     readonly bool automated;
     NativePaintProbe? nativeProbe;
     bool closing;
+    bool ownerExperiment;
+    int ownerModeZRequests;
+    internal int OwnerModeZRequests => ownerModeZRequests;
     internal string ActiveMode => nativeProbe?.Mode??Mode;
     long originalStyle;
     nint shellAtAttach;
@@ -48,7 +51,7 @@ internal sealed class ProbeWindow : Window
     Native.Point dragStart;
     string resizeEdge="";
     readonly TextBlock heading=new() { FontSize=26,Foreground=Brushes.White,TextWrapping=TextWrapping.Wrap };
-    internal string Case => Mode=="desktop"?(AllowsTransparency?"D":"C"):(Mode=="normal"?(AllowsTransparency?"B":"A"):"other");
+    internal string Case => Mode.StartsWith("owner",StringComparison.Ordinal)?"O":Mode=="desktop"?(AllowsTransparency?"D":"C"):(Mode=="normal"?(AllowsTransparency?"B":"A"):"other");
 
     internal ProbeWindow(Action<string> report,bool automated=false,bool transparent=false)
     {
@@ -77,7 +80,7 @@ internal sealed class ProbeWindow : Window
             var block=new Border { Background=brush }; Grid.SetColumn(block,col); stripes.Children.Add(block);
         }
         stack.Children.Add(stripes);
-        stack.Children.Add(new TextBlock { Text="应见红、绿、蓝色块与文字；先输入、点击计数并确认，再从控制台嵌入。\n若变成纯黑矩形，请从控制台记录“黑屏”，再重建 A 找回。",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,0,0,12) });
+        stack.Children.Add(new TextBlock { Text="应见红、绿、蓝色块与文字；先输入、点击计数并确认，再从控制台选择实验。\nowner 是顶层窗口拥有关系，不是桌面子窗口；实际可见性另验。",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,0,0,12) });
         stack.Children.Add(Input);
         Input.TextChanged+=(_,_)=> {
             if(IsLoaded) {
@@ -91,11 +94,11 @@ internal sealed class ProbeWindow : Window
         stack.Children.Add(Counter);
         Confirm.Click+=(_,_)=> {
             if(!Confirm.IsEnabled) return;
-            HumanConfirmed=true; Confirm.Content="已由用户确认；请从控制台选择桌面实验";
+            HumanConfirmed=true; Confirm.Content="已确认本次交互；请从控制台选择实验";
             Confirm.IsEnabled=false; Snapshot("HUMAN_CONFIRMED");
         };
         stack.Children.Add(Confirm);
-        stack.Children.Add(new TextBlock { Text="若嵌入后消失：回到控制台点“重建普通窗口 / 找回”。\n重建会清空测试文字；不要输入个人资料。",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,0,0,12) });
+        stack.Children.Add(new TextBlock { Text="若实验后消失：回到控制台点“重建普通窗口 / 找回”。\n重建会清空测试文字；不要输入个人资料。",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,0,0,12) });
         var exit=new Button { Content="退出组件",Padding=new Thickness(12,6,12,6),HorizontalAlignment=HorizontalAlignment.Left };
         exit.Click+=(_,_)=> { report("USER_EXIT"); Close(); };
         stack.Children.Add(exit); stack.Children.Add(status);
@@ -132,6 +135,8 @@ internal sealed class ProbeWindow : Window
     }
     internal bool Switch(string requested)
     {
+        if(requested.StartsWith("owner",StringComparison.Ordinal) || ownerExperiment)
+            return SwitchOwner(requested);
         if(nativeProbe!=null)nativeProbe.Close();
         requestedMode=requested;
         string mode=requested=="fallback"?"normal":requested;
@@ -175,6 +180,69 @@ internal sealed class ProbeWindow : Window
         }
         finally { transitioning=false; }
     }
+    // Candidate 1 ONLY: no SetParent/WS_CHILD, bottoming, WinEvent hook, activation handler,
+    // minimize suppression or automatic restore. Explicit topmost/rescue are user commands.
+    internal bool SwitchOwner(string requested)
+    {
+        if(requested is not ("owner" or "owner-topmost" or "owner-normal" or "normal" or "fallback" or "topmost"))
+        { LastError="owner 实验不允许混入旧子窗口/置底实验；请先重建"; return false; }
+        requestedMode=requested;
+        if(!Rendered || !AllowsTransparency || nativeProbe!=null || ((long)Native.GetLong(Handle,Native.Style)&Native.Child)!=0)
+        { LastError="owner 需要已渲染的透明顶层 WPF；请重建普通透明窗口"; return false; }
+        if(requested=="owner" && !HumanConfirmed && !automated)
+        { LastError="请先在透明组件中输入、计数并确认交互"; Snapshot("OWNER_REJECTED"); return false; }
+        if(transitioning) { LastError="上一次模式转换尚未结束"; return false; }
+        transitioning=true; LastError=""; ownerExperiment=true;
+        try
+        {
+            bool normal=requested is "owner-normal" or "normal" or "fallback";
+            bool topmost=requested is "owner-topmost" or "topmost";
+            nint owner=0;
+            if(!normal && !topmost) {
+                owner=Native.GetShellWindow();
+                if(owner==0 || !Native.IsWindow(owner) || Native.Class(owner)!="Progman" || Native.Pid(owner)==0)
+                    throw new InvalidOperationException("没有经校验的 Progman Shell HWND；不猜测其他宿主");
+            }
+            Native.SetOwner(Handle,0);
+            ShowInTaskbar=normal;
+            Native.SetStyle(Handle,Native.ExStyle,normal
+                ?((long)Native.GetLong(Handle,Native.ExStyle)|Native.AppWindow)&~Native.Tool
+                :((long)Native.GetLong(Handle,Native.ExStyle)|Native.Tool)&~Native.AppWindow);
+            Native.SetOwner(Handle,owner);
+            // Only an explicit topmost mode change may request Z-order. Setting owner itself does not.
+            bool actualTopmost=((long)Native.GetLong(Handle,Native.ExStyle)&Native.Topmost)!=0;
+            if(actualTopmost!=topmost) {
+                ownerModeZRequests++;
+                if(!Native.SetWindowPos(Handle,topmost?Native.TopMost:Native.NotTopMost,0,0,0,0,0x1|0x2|Native.NoActivate|0x200))
+                    throw new System.ComponentModel.Win32Exception(System.Runtime.InteropServices.Marshal.GetLastPInvokeError());
+            }
+            Mode=normal?"normal":topmost?"owner-topmost":"owner";
+            heading.Text=$"{Case} · 透明顶层 WPF · {Mode} · 拖这里移动";
+            Title="Desktop Calendar — O owner 透明顶层组件";
+            if(normal) { WindowState=WindowState.Normal; Show(); Activate(); }
+            Snapshot("OWNER_MODE_CHANGED"); return true;
+        }
+        catch(Exception ex)
+        {
+            LastError=ex.Message; report("OWNER_ERROR "+ex.Message);
+            // Leave the independent controller available; do not silently retry or add layer repair.
+            try {
+                Native.SetOwner(Handle,0); ShowInTaskbar=true;
+                Native.SetStyle(Handle,Native.ExStyle,((long)Native.GetLong(Handle,Native.ExStyle)|Native.AppWindow)&~Native.Tool);
+                if(((long)Native.GetLong(Handle,Native.ExStyle)&Native.Topmost)!=0) {
+                    ownerModeZRequests++;
+                    if(!Native.SetWindowPos(Handle,Native.NotTopMost,0,0,0,0,0x1|0x2|Native.NoActivate|0x200))
+                        throw new System.ComponentModel.Win32Exception(System.Runtime.InteropServices.Marshal.GetLastPInvokeError());
+                }
+                Mode="normal"; heading.Text="B · 普通透明回退（owner 命令失败）";
+                WindowState=WindowState.Normal; Show(); Activate();
+            }
+            catch(Exception recovery) { LastError+="; 请从控制台重建："+recovery.Message; }
+            Snapshot("OWNER_FAILED"); return false;
+        }
+        finally { transitioning=false; }
+    }
+    internal string OwnerEvidence() => $"GW_OWNER={Native.Owner(Handle):X}/{Native.Class(Native.Owner(Handle))}/PID={Native.Pid(Native.Owner(Handle))}; GA_PARENT={Native.GetAncestor(Handle,1):X}; GA_ROOT={Native.GetAncestor(Handle,2):X}; self={Handle:X}; nativeTopmost={((long)Native.GetLong(Handle,Native.ExStyle)&Native.Topmost)!=0}; foreground={Native.GetForegroundWindow():X}; inputFocus={Input.IsKeyboardFocusWithin}; explicitModeZRequests={ownerModeZRequests}; SetParentCalls={Native.ParentCalls}; no event/Z-order repair; screen visibility NOT inferred";
     void Detach(Native.Rect bounds)
     {
         if(((long)Native.GetLong(Handle,Native.Style)&Native.Child)!=0) Native.Parent(Handle,0);
@@ -255,18 +323,19 @@ internal sealed class ProbeWindow : Window
             RenderOptions.ProcessRenderMode.ToString(),RenderCapability.Tier>>16,Native.GetSystemMetrics(0x1000)!=0,
             AppContext.TryGetSwitch("Switch.System.Windows.Media.EnableHardwareAccelerationInRdp",out bool enabled)?enabled.ToString():"unset (runtime default)",
             HwndSource.FromHwnd(Handle)?.CompositionTarget?.RenderMode.ToString()??"unavailable",surfaceEvidence,
-            nativeProbe?.Case??Case,ActiveMode,nativeProbe?.Evidence()??"inactive",nativeProbe?.HumanConfirmed??false);
+            nativeProbe?.Case??Case,ActiveMode,nativeProbe?.Evidence()??"inactive",nativeProbe?.HumanConfirmed??false,OwnerEvidence());
     }
     internal void Snapshot(string reason)
     {
         if(!Native.IsWindow(Handle)) { report("HWND_MISSING "+reason); return; }
-        status.Text=$"PID {Environment.ProcessId} | HWND {Handle:X} | {Mode}\n"+(HumanConfirmed?"普通窗口已由用户确认；嵌入可见性另验。":"屏幕可见性：尚待用户亲眼确认。");
+        status.Text=$"PID {Environment.ProcessId} | HWND {Handle:X} | {Mode}\n"+(HumanConfirmed?"普通交互已确认；实验后的屏幕可见性另验。":"屏幕可见性：尚待实际观察。");
         report("STATE "+System.Text.Json.JsonSerializer.Serialize(State()));
     }
     internal bool Command(string command)
     {
         switch(command)
         {
+            case "owner": case "owner-topmost": case "owner-normal": return SwitchOwner(command);
             case "native-normal":
                 if(nativeProbe!=null) { nativeProbe.Restore(); Snapshot("NATIVE_NORMAL"); return true; }
                 if(!Switch("normal"))return false;

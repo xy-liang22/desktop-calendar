@@ -12,6 +12,7 @@ internal static class Native
     internal const long Child = 0x40000000L, Popup = 0x80000000L, Tool = 0x80, AppWindow = 0x40000, Topmost = 8;
     internal const uint NoActivate = 0x10, NoZOrder = 4, FrameChanged = 0x20;
     internal static readonly nint Bottom = 1, Top = 0, TopMost = -1, NotTopMost = -2;
+    internal static int ParentCalls { get; private set; }
     [StructLayout(LayoutKind.Sequential)] internal struct Point { public int X, Y; public Point(int x, int y) { X=x; Y=y; } }
     [StructLayout(LayoutKind.Sequential)] internal struct Rect
     {
@@ -25,6 +26,7 @@ internal static class Native
     [DllImport("user32.dll", CharSet=CharSet.Unicode)] internal static extern nint FindWindowEx(nint parent, nint after, string? cls, string? name);
     [DllImport("user32.dll", CharSet=CharSet.Unicode)] static extern int GetClassName(nint h, StringBuilder s, int count);
     [DllImport("user32.dll")] internal static extern nint GetShellWindow();
+    [DllImport("user32.dll")] internal static extern nint GetForegroundWindow();
     [DllImport("user32.dll")] internal static extern uint GetWindowThreadProcessId(nint h, out uint pid);
     [DllImport("user32.dll")] internal static extern nint GetParent(nint h);
     [DllImport("user32.dll")] static extern nint GetWindow(nint h,uint command);
@@ -53,6 +55,20 @@ internal static class Native
     [DllImport("user32.dll", CharSet=CharSet.Unicode)] internal static extern uint RegisterWindowMessage(string name);
     internal static string Class(nint h) { var s=new StringBuilder(128); GetClassName(h,s,s.Capacity); return s.ToString(); }
     internal static uint Pid(nint h) { GetWindowThreadProcessId(h,out uint pid); return pid; }
+    internal static nint Owner(nint h) => GetWindow(h,4);
+    internal static bool IsAbove(nint higher,nint lower)
+    {
+        var seen=new HashSet<nint>();
+        for(nint h=GetWindow(lower,3);h!=0 && seen.Add(h);h=GetWindow(h,3)) if(h==higher)return true;
+        return false;
+    }
+    internal static void SetOwner(nint h,nint owner)
+    {
+        if(Pid(h)!=Environment.ProcessId || ((long)GetLong(h,Style)&Child)!=0)
+            throw new InvalidOperationException("只允许更改本进程顶层窗口的 owner");
+        if(Owner(h)!=owner) SetStyle(h,-8,(long)owner);
+        if(Owner(h)!=owner) throw new InvalidOperationException("owner 设置结果不匹配");
+    }
     internal static string Cloaked(nint h) => DwmGetWindowAttribute(h,14,out int value,4)==0?value.ToString():"unknown";
     internal static string ClientBounds(nint h)
     {
@@ -89,6 +105,7 @@ internal static class Native
     }
     internal static void Parent(nint h,nint parent)
     {
+        ParentCalls++;
         Marshal.SetLastPInvokeError(0);
         if (SetParent(h,parent)==0 && Marshal.GetLastPInvokeError()!=0) throw new Win32Exception(Marshal.GetLastPInvokeError());
         // While WS_CHILD is still set, detaching can report the desktop HWND until styles are restored.

@@ -26,6 +26,7 @@ internal static class Program
             }
             if(Array.IndexOf(args,"--software")>=0) RenderOptions.ProcessRenderMode=RenderMode.SoftwareOnly;
             var app=new Application { ShutdownMode=ShutdownMode.OnMainWindowClose };
+            if(Array.IndexOf(args,"--owner-checks")>=0)return OwnerChecks.Run(app);
             if(Array.IndexOf(args,"--local-host-check")>=0)return LocalHostProbe.Run(app,Array.IndexOf(args,"--no-redirection")>=0);
             if(Array.IndexOf(args,"--self-test")>=0) return Checks.Run(app);
             if(Array.IndexOf(args,"--widget")>=0)
@@ -59,7 +60,9 @@ internal static class Program
                 });
                 return app.Run(widget); // WPF owns the complete initial Show/Loaded/ContentRendered sequence.
             }
-            var controller=new Controller(Array.IndexOf(args,"--supervisor-test")>=0);
+            bool ownerSupervisor=Array.IndexOf(args,"--owner-supervisor-test")>=0;
+            bool supervisor=Array.IndexOf(args,"--supervisor-test")>=0 || ownerSupervisor;
+            var controller=new Controller(supervisor,ownerSupervisor || !supervisor && Array.IndexOf(args,"--legacy-probe")<0);
             app.Exit+=(_,e)=>e.ApplicationExitCode=controller.TestExitCode;
             return app.Run(controller);
         }
@@ -81,19 +84,24 @@ internal sealed class Controller : Window
     readonly List<Button> experimentalButtons=new();
     readonly CheckBox software=new() { Content="软件渲染对照（仅新建 A/B 子进程生效；不改系统）",Margin=new Thickness(0,4,10,8) };
     bool transparentChild;
+    readonly bool ownerOnly;
+    Window? cover;
+    System.Windows.Forms.NotifyIcon? tray;
     readonly string logPath=Path.Combine(AppContext.BaseDirectory,"probe-session.log");
     readonly DispatcherTimer pulse=new() { Interval=TimeSpan.FromSeconds(3) };
     internal int TestExitCode { get; private set; }
 
-    internal Controller(bool selfTest=false)
+    internal Controller(bool selfTest=false,bool ownerOnly=false)
     {
-        this.selfTest=selfTest;
-        Title="Desktop Calendar — 实验控制台（保留找回入口）";
+        this.selfTest=selfTest; this.ownerOnly=ownerOnly; transparentChild=ownerOnly;
+        Title=ownerOnly?"Desktop Calendar — owner 独立实验控制台":"Desktop Calendar — 实验控制台（保留找回入口）";
         Width=940; Height=920; Left=40; Top=40;
         var grid=new Grid { Margin=new Thickness(16) }; Content=grid;
         for(int i=0;i<4;i++) grid.RowDefinitions.Add(new RowDefinition { Height=GridLength.Auto });
         grid.RowDefinitions.Add(new RowDefinition());
-        var intro=new TextBlock { Text="本轮先测 E 原生普通窗口→输入、计数并确认→F 原生桌面嵌入；原 WPF 组件暂时隐藏。\n保留 A→确认→C、B→确认→D。应见红绿蓝色条、文字和控件；黑屏/消失时点 A 重建找回。\nA/B 重建会清空测试文字。软件选项只影响新建 A/B 的 WPF 渲染偏好，不影响原生 E/F。",TextWrapping=TextWrapping.Wrap };
+        var intro=new TextBlock { Text=ownerOnly
+            ?"候选 1：先在透明顶层组件输入、计数并确认，再设置桌面 owner。不是 SetParent/子窗口；没有钩子、自动置底或失焦纠正。\n请实际检查 Win+D、任务栏及 Alt+Tab；可见位和 owner 关系不能代替屏幕验收。托盘可找回及退出；重建会清空测试文字。"
+            :"历史 A–F 入口：本轮不要重复。普通窗口先确认交互，再选择旧实验；状态不证明屏幕可见。",TextWrapping=TextWrapping.Wrap };
         grid.Children.Add(intro);
         var buttons=new WrapPanel { Margin=new Thickness(0,10,0,0) }; Grid.SetRow(buttons,1); grid.Children.Add(buttons);
         void Add(string text,string command,bool gate=false)
@@ -102,8 +110,18 @@ internal sealed class Controller : Window
             b.Click+=async (_,_)=>await Send(command); buttons.Children.Add(b);
             if(gate) { b.IsEnabled=false; experimentalButtons.Add(b); }
         }
-        var rescue=new Button { Content="A 非透明顶层 / 重建找回",Padding=new Thickness(10),Margin=new Thickness(0,0,8,8) };
-        rescue.Click+=async (_,_)=>await Rebuild(); buttons.Children.Add(rescue);
+        var rescue=new Button { Content=ownerOnly?"重建普通透明窗口 / 找回":"A 非透明顶层 / 重建找回",Padding=new Thickness(10),Margin=new Thickness(0,0,8,8) };
+        rescue.Click+=async (_,_)=>await Rebuild(true,ownerOnly); buttons.Children.Add(rescue);
+        if(ownerOnly) {
+            Add("O 设置桌面 owner（不嵌入）","owner",true); experimentalButtons[^1].Tag=true;
+            Add("恢复普通透明窗口","owner-normal");
+            Add("始终置顶（脱离 owner）","owner-topmost");
+            Add("完整诊断","snapshot");
+            var overlap=new Button { Content="打开普通遮挡测试窗口",Padding=new Thickness(10),Margin=new Thickness(0,0,8,8) };
+            overlap.Click+=(_,_)=>ShowCover(); buttons.Children.Add(overlap);
+            var explanation=new TextBlock { Text="从置顶返回时再点 O；此按钮仍只执行一次模式切换，不纠正日常层级。",TextWrapping=TextWrapping.Wrap,Width=370 };
+            buttons.Children.Add(explanation);
+        } else {
         var transparentButton=new Button { Content="B 透明顶层 / 重建",Padding=new Thickness(10),Margin=new Thickness(0,0,8,8) };
         transparentButton.Click+=async (_,_)=>await Rebuild(true,true); buttons.Children.Add(transparentButton);
         Add("恢复当前顶层","normal"); Add("C 非透明嵌入","desktop",true); experimentalButtons[^1].Tag=false;
@@ -120,6 +138,7 @@ internal sealed class Controller : Window
             buttons.Children.Add(b);
         }
         buttons.Children.Add(software);
+        }
         var exit=new Button { Content="退出整个实验",Padding=new Thickness(10),Margin=new Thickness(0,0,8,8) };
         exit.Click+=(_,_)=>Close(); buttons.Children.Add(exit);
         var details=new ScrollViewer { Content=summary,MaxHeight=245,VerticalScrollBarVisibility=ScrollBarVisibility.Auto };
@@ -127,16 +146,41 @@ internal sealed class Controller : Window
         Grid.SetRow(result,3); grid.Children.Add(result);
         Grid.SetRow(log,4); grid.Children.Add(log);
         Loaded+=async (_,_)=> {
-            Append("A–D 渲染对照：先 A 顶层，用户确认后嵌入。状态与离屏采样均不证明屏幕可见。");
+            Append(ownerOnly?"OWNER_ONLY: transparent top-level first; no SetParent/WS_CHILD, hook, bottoming or automatic recovery. Mode changes require explicit command.":"历史 A–F 对照；状态不证明屏幕可见。");
+            if(ownerOnly && !selfTest) SetupTray();
             await Start(); pulse.Start();
-            if(selfTest) await TestSupervisor();
+            if(selfTest) { if(ownerOnly) await TestOwnerSupervisor(); else await TestSupervisor(); }
         };
         pulse.Tick+=async (_,_)=> { if(!closing && !rebuilding && pending.Count==0 && child is { HasExited:false }) await Send("snapshot",false); };
         Closing+=async (_,e)=> {
             if(closing) return;
-            e.Cancel=true; closing=true; pulse.Stop(); await StopChild();
+            e.Cancel=true; closing=true; pulse.Stop(); tray?.Dispose(); cover?.Close(); await StopChild();
             _=Dispatcher.BeginInvoke(Close);
         };
+    }
+    void SetupTray()
+    {
+        tray=new System.Windows.Forms.NotifyIcon { Icon=System.Drawing.SystemIcons.Application,Text="Desktop Calendar owner 实验（非主程序）",Visible=true };
+        var menu=new System.Windows.Forms.ContextMenuStrip();
+        menu.Items.Add("显示实验控制台",null,(_,_)=> { Show(); WindowState=WindowState.Normal; Activate(); });
+        menu.Items.Add("重建普通透明窗口 / 找回（清空测试）",null,async (_,_)=>await Rebuild(true,true));
+        menu.Items.Add("退出整个实验",null,(_,_)=>Close());
+        tray.ContextMenuStrip=menu;
+        tray.DoubleClick+=(_,_)=> { Show(); WindowState=WindowState.Normal; Activate(); };
+    }
+    void ShowCover()
+    {
+        if(cover!=null) { cover.Activate(); return; }
+        cover=new Window { Title="Desktop Calendar — 普通遮挡测试窗口",Width=710,Height=600,WindowStartupLocation=WindowStartupLocation.CenterScreen,Background=Brushes.LightCoral };
+        var panel=new StackPanel { Margin=new Thickness(28) };
+        panel.Children.Add(new TextBlock { Text="普通非置顶窗口\n应能盖住 owner 组件。点击这里、输入，再关闭并重新打开。",FontSize=25,TextWrapping=TextWrapping.Wrap });
+        panel.Children.Add(new TextBox { Text="覆盖窗口输入区（无隐私测试）",Margin=new Thickness(0,24,0,24),Height=45,FontSize=18 });
+        var close=new Button { Content="关闭此遮挡窗口",Padding=new Thickness(12) };
+        close.Click+=(_,_)=>cover?.Close(); panel.Children.Add(close);
+        cover.Content=panel; cover.Closed+=(_,_)=>cover=null; cover.Show();
+        if(state!=null && long.TryParse(state.Hwnd,System.Globalization.NumberStyles.HexNumber,null,out long hwnd) && Native.IsWindow((nint)hwnd))
+            Native.Place(new WindowInteropHelper(cover).Handle,Native.Bounds((nint)hwnd),0,Native.NoZOrder|Native.NoActivate);
+        cover.Activate();
     }
     void Append(string text)
     {
@@ -154,8 +198,8 @@ internal sealed class Controller : Window
         string process=child==null?"未启动":child.HasExited?$"已退出 PID={child.Id}":$"存活 PID={child.Id}";
         summary.Text=$"进程：{process}\n当前观察目标：{state?.ActiveCase} / {state?.ActiveMode}\n原生独立对照：{state?.NativeEvidence}\n以下为 WPF 窗口诊断（E/F 期间有意隐藏）：\n"+
             (state==null?"HWND/WPF：尚无组件报告":$"HWND={state.Hwnd} | 模式={state.Mode} | WPF Loaded={state.Loaded} / ContentRendered={state.ContentRendered}\n内容={state.ContentWidth:0}×{state.ContentHeight:0} | parent={state.Parent} / host={state.Host} / 匹配={state.ParentMatches}\nWS_VISIBLE={state.NativeVisible} / WPF Visible={state.WpfVisible} / 最小化={state.Minimized} / DWM cloaked={state.Cloaked}\n矩形={state.Bounds} / DPI={state.Dpi}\n遮挡采样：{state.Coverage}\n错误：{(state.Error==""?"无已报告错误":state.Error)}")+
-            (state==null?"":$"\n实际案例={state.Case} / 请求模式={state.RequestedMode} / AllowsTransparency={state.Transparent}\nSTYLE={state.Style} EX={state.ExStyle} | CHILD={state.Child} POPUP={state.Popup} LAYERED={state.Layered}\nclient={state.ClientBounds}; {state.HostIntersection}\n渲染偏好={state.RenderPreference} HWND偏好={state.HwndRenderMode} tier={state.RenderTier} | RemoteSession={state.RemoteSession} RDP加速配置={state.RdpAcceleration}\n{state.SurfaceEvidence}")+
-            "\n人工可见性："+(state?.HumanConfirmed==true?"用户已确认当前顶层；嵌入仍需另验。":"未确认，不能据以上状态判为可见。");
+            (state==null?"":$"\n实际案例={state.Case} / 请求模式={state.RequestedMode} / AllowsTransparency={state.Transparent}\nSTYLE={state.Style} EX={state.ExStyle} | CHILD={state.Child} POPUP={state.Popup} LAYERED={state.Layered}\nowner 独立诊断：{state.OwnerEvidence}\n注意 GetParent 对 popup 可能返回 owner；父子关系以 CHILD/GA_PARENT/GA_ROOT 分别判断。\nclient={state.ClientBounds}; {state.HostIntersection}\n渲染偏好={state.RenderPreference} HWND偏好={state.HwndRenderMode} tier={state.RenderTier} | RemoteSession={state.RemoteSession} RDP加速配置={state.RdpAcceleration}\n{state.SurfaceEvidence}")+
+            "\n实际可见性："+(state?.HumanConfirmed==true?"已确认基线交互；owner/Win+D 可见性另验。":"未确认，不能据以上状态判为可见。");
         foreach(var b in experimentalButtons) b.IsEnabled=!rebuilding && (b.Tag is string
             ?state is { NativeConfirmed:true }
             :state is { HumanConfirmed:true,ContentRendered:true,NativeEvidence:"inactive" } && (b.Tag is not bool expected || expected==state.Transparent));
@@ -191,7 +235,7 @@ internal sealed class Controller : Window
             await Task.Delay(250);
             if(process!=child || closing || rebuilding) return;
             UpdateSummary(); Append($"PROCESS_EXIT pid={process.Id} code={process.ExitCode}");
-            if(!intentionalExit && !recovered) { recovered=true; Append("意外退出：只重建一次普通窗口，不自动嵌入。"); await Rebuild(false); }
+            if(!intentionalExit && !recovered) { recovered=true; Append("意外退出：只重建一次普通窗口，不自动嵌入。"); await Rebuild(false,ownerOnly); }
         });
         try {
             if(!process.Start()) throw new InvalidOperationException("Process.Start 返回 false");
@@ -255,6 +299,38 @@ internal sealed class Controller : Window
     {
         for(int i=0;i<ms/100;i++) { if(condition())return; await Task.Delay(100); }
         throw new TimeoutException("等待状态超时");
+    }
+    async Task TestOwnerSupervisor()
+    {
+        var results=new List<string>(); int failures=0;
+        void Check(bool ok,string text) { results.Add((ok?"PASS ":"FAIL ")+text); if(!ok)failures++; }
+        try {
+            Check(state is { Mode:"normal",Transparent:true,Child:false,HumanConfirmed:false },"owner controller starts fresh transparent normal child, not attached");
+            int pid=child!.Id;
+            Check(await Send("owner") is { Ok:true,Mode:"owner" } && state is { Child:false,Host:"0" },"owner command ACK distinguishes ownership from child host");
+            Check(state!.OwnerEvidence.Contains("no event/Z-order repair") && state.OwnerEvidence.Contains("SetParentCalls=0"),"owner diagnostics expose actual mechanism and no child API calls");
+            Check(await Send("owner-topmost") is { Ok:true,Mode:"owner-topmost" },"topmost command ACK");
+            Check(await Send("owner") is { Ok:true,Mode:"owner" },"return to owner command ACK");
+            Check(await Send("owner-normal") is { Ok:true,Mode:"normal" },"normal recovery command ACK");
+            await Rebuild(true,true);
+            Check(child!.Id!=pid && state is { Mode:"normal",Transparent:true,HumanConfirmed:false },"fresh-process rescue is normal transparent and clears confirmation");
+            pid=child!.Id;
+            _=Send("simulate-destroy",false);
+            await Wait(()=>child!.Id!=pid && state is { Mode:"normal",Transparent:true,ContentRendered:true },10000);
+            Check(recovered && state is { Child:false,HumanConfirmed:false },"unexpected component loss gets one transparent normal restart, not automatic owner attachment");
+            pid=child!.Id;
+            _=Send("simulate-destroy",false);
+            await Wait(()=>child!.HasExited); await Task.Delay(500);
+            Check(child!.Id==pid,"second unexpected component loss does not create restart loop");
+            await Rebuild(true,true);
+            Check(await Send("exit") is { Ok:true },"exit ACK");
+            await Wait(()=>child!.HasExited);
+            Check(intentionalExit,"normal child exit is intentional and does not respawn");
+        } catch(Exception ex) { failures++; results.Add("FAIL "+ex); }
+        results.Add($"RESULT {results.Count-failures} PASS, {failures} FAIL; physical visibility not asserted");
+        string dir=Path.Combine(Environment.CurrentDirectory,"artifacts"); Directory.CreateDirectory(dir);
+        File.WriteAllLines(Path.Combine(dir,"p1.1-2-owner-supervisor-checks.txt"),results);
+        TestExitCode=failures==0?0:1; Close();
     }
     async Task TestSupervisor()
     {

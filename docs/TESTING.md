@@ -1,5 +1,36 @@
 # 阶段验证记录
 
+## 当前 P1.1-2：候选 1，透明顶层 WPF 的桌面 owner（2026-10-30）
+
+**状态：独立实验已实现，核心桌面行为待人工验收；不进入 P1.1-3。** 只改实验和研究/测试文档，主程序不变。新路径保留 AllowsTransparency/LAYERED 和顶层 WPF，不调用 SetParent、不开启 WS_CHILD、不发 Explorer 私有消息；没有事件监听/失焦纠正/自动压底或 Win+D 后恢复。只有显式置顶/返回命令可变更组件的 TOPMOST 状态。未安装依赖或修改系统设置，未重跑历史 A–F。
+
+| 证据类型 | 本轮结果与范围 |
+|---|---|
+| 最终离线 Release 构建 | 0 警告 / 0 错误 |
+| owner 自动检查 | 28 PASS / 0 FAIL：owner 与 parent 区分、透明/输入激活样式、同 HWND/状态/尺寸保留、置顶往返、无 SetParent/首次无显式 Z-order 调整、空闲诊断不纠正、普通恢复、原生相对覆盖顺序。离屏 RGB/alpha 不能证明屏幕像素 |
+| owner 控制台自动检查 | 11 PASS / 0 FAIL：透明普通启动、命令 ACK、置顶/owner/普通往返、新 PID 找回且确认重置、意外销毁后只恢复一次普通透明窗口、二次损失不循环、正常退出 |
+| 代理实际电脑操作通过 | 普通透明组件可见、真实键盘输入含中文、鼠标计数 0→1、确认；标题空白区移动、右下角缩放；owner/置顶往返后恢复普通窗口，截图仍有原文字/计数和彩色透明内容；通过控制台正常退出后无实验进程残留 |
+| 代理实际有限覆盖观察 | 普通非置顶珊瑚红测试窗口画面可见；O 的 3 个命中点均属于该窗口且其为前台，O 非 TOPMOST。窗口捕获不是完整桌面合成证据；未完成 O 编辑后覆盖、关闭再打开循环 |
+| 仅配置/原生状态通过 | O 的 GW_OWNER 指向校验过的 Progman，GA_ROOT 为自身、CHILD=false、LAYERED=true、TOOLWINDOW=true、APPWINDOW=false；首次 explicitModeZRequests=0、SetParentCalls=0；显式置顶往返 ACK/样式通过。不能据此标记任务栏/Alt+Tab 或 Win+D 通过 |
+| 仍待用户实际检查 | **设置 owner 后内容是否可见可编辑、Win+D、真实任务栏/Alt+Tab、O 模式拖动/缩放、编辑后普通应用覆盖、置顶往返画面/闪烁/焦点、托盘菜单找回和退出** |
+| 工具限制 | O 与 owner-topmost 不在可选窗口列表，重绑先前工具窗口 ID 失败，故不能截图或注入组件输入；不等于黑屏/成功。当前 computer-use 不支持 Win 键，未通过替代途径注入。混合 DPI、Explorer 重启、休眠和 Win10 全量测试按本轮要求暂缓 |
+
+失败记录：首轮 27 PASS / 1 FAIL，中心命中覆盖窗口的断言受到已有普通应用遮挡（实际前台不是覆盖窗口）影响。现拆分原生相对 Z-order 自动断言和实际覆盖观察，保留 hit/foreground 不匹配日志，不宣称自动捕获了覆盖像素。后续最终 28+11；没有强制焦点/层级修正掩盖失败。普通模式第一次标题文字区拖动未见位移，重新从标题空白区操作观察到位置改变；仅该动作及右下角缩放通过，不扩展成八方向全部通过。
+
+复现自动检查（项目根 Windows PowerShell）：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\experiments\DesktopHostProbe\Start-Probe.ps1 -OwnerTest
+```
+
+脚本退出码 0。报告在被忽略的 `artifacts/p1.1-2-owner-checks.txt`、`artifacts/p1.1-2-owner-supervisor-checks.txt`，未提交截图或输入正文。默认启动变更为 owner 专用控制台，必须先真实交互确认再显式设置 owner；自动测试专用 bypass 不设置 HumanConfirmed。代理本次点击确认不是用户验收。
+
+人工检查：双击 `experiments\DesktopHostProbe\bin\Release\net10.0-windows\DesktopHostProbe.exe`，应见“owner 独立实验控制台”和“B 透明对照组件”两个窗口；组件输入/计数/确认→控制台 O→手动 Win+D 与任务栏/Alt+Tab→普通覆盖窗口、编辑及重开→置顶再 O→普通恢复/必要时重建→退出。具体预期、限制和安全找回步骤见 [当前研究记录](DESKTOP_MODE_RESEARCH.md#当前候选-1桌面-owner--透明顶层-wpf2026-10-30)。若 O 失败，不自行增加候选 2 或合并主程序。
+
+---
+
+以下保留历史测试结果，不作为本轮候选 1 的验收证据。
+
 ## P1.1-2：F 黑屏人工结论与自有 R/N 宿主对照（2026-10-30）
 
 **用户确认：F 黑屏；输入及计数因黑屏无法判断；移动、缩放正常；返回 E 成功。** 此结果优先于先前 F“未观察到”的工具限制记录。当前 Progman 挂载方案验收失败，不满足主窗口整合门槛，不进入 P1.1-3。
