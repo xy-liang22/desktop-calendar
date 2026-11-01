@@ -30,6 +30,8 @@ internal static class RevisionChecks
         public string LayerError { get; set; } = "";
         public MainWindow.VisiblePlacement[] StartupVisible { get; set; } = Array.Empty<MainWindow.VisiblePlacement>();
         public bool VisibleBeforePrepared { get; set; }
+        public double DayHourHeight { get; set; }
+        public double WeekHourHeight { get; set; }
         internal Rect Bounds => new(X, Y, Width, Height);
     }
     internal static async Task ObserveRestart(MainWindow window)
@@ -43,7 +45,8 @@ internal static class RevisionChecks
             Collapsed = window.Mode == DisplayMode.Compact, Pinned = window.DesktopMode.NativeTopmost,
             Ready = window.Ready, Visible = window.IsVisible,
             DesktopOwner = window.DesktopMode.Layer == WindowLayer.Desktop && window.DesktopMode.Owner != IntPtr.Zero,
-            StartupVisible = window.StartupVisible.ToArray(), VisibleBeforePrepared = window.VisibleBeforePrepared, LayerError = window.DesktopMode.Error };
+            StartupVisible = window.StartupVisible.ToArray(), VisibleBeforePrepared = window.VisibleBeforePrepared, LayerError = window.DesktopMode.Error,
+            DayHourHeight = window.DailyTimeline.HourHeight, WeekHourHeight = window.WeeklyTimeline.HourHeight };
         File.WriteAllText(Path.Combine(RestartDirectory, "observed.json"), JsonSerializer.Serialize(report));
         window.Session.Exit(0);
     }
@@ -178,7 +181,7 @@ internal static class RevisionChecks
             foreach (bool pinned in new[] { false, true })
             {
                 var folded = placement with { Width = 400 * window.Scale, Height = 320 * window.Scale, X = area.X + 150, Y = area.Y + 160 };
-                var p = saved with { Pinned = pinned, Collapsed = collapsed, FullPlacement = placement, CompactPlacement = folded };
+                var p = saved with { Pinned = pinned, Collapsed = collapsed, FullPlacement = placement, CompactPlacement = folded, DayHourHeight = 64, WeekHourHeight = 93 };
                 store.Save(p);
                 string report = Path.Combine(RestartDirectory, "observed.json");
                 if (File.Exists(report)) File.Delete(report);
@@ -193,6 +196,8 @@ internal static class RevisionChecks
                     actual != null && !actual.VisibleBeforePrepared && actual.StartupVisible.Length > 0 && actual.StartupVisible.All(s => Near(s.Bounds, expected) && s.Mode == (collapsed ? DisplayMode.Compact : DisplayMode.Normal)));
                 if (actual != null) File.WriteAllText(Path.Combine(RestartDirectory, "startup-" + screen.DeviceName.Replace("\\", "").Replace(".", "") + "-" + collapsed + "-" + pinned + ".json"), JsonSerializer.Serialize(actual));
                 var again = store.Load();
+                check("real restart restores independent time scales " + screen.DeviceName + "/fold=" + collapsed + "/pin=" + pinned,
+                    actual is { DayHourHeight:64, WeekHourHeight:93 } && again.DayHourHeight == 64 && again.WeekHourHeight == 93);
                 check("shutdown save preserves full and compact rectangles " + screen.DeviceName + "/fold=" + collapsed + "/pin=" + pinned,
                     again.Collapsed == collapsed && again.Pinned == pinned && again.FullPlacement != null && again.CompactPlacement != null);
             }

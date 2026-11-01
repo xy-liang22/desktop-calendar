@@ -43,7 +43,7 @@ internal static class PrototypeViews
         ResizeBehavior = GridResizeBehavior.PreviousAndNext, ShowsPreview = false,
         ToolTip = T("SplitTip"), Focusable = true
     };
-    internal static Grid Month()
+    internal static Grid Month(TimelineView? timeline = null)
     {
         var root = new Grid();
         root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(5.2, GridUnitType.Star), MinWidth = 340 });
@@ -57,7 +57,7 @@ internal static class PrototypeViews
         var weekdays = new UniformGrid { Columns = 7 };
         foreach (string day in DemoContent.Weekdays) { var label = Label(day, 11, "#A2AFBC"); label.HorizontalAlignment = HorizontalAlignment.Center; weekdays.Children.Add(label); }
         Add(calendar, weekdays, 1);
-        var days = new UniformGrid { Columns = 7, Rows = 5 };
+        var days = CalendarDays(2026, 10);
         var todo = Rows(GridLength.Auto, Star, GridLength.Auto);
         var selectedDate = Label(string.Format(CultureInfo.InvariantCulture, T("SelectedDate"), 10, 29), 11, "#A3D9C4");
         var todoHeading = Heading(T("TodoTitle"), T("PlanCaption"), 18);
@@ -67,37 +67,11 @@ internal static class PrototypeViews
         var disclaimer = Label(T("ReadOnly"), 11, "#A2AFBC"); disclaimer.TextWrapping = TextWrapping.Wrap; disclaimer.Margin = new Thickness(0, 15, 0, 4); Add(todo, disclaimer, 2);
         var actual = Rows(GridLength.Auto, Star);
         Add(actual, Heading(T("ActivityTitle"), T("ActualCaption"), 18));
-        var daily = Timeline(false, 3); Add(actual, daily, 1);
+        Add(actual, timeline ?? new TimelineView(false, 3), 1);
         Button? selected = null;
-        for (int i = 0; i < 35; i++)
+        foreach (Button button in days.Children)
         {
-            var date = new DateTime(2026, 9, 28).AddDays(i);
-            bool currentMonth = date.Month == 10;
-            var content = new StackPanel { Margin = new Thickness(6, 4, 4, 2) };
-            var number = Label(date.Day.ToString(CultureInfo.InvariantCulture), 14, currentMonth ? "#EDF2F5" : "#6E7C89");
-            number.FontWeight = currentMonth && date.Day == 29 ? FontWeights.Bold : FontWeights.Normal;
-            var dateHeader = new Grid(); dateHeader.ColumnDefinitions.Add(new ColumnDefinition { Width = Star }); dateHeader.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            Add(dateHeader, number);
-            bool hasTasks = currentMonth && i % 3 != 0;
-            var smallCount = Label(hasTasks ? (i % 5 == 0 ? "+3" : "+1") : "", 9, "#A3D9C4");
-            smallCount.Visibility = Visibility.Collapsed; Add(dateHeader, smallCount, 0, 1);
-            content.Children.Add(dateHeader);
-            var taskPreview = new StackPanel();
-            if (currentMonth && i % 3 != 0)
-            {
-                var item = Label(DemoContent.CalendarTasks[i % 7], 10, DemoContent.Colors[i % 3]);
-                item.Margin = new Thickness(0, 9, 0, 0); taskPreview.Children.Add(item);
-                if (i % 5 == 0) { var more = Label("+2", 10, "#A2AFBC"); more.Margin = new Thickness(0, 4, 0, 0); taskPreview.Children.Add(more); }
-            }
-            content.Children.Add(taskPreview);
-            var button = new Button { Content = content, ClipToBounds = true, Padding = new Thickness(0), Margin = new Thickness(2), HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Top, Background = Brush(i % 7 >= 5 ? "#162A3D48" : "#0BFFFFFF"), ToolTip = T("CalendarLabel") + " · " + date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) + (hasTasks ? "\n" + DemoContent.CalendarTasks[i % 7] : "") };
-            button.SizeChanged += (_, _) =>
-            {
-                bool tight = button.ActualHeight < 72;
-                taskPreview.Visibility = tight ? Visibility.Collapsed : Visibility.Visible;
-                smallCount.Visibility = tight && hasTasks ? Visibility.Visible : Visibility.Collapsed;
-            };
-            // Date selection is a local visual preview only, with the same static fixture week.
+            var date = (DateTime)button.Tag;
             button.Click += (_, _) =>
             {
                 if (selected != null) selected.Background = Brush("#0BFFFFFF");
@@ -105,7 +79,6 @@ internal static class PrototypeViews
                 selectedDate.Text = string.Format(CultureInfo.InvariantCulture, T("SelectedDate"), date.Month, date.Day);
             };
             if (date.Month == 10 && date.Day == 29) { selected = button; button.Background = Brush("#48608275"); }
-            days.Children.Add(button);
         }
         Add(calendar, days, 2);
         var ribbon = new StackPanel { Margin = new Thickness(8, 13, 8, 4) };
@@ -121,7 +94,7 @@ internal static class PrototypeViews
         ItemsSource = DemoTodo.View(DemoContent.Todos),
         ItemTemplate = (DataTemplate)Application.Current.FindResource("FullTodoTemplate")
     };
-    internal static Grid Week()
+    internal static Grid Week(TimelineView? timeline = null)
     {
         var root = new Grid();
         root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(4, GridUnitType.Star), MinWidth = 570 });
@@ -136,7 +109,7 @@ internal static class PrototypeViews
             var text = Label(DemoContent.Weekdays[i] + "  " + (i < 6 ? (26 + i).ToString(CultureInfo.InvariantCulture) : "1"), 11, i == 3 ? "#A3D9C4" : "#A2AFBC"); text.HorizontalAlignment = HorizontalAlignment.Center; Add(dayHeader, text, 0, i + 1);
         }
         dayHeader.Margin = new Thickness(0, 0, 10, 0);
-        Add(week, dayHeader, 1); Add(week, Timeline(true, 0), 2);
+        Add(week, dayHeader, 1); Add(week, timeline ?? new TimelineView(true, 0), 2);
         var side = new StackPanel(); side.Children.Add(Heading(T("WeekPlan"), DemoContent.GoalProgress[0], 18));
         for (int i = 0; i < 3; i++)
         {
@@ -152,39 +125,23 @@ internal static class PrototypeViews
         Add(root, Panel(week)); Add(root, Splitter(), 0, 1); Add(root, Panel(new ScrollViewer { Content = side }), 0, 2);
         return root;
     }
-    internal static ScrollViewer Timeline(bool week, int day)
+    internal static UniformGrid CalendarDays(int year, int month)
     {
-        const double hour = 50;
-        var grid = new Grid { Height = 24 * hour, ClipToBounds = true };
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(40) });
-        for (int i = 0; i < (week ? 7 : 1); i++) grid.ColumnDefinitions.Add(new ColumnDefinition { Width = Star });
-        var labels = new Canvas();
-        for (int h = 0; h < 24; h++)
+        var first = new DateTime(year, month, 1);
+        int offset = ((int)first.DayOfWeek + 6) % 7;
+        int rows = (offset + DateTime.DaysInMonth(year, month) + 6) / 7;
+        var days = new UniformGrid { Columns = 7, Rows = rows };
+        for (int i = 0; i < rows * 7; i++)
         {
-            var label = Label(h.ToString("00", CultureInfo.InvariantCulture) + ":00", 9, "#8FA0AE"); Canvas.SetTop(label, h * hour); labels.Children.Add(label);
-            var line = new Border { Height = 1, Background = Brush("#16FFFFFF"), VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(40, h * hour + 7, 0, 0) }; Grid.SetColumnSpan(line, week ? 8 : 2); grid.Children.Add(line);
+            var date = first.AddDays(i - offset); bool current = date.Month == month;
+            var tasks = current ? DemoContent.CalendarTodos(date.Day) : Array.Empty<DemoTodo>();
+            var cell = new CalendarPreviewCell(date, tasks, current);
+            var button = new Button { Content = cell, Tag = date, ClipToBounds = true, Padding = new Thickness(0), Margin = new Thickness(2),
+                HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Stretch,
+                Background = Brush(i % 7 >= 5 ? "#162A3D48" : "#0BFFFFFF"),
+                ToolTip = T("CalendarLabel") + " · " + date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) + "\n" + string.Join("\n", tasks.Select(t => t.Title)) };
+            days.Children.Add(button);
         }
-        Add(grid, labels);
-        foreach (var block in DemoContent.Blocks.Where(b => week || b.Day == day))
-        {
-            var text = new StackPanel { ClipToBounds = true };
-            var title = Label(block.Title, week ? 11 : 12, DemoContent.Colors[block.Color]); title.FontWeight = FontWeights.SemiBold; text.Children.Add(title);
-            string start = TimeSpan.FromHours(block.Start).ToString(@"hh\:mm", CultureInfo.InvariantCulture);
-            string end = TimeSpan.FromHours(block.End).ToString(@"hh\:mm", CultureInfo.InvariantCulture);
-            var time = Label(start + "–" + end, 9, "#C3CDD5"); time.Margin = new Thickness(0, 5, 0, 0); text.Children.Add(time);
-            if (!week) { var note = Label(block.Note, 10, "#ABBCC5"); note.Margin = new Thickness(0, 8, 0, 0); text.Children.Add(note); }
-            var card = new Border
-            {
-                Background = Brush(block.Color == 0 ? "#D1344D49" : block.Color == 1 ? "#D144405C" : "#D14F473C"),
-                BorderBrush = Brush(DemoContent.Colors[block.Color]), BorderThickness = new Thickness(2, 0, 0, 0), CornerRadius = new CornerRadius(5),
-                Padding = new Thickness(week ? 5 : 9, 7, 4, 4), Child = text, VerticalAlignment = VerticalAlignment.Top,
-                Height = (block.End - block.Start) * hour - 3, Margin = new Thickness(3, block.Start * hour, 3, 0),
-                ToolTip = block.Title + "\n" + start + "–" + end + "\n" + block.Note + "\n" + T("TimelineTip")
-            };
-            Add(grid, card, 0, week ? block.Day + 1 : 1);
-        }
-        var scroll = new ScrollViewer { Content = grid, VerticalScrollBarVisibility = ScrollBarVisibility.Visible };
-        scroll.Loaded += (_, _) => scroll.ScrollToVerticalOffset(6 * hour);
-        return scroll;
+        return days;
     }
 }

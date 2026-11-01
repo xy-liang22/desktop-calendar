@@ -10,6 +10,9 @@ internal static class DemoContent
 {
     internal static readonly string[] Weekdays = { "周一", "周二", "周三", "周四", "周五", "周六", "周日" };
     internal static readonly string[] CalendarTasks = { "阅读与摘录", "整理设计思路", "散步 30 分钟", "完成方案初稿", "每周回顾", "准备晚餐", "留给自己的时间" };
+    internal static DemoTodo[] CalendarTodos(int day) => Enumerable.Range(0, new[] { 0, 1, 3, 10 }[day % 4])
+        .Select(i => new DemoTodo("calendar-demo-" + day + "-" + i, CalendarTasks[(day + i) % CalendarTasks.Length], i, i % 3 == 2))
+        .OrderBy(t => t.Completed).ThenBy(t => t.OriginalOrder).ToArray();
     internal static readonly string[] TodoNames = { "完成桌面日历视觉方案", "梳理本周阅读笔记", "出门散步，放松一下", "整理工作区" };
     internal static readonly string[] TodoMeta = { "工作 · 重要", "学习", "生活", "生活" };
     internal static readonly DemoTodo[] Todos = TodoNames.Select((title, i) => new DemoTodo("demo-todo-" + i, title, i, i == 3,
@@ -31,7 +34,7 @@ internal static class DemoContent
         new(0,9,11,"专注工作","梳理本周方向",0), new(0,13,14,"阅读","摘录与思考",1), new(0,17,18,"散步","公园里的傍晚",2),
         new(1,8,9,"晨间阅读","给自己一点安静",1), new(1,10,12,"方案整理","信息与结构",0), new(1,15,17,"设计探索","尝试新的排版",0),
         new(2,9,11.5,"专注工作","打磨细节",0), new(2,12,13,"午餐与休息","放慢节奏",2), new(2,15,16.5,"学习笔记","整理阅读收获",1),
-        new(3,8,9,"晨间阅读","读完一个小章节",1), new(3,9.5,12,"视觉方案","月历布局与细节",0), new(3,12,13,"午餐与休息","好好吃饭",2), new(3,14,16,"原型打磨","让交互自然一点",0), new(3,17,18,"户外散步","今天的晚霞很好看",2),
+        new(3,8,9,"晨间阅读","读完一个小章节",1), new(3,9.5,12,"视觉方案","月历布局与细节",0), new(3,9.75,10.25,"讨论 · 重叠示例","与视觉方案同时发生",2), new(3,12,13,"午餐与休息","好好吃饭",2), new(3,14,16,"原型打磨","让交互自然一点",0), new(3,14.5,14.75,"短休息 · 示例","15 分钟",1), new(3,17,18,"户外散步","今天的晚霞很好看",2),
         new(4,9,11,"方案收尾","整理与检查",0), new(4,14,15.5,"一周回顾","记录这一周",1),
         new(5,10,12,"自由阅读","一本喜欢的书",1), new(5,15,17,"城市漫步","探索熟悉的街道",2),
         new(6,9,10.5,"整理房间","清爽的新开始",2), new(6,16,17.5,"下周计划","留出弹性",0)

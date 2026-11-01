@@ -34,4 +34,5 @@
  <s:String x:Key="HandleTip">悬停展开 · 点击或 Enter / Space 保持展开</s:String>
  <s:String x:Key="CalendarLabel">月历 · 演示日期</s:String><s:String x:Key="SplitTip">拖动调整栏宽</s:String>
  <s:String x:Key="TimelineTip">示例时间块 · P1 不支持日程编辑</s:String>
+ <s:String x:Key="TimelineZoomTip">滚轮滚动 · Ctrl + 滚轮缩放时间轴</s:String>
 </ResourceDictionary>

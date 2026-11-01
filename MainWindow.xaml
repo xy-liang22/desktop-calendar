@@ -52,7 +52,13 @@
     <Button x:Name="RestoreFullButton" Content="{DynamicResource RestoreFull}" Click="RestoreClick"/>
    </StackPanel>
   </Grid>
-  <Button x:Name="RestoreButton" Visibility="Collapsed" Content="{DynamicResource Compact}" Background="Transparent" FontSize="15" FontWeight="SemiBold" Click="RestoreClick" ToolTip="{DynamicResource CompactTip}"/>
+  <Button x:Name="RestoreButton" Visibility="Collapsed" Click="RestoreClick" ToolTip="{DynamicResource HandleTip}" AutomationProperties.Name="{DynamicResource HandleTip}">
+   <Button.Template><ControlTemplate TargetType="Button"><Grid Background="#01000000">
+    <Border x:Name="EdgeMark" Width="9" Height="48" CornerRadius="4" Background="#B348646C" HorizontalAlignment="Left" VerticalAlignment="Center">
+     <Border Width="2" Height="18" Background="#A3D9C4" CornerRadius="1" HorizontalAlignment="Center"/>
+    </Border>
+   </Grid></ControlTemplate></Button.Template>
+  </Button>
   <Grid x:Name="ResizeHandles" IsHitTestVisible="True"/>
   <Border x:Name="SettingsPanel" Visibility="Collapsed" Background="#FF202E3B" BorderBrush="#526474" BorderThickness="1" CornerRadius="12" Padding="16" Width="290" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="12" MaxHeight="440">
    <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel>

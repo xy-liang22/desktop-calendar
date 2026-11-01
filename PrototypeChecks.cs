@@ -227,6 +227,7 @@ internal static class PrototypeChecks
             Check("invalid geometry cannot overwrite preferences", !new WindowPreferencesStore(prefsPath).Save(settings with { Width = double.NaN }));
             Check("no mock business data in preferences JSON", !JsonSerializer.Serialize(settings).Contains(DemoContent.TodoNames[0]));
             await RevisionChecks.Run(window, Check);
+            await StageFiveChecks.Run(window, Check, output);
             window.SetPage(true); window.EnterCompact();
             var session = window.Session;
             var previous = window;
@@ -238,7 +239,7 @@ internal static class PrototypeChecks
             session.Locate(); window.RestoreNormal();
             Check("recreated component can explicitly return to desktop", window.DesktopMode.Layer == WindowLayer.Desktop && window.FullContent.Visibility == Visibility.Visible);
             Check("no third-party assembly references", typeof(MainWindow).Assembly.GetReferencedAssemblies().All(a => a.Name!.StartsWith("System") || a.Name.StartsWith("Microsoft") || a.Name is "PresentationCore" or "PresentationFramework" or "WindowsBase"));
-            results.Add("NOT VERIFIED by executable checks: actual startup pixel frames, smooth pointer resize/edge-hover pixels, Windows 10, mixed DPI, Explorer restart, suspend/resume. Native first-visible history is geometry evidence, not a video. Existing human Win+D/task switching acceptance remains recorded separately. P1.1-5 row/zoom NOT implemented.");
+            results.Add("NOT VERIFIED by executable checks: real Ctrl wheel input, calendar/timeline/edge on-screen hover pixels, Windows 10, mixed DPI, Explorer restart, suspend/resume. Off-screen WPF render is not on-screen evidence. P1.1-4 manual acceptance recorded separately; occasional minor resize jitter accepted.");
         }
         catch (Exception ex) { failed++; results.Add("FAIL unhandled check: " + ex); }
         results.Add("Failures: " + failed);

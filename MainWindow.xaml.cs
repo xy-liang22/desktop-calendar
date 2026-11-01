@@ -33,6 +33,8 @@ public partial class MainWindow : Window
     private DateTime suppressEdgeUntil;
     private bool exiting, dragging;
     private Grid monthPage = null!, weekPage = null!;
+    internal TimelineView DailyTimeline { get; }
+    internal TimelineView WeeklyTimeline { get; }
     private DockSide dockSide;
     private HwndSource? source;
     internal sealed record VisiblePlacement(long Milliseconds, Rect Bounds, DisplayMode Mode, string Stage);
@@ -55,8 +57,11 @@ public partial class MainWindow : Window
         compactPlacement = preferences.CompactPlacement;
         InitializeComponent();
         GuiNextMonitorButton.Visibility = session.VisualChecks ? Visibility.Visible : Visibility.Collapsed;
-        monthPage = PrototypeViews.Month();
-        weekPage = PrototypeViews.Week();
+        DailyTimeline = new TimelineView(false, 3, preferences.DayHourHeight);
+        WeeklyTimeline = new TimelineView(true, 0, preferences.WeekHourHeight);
+        DailyTimeline.ScaleChanged += Remember; WeeklyTimeline.ScaleChanged += Remember;
+        monthPage = PrototypeViews.Month(DailyTimeline);
+        weekPage = PrototypeViews.Week(WeeklyTimeline);
         PageHost.Children.Add(monthPage);
         PageHost.Children.Add(weekPage);
         SetPage(preferences.Week);
@@ -165,7 +170,8 @@ public partial class MainWindow : Window
         if (!changingView) CapturePlacement();
         var p = Session.Preferences with { Collapsed = Mode == DisplayMode.Compact || Mode == DisplayMode.Tray && beforeTray == DisplayMode.Compact,
             Week = IsWeek, Pinned = PreferredPinned, EdgeAutoHide = EdgeToggle.IsChecked == true, BackgroundOpacity = OpacitySlider.Value,
-            FullPlacement = fullPlacement, CompactPlacement = compactPlacement };
+            FullPlacement = fullPlacement, CompactPlacement = compactPlacement,
+            DayHourHeight = DailyTimeline.HourHeight, WeekHourHeight = WeeklyTimeline.HourHeight };
         p.SetBounds(fullPlacement?.Bounds ?? SavedBounds);
         if (monthPage.IsVisible) p.MonthColumns = ColumnWidths(monthPage);
         if (weekPage.IsVisible) p.WeekColumns = ColumnWidths(weekPage);
@@ -332,6 +338,10 @@ public partial class MainWindow : Window
         RestoreButton.Content = dockSide == DockSide.Left ? "›" : "‹";
         Shell.CornerRadius = new CornerRadius(12);
         MinWidth = 20; MinHeight = 20;
+        Shell.Visibility = mode == DisplayMode.EdgeHandle ? Visibility.Collapsed : Visibility.Visible;
+        RestoreButton.ApplyTemplate();
+        if (RestoreButton.Template.FindName("EdgeMark", RestoreButton) is Border mark)
+            mark.HorizontalAlignment = dockSide == DockSide.Left ? HorizontalAlignment.Left : HorizontalAlignment.Right;
     }
     internal void EnterCompact()
     {
@@ -369,6 +379,7 @@ public partial class MainWindow : Window
         bool needsRestore = Mode != DisplayMode.Normal;
         CapturePlacement(); changingView = true;
         Mode = DisplayMode.Normal;
+        Shell.Visibility = Visibility.Visible;
         FullContent.Visibility = Visibility.Visible;
         ResizeHandles.Visibility = Visibility.Visible;
         RestoreButton.Visibility = Visibility.Collapsed;
