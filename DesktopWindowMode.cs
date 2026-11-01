@@ -26,6 +26,7 @@ internal sealed class DesktopWindowMode
 
     internal bool Apply(bool topmost)
     {
+        string step = "ResolveDesktop";
         try
         {
             IntPtr owner = IntPtr.Zero;
@@ -35,9 +36,13 @@ internal sealed class DesktopWindowMode
                 if (!IsWindow(owner) || Class(owner) != "Progman" || Pid(owner) == 0)
                     throw new InvalidOperationException("DesktopUnavailable");
             }
+            step = "DetachOwner";
             SetOwner(IntPtr.Zero); // Detach before changing TOPMOST to avoid owner propagation.
+            step = "ConfigureToolWindow";
             ConfigureToolWindow();
+            step = "SetTopmost";
             SetTopmost(topmost);
+            step = "AssignDesktopOwner";
             SetOwner(owner);
             desktopOwner = owner; desktopPid = Pid(owner);
             Layer = topmost ? WindowLayer.Topmost : WindowLayer.Desktop;
@@ -46,7 +51,8 @@ internal sealed class DesktopWindowMode
         }
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
         {
-            Fallback(ex.Message);
+            string code = ex is Win32Exception native ? "; win32=" + native.NativeErrorCode : "";
+            Fallback(step + code + "; " + ex.Message);
             return false;
         }
     }

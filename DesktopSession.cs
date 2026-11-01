@@ -49,14 +49,9 @@ internal sealed class DesktopSession : IDisposable
         var window = new MainWindow(this, settings);
         if (VisualChecks) window.Title = MainWindow.Text("GuiCheckTitle");
         Window = window; Application.Current.MainWindow = window;
-        window.ContentRendered += async (_, _) =>
+        window.ContentRendered += (_, _) =>
         {
-            if (window.DesktopMode == null || window.LayerInitialized) return;
-            window.LayerInitialized = true;
-            if (fallback) window.DesktopMode.Fallback();
-            else window.DesktopMode.Apply(settings.Pinned);
-            await window.RestoreStartup(settings);
-            window.RefreshLayerStatus(); Changed();
+            window.FinishStartup(); Changed();
         };
         window.Closed += (_, _) =>
         {
@@ -64,6 +59,7 @@ internal sealed class DesktopSession : IDisposable
             // A single recovery after owned HWND loss. No Explorer operation or reattach loop.
             if (!recovered) { recovered = true; Application.Current.Dispatcher.BeginInvoke(() => CreateWindow(true)); }
         };
+        window.PrepareStartup(settings, fallback);
         window.Show();
     }
     internal void Changed()

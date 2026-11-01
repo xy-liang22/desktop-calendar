@@ -40,6 +40,7 @@ internal static class PrototypeChecks
             await Task.Delay(200);
             results.Add("P1 checks · " + DateTimeOffset.Now.ToString("O"));
             results.Add("Actual DPI: " + NativeWindow.GetDpiForWindow(window.Handle));
+            results.Add("Desktop layer=" + window.DesktopMode.Layer + "; error=" + window.DesktopMode.Error);
             foreach (var screen in System.Windows.Forms.Screen.AllScreens)
                 results.Add($"Monitor: {screen.Bounds}; work area: {screen.WorkingArea}");
             var start = new Rect(100, 100, 1000, 700);
@@ -137,16 +138,14 @@ internal static class PrototypeChecks
             Check("simulated owner loss enters explicit fallback", !window.DesktopMode.CheckOwner(true) && window.DesktopMode.Layer == WindowLayer.Fallback && !window.DesktopMode.NativeTopmost && window.DesktopMode.Owner == IntPtr.Zero);
             window.Session.Locate();
             Check("explicit locate retries desktop without changing view", window.DesktopMode.Layer == WindowLayer.Desktop && Near(NativeWindow.Bounds(window.Handle), before));
-            int gripIndex = 0;
             foreach (string edge in new[] { "N", "S", "W", "E", "NW", "NE", "SW", "SE" })
             {
-                var grip = (Thumb)window.ResizeHandles.Children[gripIndex++];
-                grip.RaiseEvent(new DragStartedEventArgs(0, 0) { RoutedEvent = Thumb.DragStartedEvent });
-                grip.RaiseEvent(new DragDeltaEventArgs(12, 8) { RoutedEvent = Thumb.DragDeltaEvent });
-                grip.RaiseEvent(new DragCompletedEventArgs(12, 8, false) { RoutedEvent = Thumb.DragCompletedEvent });
+                window.BeginPointerGesture(edge, new Point(100, 100));
+                window.UpdatePointerGesture(new Point(100 + 12 * window.Scale, 100 + 8 * window.Scale));
+                window.FinishPointerGesture();
                 await Task.Delay(30);
                 var expected = WindowGeometry.Resize(before, new Vector(12 * window.Scale, 8 * window.Scale), edge, window.MinWidth * window.Scale, window.MinHeight * window.Scale);
-                Check("routed drag changes HWND " + edge, Near(NativeWindow.Bounds(window.Handle), expected));
+                Check("absolute-pointer resize changes HWND " + edge, Near(NativeWindow.Bounds(window.Handle), expected));
                 NativeWindow.Place(window.Handle, before); window.UpdateLayout();
             }
             foreach (var side in new[] { DockSide.Left, DockSide.Right })
@@ -239,7 +238,7 @@ internal static class PrototypeChecks
             session.Locate(); window.RestoreNormal();
             Check("recreated component can explicitly return to desktop", window.DesktopMode.Layer == WindowLayer.Desktop && window.FullContent.Visibility == Visibility.Visible);
             Check("no third-party assembly references", typeof(MainWindow).Assembly.GetReferencedAssemblies().All(a => a.Name!.StartsWith("System") || a.Name.StartsWith("Microsoft") || a.Name is "PresentationCore" or "PresentationFramework" or "WindowsBase"));
-            results.Add("MANUAL: integrated Win+D, actual taskbar/AltTab, real owner-mode input/coverage/flicker and tray menu pixels; Windows 10, mixed DPI, Explorer restart, suspend/resume pending. P1.1-4 jitter/Snap and P1.1-5 row/zoom fixes NOT implemented. Raster scaling is not an OS DPI test.");
+            results.Add("NOT VERIFIED by executable checks: actual startup pixel frames, smooth pointer resize/edge-hover pixels, Windows 10, mixed DPI, Explorer restart, suspend/resume. Native first-visible history is geometry evidence, not a video. Existing human Win+D/task switching acceptance remains recorded separately. P1.1-5 row/zoom NOT implemented.");
         }
         catch (Exception ex) { failed++; results.Add("FAIL unhandled check: " + ex); }
         results.Add("Failures: " + failed);

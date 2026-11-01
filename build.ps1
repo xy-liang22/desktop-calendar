@@ -1,4 +1,4 @@
-param([switch]$Test)
+param([switch]$Test, [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]*$')][string]$Configuration = 'Release')
 $ErrorActionPreference = 'Stop'
 $env:DOTNET_CLI_TELEMETRY_OPTOUT = '1'
 $env:DOTNET_GENERATE_ASPNET_CERTIFICATE = 'false'
@@ -9,16 +9,16 @@ $dotnetExe = Join-Path $env:ProgramFiles 'dotnet\dotnet.exe'
 $project = Join-Path $PSScriptRoot 'DesktopCalendar.csproj'
 & $dotnetExe restore $project --configfile (Join-Path $PSScriptRoot 'NuGet.Config') -p:NuGetAudit=false
 if ($LASTEXITCODE -ne 0) { throw 'Offline restore failed.' }
-& $dotnetExe build $project --no-restore -c Release
+& $dotnetExe build $project --no-restore -c $Configuration
 if ($LASTEXITCODE -ne 0) { throw 'Build failed.' }
 $shortcutShell = New-Object -ComObject WScript.Shell
 $shortcut = $shortcutShell.CreateShortcut((Join-Path $PSScriptRoot 'Desktop Calendar P1.lnk'))
-$shortcut.TargetPath = Join-Path $PSScriptRoot 'bin\Release\net10.0-windows\DesktopCalendar.exe'
+$shortcut.TargetPath = Join-Path $PSScriptRoot "bin\$Configuration\net10.0-windows\DesktopCalendar.exe"
 $shortcut.WorkingDirectory = $PSScriptRoot
 $shortcut.Description = 'Desktop Calendar P1'
 $shortcut.Save()
 if ($Test) {
-    $exePath = Join-Path $PSScriptRoot 'bin\Release\net10.0-windows\DesktopCalendar.exe'
+    $exePath = Join-Path $PSScriptRoot "bin\$Configuration\net10.0-windows\DesktopCalendar.exe"
     $startedAt = [DateTime]::UtcNow
     $testProcess = Start-Process -FilePath $exePath -ArgumentList '--self-test' -WindowStyle Hidden -PassThru -Wait
     $report = Join-Path $PSScriptRoot 'artifacts\p1-checks.txt'

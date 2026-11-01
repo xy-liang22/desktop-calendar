@@ -46,10 +46,6 @@ internal sealed class DemoTodo : INotifyPropertyChanged
     public int OriginalOrder { get; }
     public TimeSpan? PlannedTime { get; }
     public double TimeSortKey => PlannedTime?.TotalMinutes ?? double.MaxValue;
-    static long completionSequence;
-    long completionOrder;
-    public double ActiveTimeSortKey => Completed ? 0 : TimeSortKey;
-    public long DisplayOrder => Completed ? completionOrder : OriginalOrder;
     public string TimePrefix => PlannedTime?.ToString(@"hh\:mm", System.Globalization.CultureInfo.InvariantCulture) is string time ? time + " " : "";
     public string Meta { get; }
     DemoTodo[] children = Array.Empty<DemoTodo>();
@@ -78,22 +74,19 @@ internal sealed class DemoTodo : INotifyPropertyChanged
         set
         {
             if (completed == value) return;
-            if (value) completionOrder = ++completionSequence;
             completed = value;
-            foreach (string property in new[] { nameof(Completed), nameof(ActiveTimeSortKey), nameof(DisplayOrder) }) PropertyChanged?.Invoke(this, new(property));
+            PropertyChanged?.Invoke(this, new(nameof(Completed)));
         }
     }
     internal DemoTodo(string id, string title, int order, bool completed = false, TimeSpan? plannedTime = null, string meta = "")
-    { Id = id; Title = title; OriginalOrder = order; this.completed = completed; completionOrder = completed ? ++completionSequence : 0; PlannedTime = plannedTime; Meta = meta; }
+    { Id = id; Title = title; OriginalOrder = order; this.completed = completed; PlannedTime = plannedTime; Meta = meta; }
     internal static ICollectionView View(DemoTodo[] siblings, bool byTime = false)
     {
         var source = new CollectionViewSource { Source = siblings, IsLiveSortingRequested = true };
         source.SortDescriptions.Add(new SortDescription(nameof(Completed), ListSortDirection.Ascending));
-        if (byTime) source.SortDescriptions.Add(new SortDescription(nameof(ActiveTimeSortKey), ListSortDirection.Ascending));
-        source.SortDescriptions.Add(new SortDescription(nameof(DisplayOrder), ListSortDirection.Ascending));
+        if (byTime) source.SortDescriptions.Add(new SortDescription(nameof(TimeSortKey), ListSortDirection.Ascending));
+        source.SortDescriptions.Add(new SortDescription(nameof(OriginalOrder), ListSortDirection.Ascending));
         source.LiveSortingProperties.Add(nameof(Completed));
-        source.LiveSortingProperties.Add(nameof(DisplayOrder));
-        source.LiveSortingProperties.Add(nameof(ActiveTimeSortKey));
         return source.View;
     }
     public event PropertyChangedEventHandler? PropertyChanged;

@@ -8,7 +8,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
 using System.Linq;
-using System.Threading.Tasks;
+using System.Collections.Generic;
 using Forms = System.Windows.Forms;
 
 namespace DesktopCalendar;
@@ -35,6 +35,16 @@ public partial class MainWindow : Window
     private Grid monthPage = null!, weekPage = null!;
     private DockSide dockSide;
     private HwndSource? source;
+    internal sealed record VisiblePlacement(long Milliseconds, Rect Bounds, DisplayMode Mode, string Stage);
+    internal readonly List<VisiblePlacement> StartupVisible = new();
+    internal bool VisibleBeforePrepared { get; private set; }
+    readonly System.Diagnostics.Stopwatch startupClock = System.Diagnostics.Stopwatch.StartNew();
+    bool startupPrepared;
+    Rect gestureStart;
+    Point gesturePointer;
+    double gestureMinWidth, gestureMinHeight;
+    string? gestureEdge;
+    FrameworkElement? movingTitle;
 
     internal static string Text(string key) => (string)Application.Current.FindResource(key);
     internal MainWindow(DesktopSession session, WindowPreferences preferences)
@@ -58,6 +68,9 @@ public partial class MainWindow : Window
         RestoreColumns(monthPage, preferences.MonthColumns);
         RestoreColumns(weekPage, preferences.WeekColumns);
         BuildResizeHandles();
+        PreviewMouseMove += MoveTitle;
+        PreviewMouseLeftButtonUp += EndTitle;
+        LostMouseCapture += (_, _) => { if (movingTitle != null) FinishPointerGesture(); };
         SourceInitialized += (_, _) =>
         {
             Handle = new WindowInteropHelper(this).Handle;
@@ -72,35 +85,55 @@ public partial class MainWindow : Window
         LocationChanged += (_, _) => Remember();
         SizeChanged += (_, _) => Remember();
         edgeTimer.Tick += (_, _) => EvaluateEdge();
-        RestoreButton.MouseEnter += (_, _) => { if (Mode == DisplayMode.EdgeHandle) RestoreNormal(); };
+        RestoreButton.MouseEnter += (_, _) => { if (Mode == DisplayMode.EdgeHandle) RestoreNormal(false); };
         Closing += OnClosing;
         Closed += (_, _) => { Ready = false; edgeTimer.Stop(); source?.RemoveHook(WindowMessage); };
         Surface.SizeChanged += (_, _) => Surface.Clip = new RectangleGeometry(new Rect(0, 0, Surface.ActualWidth, Surface.ActualHeight), Mode == DisplayMode.Normal ? 18 : 12, Mode == DisplayMode.Normal ? 18 : 12);
     }
-    internal async Task RestoreStartup(WindowPreferences preferences)
+    internal void PrepareStartup(WindowPreferences preferences, bool fallback)
     {
-        // ContentRendered and owner initialization must finish before taking any snapshots.
-        // WPF can apply its initial placement / WM_DPICHANGED after Loaded.
+        // Create a hidden HWND at its real destination, not an off-screen parking position.
+        // Manual startup lets WPF retain the native geometry before its first Show.
+        new WindowInteropHelper(this).EnsureHandle();
         if (fullPlacement != null) ApplyPlacement(fullPlacement, false);
-        else FitToScreen();
-        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ContextIdle);
-        if (fullPlacement != null) ApplyPlacement(fullPlacement, false);
+        else
+        {
+            var work = NativeWindow.WorkArea(Handle);
+            NativeWindow.Place(Handle, WindowGeometry.Clamp(new Rect(work.X + (work.Width - 1240 * Scale) / 2,
+                work.Y + (work.Height - 760 * Scale) / 2, 1240 * Scale, 760 * Scale), work));
+        }
         fullPlacement = WindowPlacement.Capture(Handle); SavedBounds = fullPlacement.Bounds;
         if (preferences.Collapsed)
         {
-            EnterCompact();
-            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ContextIdle);
-            ApplyPlacement(compactPlacement!, true);
+            SmallMode(DisplayMode.Compact);
+            CompactContent.Visibility = Visibility.Visible; ResizeHandles.Visibility = Visibility.Visible;
+            if (compactPlacement != null) ApplyPlacement(compactPlacement, true);
+            else
+            {
+                MinWidth = 320; MinHeight = 240;
+                NativeWindow.Place(Handle, WindowGeometry.Compact(NativeWindow.WorkArea(Handle), Scale));
+            }
             compactPlacement = WindowPlacement.Capture(Handle);
         }
+        if (fallback) DesktopMode.Fallback(); else DesktopMode.Apply(preferences.Pinned);
+        LayerInitialized = true;
+        RefreshLayerStatus();
+        startupPrepared = true;
+    }
+    internal void FinishStartup()
+    {
+        if (Ready) return;
         Ready = true;
+        TraceVisible("ContentRendered");
     }
     void ApplyPlacement(WindowPlacement placement, bool compact)
     {
         var screen = placement.Target(); var area = screen.WorkingArea;
         var work = new Rect(area.X, area.Y, area.Width, area.Height);
         // Move onto the target monitor first so GetDpiForWindow reflects that monitor.
-        NativeWindow.Place(Handle, WindowGeometry.Clamp(new Rect(work.X + 24, work.Y + 24, placement.Width, placement.Height), work));
+        // A first estimate already uses the saved relative destination. A hidden startup
+        // HWND may need a second DPI calculation, never a visible default-center frame.
+        NativeWindow.Place(Handle, placement.Resolve(work, NativeWindow.GetDpiForWindow(Handle), screen.DeviceName == placement.Display, compact));
         double dpi = NativeWindow.GetDpiForWindow(Handle);
         MinWidth = Math.Min(compact ? 320 : 880, work.Width * 96 / dpi);
         MinHeight = Math.Min(compact ? 240 : 520, work.Height * 96 / dpi);
@@ -145,6 +178,7 @@ public partial class MainWindow : Window
     }
     private IntPtr WindowMessage(IntPtr hwnd, int msg, IntPtr w, IntPtr l, ref bool handled)
     {
+        if (msg == 0x0047 || msg == 0x000F) TraceVisible(msg == 0x0047 ? "WINDOWPOSCHANGED" : "PAINT");
         // Our eight WPF grips own resizing. Do not let the invisible native frame
         // consume pointer input before Thumb can capture it on layered windows.
         if (msg == 0x0084) { handled = true; return new IntPtr(1); }
@@ -154,18 +188,28 @@ public partial class MainWindow : Window
         if (msg == 0x02E0 || msg == 0x007E)
             Dispatcher.BeginInvoke(() =>
             {
-                if (!Ready || changingView) return;
+                if (!Ready || changingView || dragging) return;
                 if (Mode == DisplayMode.Compact)
                 {
                     var work = NativeWindow.WorkArea(Handle);
                     MinWidth = Math.Min(320, work.Width / Scale); MinHeight = Math.Min(240, work.Height / Scale);
                     NativeWindow.Place(Handle, WindowGeometry.Clamp(NativeWindow.Bounds(Handle), work));
                 }
-                else if (Mode == DisplayMode.EdgeHandle) RestoreNormal();
+                else if (Mode == DisplayMode.EdgeHandle) RestoreNormal(false);
                 else if (Mode == DisplayMode.Normal) FitToScreen();
                 Remember();
             });
         return IntPtr.Zero;
+    }
+    void TraceVisible(string stage)
+    {
+        // Bounded native visibility history, not off-screen rendering or a visibility claim.
+        if (startupClock.ElapsedMilliseconds > 5000 || StartupVisible.Count >= 256) return;
+        if ((NativeWindow.GetWindowLong(Handle, -16) & 0x10000000) != 0)
+        {
+            if (!startupPrepared) VisibleBeforePrepared = true;
+            StartupVisible.Add(new(startupClock.ElapsedMilliseconds, NativeWindow.Bounds(Handle), Mode, stage));
+        }
     }
     internal void FitToScreen()
     {
@@ -188,10 +232,53 @@ public partial class MainWindow : Window
     private void ShowWeek(object sender, RoutedEventArgs e) => SetPage(true);
     private void DragWindow(object sender, MouseButtonEventArgs e)
     {
-        if (Mode is not (DisplayMode.Normal or DisplayMode.Compact) || e.ChangedButton != MouseButton.Left || e.OriginalSource is ButtonBase) return;
-        dragging = true;
-        try { DragMove(); } catch (InvalidOperationException) { /* Mouse released before native move starts. */ }
-        finally { dragging = false; suppressEdgeUntil = DateTime.UtcNow.AddSeconds(1); Remember(); }
+        if (Mode is not (DisplayMode.Normal or DisplayMode.Compact) || e.ChangedButton != MouseButton.Left) return;
+        for (DependencyObject? item = e.OriginalSource as DependencyObject; item != null && item != sender;
+            item = item is Visual ? VisualTreeHelper.GetParent(item) : LogicalTreeHelper.GetParent(item))
+            if (item is ButtonBase or TextBoxBase) return;
+        // A client-area pointer gesture avoids invoking the system caption/Snap loop.
+        // Coordinates are absolute physical pixels, independent of the moving visual.
+        movingTitle = (FrameworkElement)sender;
+        BeginPointerGesture(null, NativeWindow.Cursor());
+        movingTitle.CaptureMouse(); e.Handled = true;
+    }
+    void MoveTitle(object sender, MouseEventArgs e)
+    {
+        if (movingTitle == null || e.LeftButton != MouseButtonState.Pressed) return;
+        UpdatePointerGesture(NativeWindow.Cursor()); e.Handled = true;
+    }
+    void EndTitle(object sender, MouseButtonEventArgs e)
+    {
+        if (movingTitle == null) return;
+        var title = movingTitle; movingTitle = null;
+        FinishPointerGesture(); title.ReleaseMouseCapture(); e.Handled = true;
+    }
+    internal void BeginPointerGesture(string? edge, Point pointer)
+    {
+        dragging = true; gestureEdge = edge; gestureStart = NativeWindow.Bounds(Handle); gesturePointer = pointer;
+        gestureMinWidth = MinWidth * Scale; gestureMinHeight = MinHeight * Scale;
+    }
+    internal void UpdatePointerGesture(Point pointer)
+    {
+        if (!dragging) return;
+        var delta = pointer - gesturePointer;
+        var bounds = gestureEdge == null ? new Rect(gestureStart.Location + delta, gestureStart.Size)
+            : WindowGeometry.Resize(gestureStart, delta, gestureEdge, gestureMinWidth, gestureMinHeight);
+        NativeWindow.Place(Handle, bounds);
+    }
+    internal void FinishPointerGesture()
+    {
+        if (!dragging) return;
+        bool moved = gestureEdge == null;
+        movingTitle = null; dragging = false;
+        var bounds = NativeWindow.Bounds(Handle); var work = NativeWindow.WorkArea(Handle);
+        if (moved && Mode == DisplayMode.Normal && EdgeToggle.IsChecked == true)
+        {
+            var side = WindowGeometry.Edge(bounds, work, Scale);
+            if (side != DockSide.None) bounds.X = side == DockSide.Left ? work.Left : work.Right - bounds.Width;
+        }
+        NativeWindow.Place(Handle, WindowGeometry.Clamp(bounds, work));
+        outsideSince = DateTime.MaxValue; suppressEdgeUntil = DateTime.UtcNow.AddMilliseconds(350); Remember();
     }
     private void CompactClick(object sender, RoutedEventArgs e) => EnterCompact();
     private void TrayClick(object sender, RoutedEventArgs e) => HideToTray();
@@ -217,7 +304,7 @@ public partial class MainWindow : Window
         NativeWindow.Place(Handle, WindowGeometry.Clamp(new Rect(work.X + 90, work.Y + 90, bounds.Width, bounds.Height), new Rect(work.X, work.Y, work.Width, work.Height)));
         Remember();
     }
-    internal void OpenSettings() { RefreshLayerStatus(); SettingsPanel.Visibility = Visibility.Visible; SettingsCloseButton.Focus(); }
+    internal void OpenSettings() { outsideSince = DateTime.MaxValue; RefreshLayerStatus(); SettingsPanel.Visibility = Visibility.Visible; SettingsCloseButton.Focus(); }
     private void EdgeChanged(object sender, RoutedEventArgs e)
     {
         outsideSince = DateTime.MaxValue;
@@ -277,7 +364,7 @@ public partial class MainWindow : Window
         else Show();
         NativeWindow.Place(Handle, WindowGeometry.Clamp(NativeWindow.Bounds(Handle), NativeWindow.WorkArea(Handle)));
     }
-    internal void RestoreNormal()
+    internal void RestoreNormal(bool activate = true)
     {
         bool needsRestore = Mode != DisplayMode.Normal;
         CapturePlacement(); changingView = true;
@@ -292,7 +379,8 @@ public partial class MainWindow : Window
         {
             ApplyPlacement(fullPlacement ?? WindowPlacement.Legacy(SavedBounds), false);
         }
-        Show(); FitToScreen(); Activate(); (IsWeek ? WeekButton : MonthButton).Focus();
+        Show(); FitToScreen();
+        if (activate) { Activate(); (IsWeek ? WeekButton : MonthButton).Focus(); }
         outsideSince = DateTime.MaxValue;
         suppressEdgeUntil = DateTime.UtcNow.AddSeconds(1.2);
         changingView = false;
@@ -301,12 +389,13 @@ public partial class MainWindow : Window
     internal void CollapseToEdge(DockSide side)
     {
         if (Mode != DisplayMode.Normal || side == DockSide.None) return;
-        SaveNormalBounds(); dockSide = side;
+        SaveNormalBounds(); CapturePlacement(); dockSide = side;
         var work = NativeWindow.WorkArea(Handle);
         var bounds = WindowGeometry.Handle(SavedBounds, work, side, Scale);
+        changingView = true;
         SmallMode(DisplayMode.EdgeHandle);
         NativeWindow.Place(Handle, bounds);
-        Remember();
+        changingView = false; Remember();
     }
     private void EvaluateEdge()
     {
@@ -315,7 +404,13 @@ public partial class MainWindow : Window
     }
     internal void EvaluateEdgeAt(DateTime now, Point pointer)
     {
-        if (Mode != DisplayMode.Normal || EdgeToggle.IsChecked != true || dragging || Mouse.Captured != null || now < suppressEdgeUntil) return;
+        if (EdgeToggle.IsChecked != true || dragging || Mouse.Captured != null) return;
+        if (Mode == DisplayMode.EdgeHandle)
+        {
+            if (NativeWindow.Bounds(Handle).Contains(pointer)) RestoreNormal(false);
+            return;
+        }
+        if (Mode != DisplayMode.Normal || now < suppressEdgeUntil || SettingsPanel.Visibility == Visibility.Visible) return;
         var bounds = NativeWindow.Bounds(Handle);
         var side = WindowGeometry.Edge(bounds, NativeWindow.WorkArea(Handle), Scale);
         if (side == DockSide.None || bounds.Contains(pointer)) { outsideSince = DateTime.MaxValue; return; }
@@ -352,15 +447,14 @@ public partial class MainWindow : Window
             var factory = new FrameworkElementFactory(typeof(Border));
             factory.SetValue(Border.BackgroundProperty, new SolidColorBrush(Color.FromArgb(1, 0, 0, 0)));
             thumb.Template = new ControlTemplate(typeof(Thumb)) { VisualTree = factory };
-            thumb.DragStarted += (_, _) => { dragging = true; };
+            thumb.DragStarted += (_, _) => BeginPointerGesture(edge, NativeWindow.Cursor());
             thumb.DragDelta += (_, e) =>
             {
-                // Thumb supplies deltas in device-independent units, including injected
-                // pointer events. Use that event stream rather than polling a second cursor.
-                var current = NativeWindow.Bounds(Handle);
-                NativeWindow.Place(Handle, WindowGeometry.Resize(current, new Vector(e.HorizontalChange * Scale, e.VerticalChange * Scale), edge, MinWidth * Scale, MinHeight * Scale));
+                // Thumb deltas use a visual-relative origin which itself moves on N/W
+                // resizing. Use the fixed start rectangle and screen pointer instead.
+                UpdatePointerGesture(NativeWindow.Cursor());
             };
-            thumb.DragCompleted += (_, _) => { dragging = false; suppressEdgeUntil = DateTime.UtcNow.AddSeconds(1); Remember(); };
+            thumb.DragCompleted += (_, _) => FinishPointerGesture();
             ResizeHandles.Children.Add(thumb);
         }
     }

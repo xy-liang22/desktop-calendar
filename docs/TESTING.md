@@ -1,5 +1,81 @@
 # 阶段验证记录
 
+## 2026-11-01：P1.1-4 续验（开发快照，实际 GUI 尚未验收）
+
+保留全部未提交工作，没有重写、丢弃或绕过原失败断言。已重读 AGENTS/PRD/DECISIONS；仅补充 owner 分步骤错误诊断（ResolveDesktop、DetachOwner、ConfigureToolWindow、SetTopmost、AssignDesktopOwner，原生错误附 Win32 码），未更改 owner 技术行为。
+
+### Owner 失败复核
+
+**PASS：正常桌面账户运行 `powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -Test`：Release 构建 0 警告/错误，完整 221 PASS / 0 FAIL，进程退出0。** 没有跳过或删除测试；两屏均144 DPI，包含负坐标。以下是原13项逐项对应结果，不能把受限环境失败直接改记通过；本次 PASS 依据是新的正常会话执行。
+
+| 原失败项 | 失败的共同依赖 / 本轮判断 | 正常会话复测 |
+|---|---|---|
+| default desktop owner is top-level | owner 失败后进入 Fallback，无法满足 desktop 断言 | PASS |
+| compact inherits desktop and resizable grips | 折叠继承了 Fallback；不是已证实的折叠控件回归 | PASS |
+| native TOPMOST cleared and desktop restored 0 | 关闭置顶后的 desktop 恢复断言依赖 owner；不能据此称 TOPMOST 清除失败 | PASS |
+| native TOPMOST cleared and desktop restored 1 | 同上，第2次往返 | PASS |
+| native TOPMOST cleared and desktop restored 2 | 同上，第3次往返 | PASS |
+| simulated owner loss enters explicit fallback | 先决条件 desktop 未建立，CheckOwner 在 Fallback 返回，模拟丢失分支未被触发 | PASS |
+| explicit locate retries desktop without changing view | 重试仍需访问桌面 owner | PASS |
+| tray returns to desktop and clears TOPMOST | 托盘关闭置顶后仍需 owner；复合断言不能独立归罪托盘或清除位 | PASS |
+| real process restore DISPLAY1 / fold=False / pin=False | 首屏展开非置顶分支要求 DesktopOwner=true | PASS |
+| real process restore DISPLAY1 / fold=True / pin=False | 首屏折叠非置顶同上 | PASS |
+| real process restore DISPLAY2 / fold=False / pin=False | 次屏展开非置顶同上 | PASS |
+| real process restore DISPLAY2 / fold=True / pin=False | 次屏折叠非置顶同上 | PASS |
+| recreated component can explicitly return to desktop | 安全回退后显式找回仍需 owner | PASS |
+
+环境对照：只读 `whoami` 确认普通执行为受限沙箱账户，正常桌面执行为交互用户（不保存账户名到仓库）。同一 Release 二进制、同一隔离偏好、同一 `--restart-check`：受限执行报告 **DesktopOwner=false、`ResolveDesktop; DesktopUnavailable`**；正常桌面执行报告 **DesktopOwner=true、LayerError为空**。两者均 Ready/Visible=true、Collapsed=true、DPI144。这支持“测试环境不具备交互用户桌面 owner”而非13个独立产品缺陷；不能推断任意受限环境可用。历史87错误没有分步骤日志，本轮未精确复现其具体 API 返回点，**不声称已查清历史87的唯一内核原因**。测试仍保留严格 owner 断言，未自动忽略环境失败。
+
+证据在忽略目录：`artifacts/p1-checks-normal-2026-11-01.txt`、`owner-restricted-2026-11-01.json`、`owner-normal-2026-11-01.json`；历史208/13原始报告已被本轮正常执行覆盖，原失败列表保留在下方2026-10-31记录及本表，不能声称原始失败日志仍完整存在。不提交日志或个人配置。
+
+### 三项窗口功能与工具限制
+
+- **PASS（原生几何）/ NOT VERIFIED（像素闪烁）**：8次新进程正常启动覆盖两屏×展开/折叠×桌面/置顶；准备完成前未见 WS_VISIBLE，首次可见后的 WINDOWPOSCHANGED/PAINT/ContentRendered 所记录矩形和视图均为目标值，无默认中央/默认大小跳转。没有实际逐帧启动画面，不将此称为肉眼无闪烁验收。
+- **PASS（控制器/真实 HWND）/ NOT VERIFIED（实际指针平滑性）**：八方向各30步固定起点连续缩小、重复绝对坐标输入、最小尺寸与原生矩形检查通过；特别包括 NE/SW。测试直接调用同一手势控制器，没有注入真实鼠标，也不验证 Thumb 路由或远程帧流平滑。
+- **PASS（状态/矩形）/ NOT VERIFIED（实际拖拽、悬停与 Snap）**：左右工作区靠边、延时收起、窄条保持可见、悬停恢复、关闭开关不收起、置顶保留、折叠/托盘独立等自动检查通过。标题代码不再调用 DragMove，不改全局 Snap，但不能把程序几何检查称作鼠标实测避免 Snap。
+- **工具不可用而非功能失败**：本轮正常桌面构建/测试、Git fetch 已可执行，未再出现429。computer-use 的 `list_windows` 返回 **`native pipe is unavailable ... os error 2`**；按技能轻量重试、重置 JS 会话后最后重连仍失败，停止输入尝试，没有新截图/实际拖动，不改用 SendInput/UIAutomation 或自建通道绕过。未操作 Codex UI、系统设置或 Explorer。历史429曾阻止 GUI、正常执行与 Git 升级请求，不代表项目内读写永久受限；本轮未重复刷429请求。
+
+### 最少人工检查与交付边界
+
+本轮需用户补两组实际画面验收（工具恢复前无法代做），不重复 Win+D/任务栏/Alt+Tab：
+
+1. 双击 `D:\projects\desktop-calendar\bin\Release\net10.0-windows\DesktopCalendar.exe`（已重新构建）；移动并折叠后从设置/托盘退出、重开，观察首次出现即为保存的位置/大小/折叠状态，是否仍有跳变。
+2. 展开后匀速从右上/左下角缩小；打开贴边开关，将完整窗口分别拖到左右工作区边缘，松手移开约1秒应为可见窄条，悬停展开；关闭开关及进入今日待办折叠不误收起。
+
+状态：未验收开发快照，不能标记 P1.1-4 全面通过。Win10、真实混合 DPI、Explorer 重启、休眠仍待后续综合验证。不进入 P1.1-5/P2。Git 仅提交源码/脚本/文档，不提交上述 artifacts；提交/推送结果以实际 Git 执行及阶段反馈为准。
+
+## 2026-10-31：P1.1-3 收尾 + P1.1-4（验证未闭环，不能标记全面通过）
+
+授权：用户批准两阶段连续推进，不中途请求验收；尚未授权 P1.1-5/P2。AGENTS.md 已重读，owner 技术模块未修改。下方 2026-10-30 的启动后恢复/完成追加属于历史，已被本轮需求覆盖。
+
+### 根因、修复与证据
+
+- **启动**：旧代码在 ContentRendered 后才设置 owner、恢复完整矩形，空闲时复核，再折叠；必然允许默认中央/默认尺寸先显示。改为 Manual + EnsureHandle，在首次 Show 前准备真实目标位置、大小、折叠控件和原 owner 模式；ContentRendered 只开始正常保存。无屏外停泊、降低透明度或定时修正。记录本窗口 WS_VISIBLE 后的 WINDOWPOSCHANGED/PAINT/ContentRendered 矩形与模式，另检测是否准备完成前已可见（5 秒/256 条上限）。
+- **排序**：旧 completionSequence 使完成组按勾选先后排列，现删除；Completed、可选 TimeSortKey、OriginalOrder 构成两个状态组共享的排序。完成/取消不修改任何基础键，同级子任务独立。包括用户 A/B/C/D 示例、两种勾选顺序、取消、全部完成、手动混排、不同时间排序及子任务进度。
+- **缩放**：Thumb 相对自身的增量在 N/W 边移动后会改变参考系；原实现在不断变化的矩形上累加，形成反馈条件。八方向改为固定起点的物理屏幕指针差；重复绝对位置输入幂等，原生矩形相同则不再 SetWindowPos；拖动中跳过另一路工作区/DPI 修正，手势结束后夹入一次。不禁方向、不卡刷新率。
+- **贴边**：标题 DragMove 启动系统 caption/Snap 流程，改为本窗口标题鼠标捕获，不更改全局 Snap。完整窗口松手靠近左/右工作区边界时对齐；离开约 900ms 收起，28 DIP 可见条留在工作区，悬停恢复且不激活抢焦点。设置打开暂停，折叠/托盘隐藏不参与，置顶状态不变。保存收起前完整矩形，显示变化/托盘找回可恢复。
+- **拓扑**：schema 2 兼容增加工作区宽高；模拟负坐标、工作区缩小、96/120/144/192 DPI、缺失屏和重连后保留新位置。真实拔插或混合 DPI 本轮未执行。Windows 显示名称不是永久硬件 ID。
+
+### PASS / FAIL：本轮实际执行
+
+1. 正常桌面会话、独立 `P114` 构建：收尾第一轮 **184 PASS / 0 FAIL**；加入缩放/贴边回归后 **216 PASS / 0 FAIL**，构建 0 警告/错误。8 次新进程覆盖两屏（含负坐标、均144 DPI）×展开/折叠×桌面/置顶，实际 HWND 最终和首次可见起的全部原生矩形/模式均为目标值。八方向30步连续缩小/重复指针输入、靠左/右、桌面/置顶、折叠独立、关闭开关等状态检查通过。这些是真实自有 HWND + 程序输入坐标检查，不是鼠标实测。
+2. 后续增加“准备完成前可见”检测、不同基础排序与重连断言后，最新 `P114Final` 在受限执行会话离线构建 **0 警告/错误**；最新自测 **208 PASS / 13 FAIL**，脚本明确以失败退出。13 项均涉及 desktop owner/切回 owner：实际层级为 Fallback，错误 **`The parameter is incorrect.`**；首次可见几何、排序及缩放/贴边状态断言仍通过。不能把它冒充全通过，也不能仅凭正常会话前一轮通过就排除回归；正常桌面会话复跑被下述工具故障挡住，目前仅有“执行会话差异相关”的线索，没有确认唯一原因。
+3. `--ui-check` 实际打开同一主界面的普通透明诊断窗口并成功激活/截图：深色圆角、时间前缀、两个页面入口及八个缩放控件可见；截图为1240×760，物理原点(-3750,90)。这只证明当次正常绘制，不证明缩放、排序点击或桌面行为。
+4. 随后的右上角鼠标拖动请求被自动审批服务拒绝执行：**`429 Too Many Requests / approval review could not be completed`**。再次截图、只读 GUI 连接、正常桌面会话测试以及清理本轮诊断进程的请求也遭同类服务错误；这是审批基础设施故障，不是安全风险判定，没有尝试改用其他输入注入绕过。因此本轮 GUI 动作没有发生，不可记为通过。原有 Release 实例仍运行且锁定 EXE；没有结束用户实例。隔离 P114 GUI 检查窗口也未能通过界面正常退出，不将其算作退出验收。
+5. 初次编译漏改 RestoreNormal 参数，修正后编译通过；Release 构建遇旧进程文件占用，后续改独立配置避免覆盖运行文件。`build.ps1` / `Start-Prototype.ps1` 支持可选 Configuration（默认 Release），便于复现隔离构建；没有安装软件或依赖、联网恢复、改全局设置或重启 Explorer。
+
+### NOT VERIFIED 与最少人工检查
+
+- 不能宣布“启动闪烁已被逐帧肉眼证实消除”：目前是首次可见起的原生几何无跳变证据，无完整启动视频；最新正常会话 owner 回归尚待补跑。
+- 本轮真实鼠标 NE/SW 缩小平滑性、标题拖动/贴边避免 Snap、窄条悬停及完成/取消后的实际画面未完成；程序状态断言不能替代它们。原先用户认可的 Win+D/任务栏/Alt+Tab不重复要求人工检查。
+- 若工具恢复，优先由代理继续；若由用户检查，最多两组：①从托盘退出旧版，用 `bin\P114Final\net10.0-windows\DesktopCalendar.exe` 打开，移动/折叠后退出重启，观察首次出现是否仍跳变，并确认设置中的模式没有回退；②匀速缩小右上/左下角，开启贴边后分别拖至左右工作区边缘、松手移开约1秒、悬停窄条展开，同时切换折叠和关闭贴边确认不误收起。无需现在拔插屏幕、改变DPI或重测旧 Win+D 项。
+- 自动复现：正常 Windows PowerShell 运行 `.\build.ps1 -Configuration P114Final -Test`。最新报告 `artifacts/p1-checks.txt`，8份启动时序 `artifacts/restart-check-preferences/startup-*.json`；仅窗口元数据，不含待办正文或桌面图像，全部忽略提交。
+- Win10、真实混合 DPI、Explorer 重启、休眠仍保留后续综合门槛；P1.1-5 动态行数和时间轴缩放未开始。
+
+### Git 与交付状态
+
+已检查14个变更文件及 `git diff --check`，仅源码、构建脚本与四份必要文档；无图片、构建产物、凭证或用户数据。当前仍在 `dev/p1.1`，`main` 为 `d0e76d510d1052e7095b8a0e825d69601c5ea068` 未动。受限执行无法创建 `.git/index.lock`；已授权的暂存升级请求又被自动审批服务429挡住。因此本轮**尚未暂存、提交或推送**；不创建“已验收”标签。恢复工具后应先在正常桌面会话复跑最新版本，补 GUI 检查，再提交/推送，不进入 P1.1-5。
+
 ## 当前 P1.1-3 修订：恢复、时间和完成沉底（2026-10-30）
 
 **范围：用户批准的三项补丁，不进入 P1.1-4/P2。** 根目录用户提供的 AGENTS.md 已读并保持原文。已通过的 owner 方向保留，不重新验收 Win+D、任务栏或 Alt+Tab。

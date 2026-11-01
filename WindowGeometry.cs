@@ -58,7 +58,14 @@ internal static class NativeWindow
     }
     internal static void Place(IntPtr hwnd, Rect r)
     {
+        r = new Rect(Math.Round(r.X), Math.Round(r.Y), Math.Round(r.Width), Math.Round(r.Height));
+        if (Bounds(hwnd) == r) return; // Avoid redundant WM_WINDOWPOS/DPI/layout feedback.
         if (!SetWindowPos(hwnd, IntPtr.Zero, (int)Math.Round(r.X), (int)Math.Round(r.Y), (int)Math.Round(r.Width), (int)Math.Round(r.Height), 0x0014))
             throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+    }
+    internal static Point Cursor()
+    {
+        if (!GetCursorPos(out var p)) throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+        return new Point(p.X, p.Y);
     }
 }

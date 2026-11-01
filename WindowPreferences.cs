@@ -47,8 +47,12 @@ internal sealed record WindowPlacement
     public double Dpi { get; set; }
     public double WorkX { get; set; }
     public double WorkY { get; set; }
+    // Additive schema-2 fields; older files use zero and retain DPI-relative offsets.
+    public double WorkWidth { get; set; }
+    public double WorkHeight { get; set; }
     internal Rect Bounds => new(X, Y, Width, Height);
-    internal bool Valid() => new[] { X, Y, Width, Height, Dpi, WorkX, WorkY }.All(double.IsFinite) &&
+    internal bool Valid() => new[] { X, Y, Width, Height, Dpi, WorkX, WorkY, WorkWidth, WorkHeight }.All(double.IsFinite) &&
+        WorkWidth is >= 0 and <= 100000 && WorkHeight is >= 0 and <= 100000 &&
         Math.Abs(X) < 100000 && Math.Abs(Y) < 100000 && Math.Abs(WorkX) < 100000 && Math.Abs(WorkY) < 100000 &&
         Width is >= 200 and <= 20000 && Height is >= 200 and <= 20000 && (Dpi == 0 || Dpi is >= 48 and <= 960) && Display != null && Display.Length <= 256;
     internal static WindowPlacement Legacy(Rect r) => new() { X = r.X, Y = r.Y, Width = r.Width, Height = r.Height };
@@ -56,7 +60,8 @@ internal sealed record WindowPlacement
     {
         var r = NativeWindow.Bounds(hwnd); var screen = Forms.Screen.FromHandle(hwnd);
         return new() { X = r.X, Y = r.Y, Width = r.Width, Height = r.Height, Display = screen.DeviceName,
-            Dpi = NativeWindow.GetDpiForWindow(hwnd), WorkX = screen.WorkingArea.X, WorkY = screen.WorkingArea.Y };
+            Dpi = NativeWindow.GetDpiForWindow(hwnd), WorkX = screen.WorkingArea.X, WorkY = screen.WorkingArea.Y,
+            WorkWidth = screen.WorkingArea.Width, WorkHeight = screen.WorkingArea.Height };
     }
     internal Forms.Screen Target()
     {
@@ -74,6 +79,12 @@ internal sealed record WindowPlacement
         if (!sameDisplay && Display.Length > 0) { x = work.X + 24 * dpi / 96; y = work.Y + 24 * dpi / 96; }
         double w = Math.Max(Width * ratio, (compact ? 320 : 880) * dpi / 96);
         double h = Math.Max(Height * ratio, (compact ? 240 : 520) * dpi / 96);
+        // Preserve the fraction of available travel when resolution/work area changes.
+        // DPI alone retains logical size and offsets. Old records without extents remain valid.
+        if (sameDisplay && WorkWidth > 0 && Math.Abs(work.Width - WorkWidth) > 1)
+            x = work.X + Math.Clamp((X - WorkX) / Math.Max(1, WorkWidth - Width), 0, 1) * Math.Max(0, work.Width - w);
+        if (sameDisplay && WorkHeight > 0 && Math.Abs(work.Height - WorkHeight) > 1)
+            y = work.Y + Math.Clamp((Y - WorkY) / Math.Max(1, WorkHeight - Height), 0, 1) * Math.Max(0, work.Height - h);
         return WindowGeometry.Clamp(new Rect(x, y, w, h), work);
     }
 }
