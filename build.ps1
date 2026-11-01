@@ -1,5 +1,7 @@
 param([switch]$Test, [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]*$')][string]$Configuration = 'Release')
 $ErrorActionPreference = 'Stop'
+& powershell -NoProfile -STA -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'scripts\New-BrandAssets.ps1')
+if ($LASTEXITCODE -ne 0) { throw 'Brand asset generation failed.' }
 $env:DOTNET_CLI_TELEMETRY_OPTOUT = '1'
 $env:DOTNET_GENERATE_ASPNET_CERTIFICATE = 'false'
 $env:DOTNET_ADD_GLOBAL_TOOLS_TO_PATH = 'false'
@@ -16,6 +18,7 @@ $shortcut = $shortcutShell.CreateShortcut((Join-Path $PSScriptRoot 'Desktop Cale
 $shortcut.TargetPath = Join-Path $PSScriptRoot "bin\$Configuration\net10.0-windows\DesktopCalendar.exe"
 $shortcut.WorkingDirectory = $PSScriptRoot
 $shortcut.Description = 'Desktop Calendar P1'
+$shortcut.IconLocation = $shortcut.TargetPath + ',0'
 $shortcut.Save()
 if ($Test) {
     $exePath = Join-Path $PSScriptRoot "bin\$Configuration\net10.0-windows\DesktopCalendar.exe"

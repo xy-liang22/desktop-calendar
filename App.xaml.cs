@@ -7,21 +7,31 @@ public partial class App : Application
 {
     DesktopSession? session;
     Mutex? instance;
+    bool ownsInstance;
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
         bool testing = Array.IndexOf(e.Args, "--self-test") >= 0;
         bool restartCheck = Array.IndexOf(e.Args, "--restart-check") >= 0;
         bool visualChecks = Array.IndexOf(e.Args, "--ui-check") >= 0;
+        string? lifecycle = LifecycleChecks.Phase(e.Args);
         if (!testing && !restartCheck || visualChecks)
         {
-            instance = new Mutex(true, visualChecks ? "Local\\DesktopCalendar-GuiCheck" : "Local\\DesktopCalendar", out bool created);
-            if (!created) { MessageBox.Show(DesktopCalendar.MainWindow.Text("AlreadyRunning"), DesktopCalendar.MainWindow.Text("AppName")); Shutdown(); return; }
+            instance = new Mutex(false, lifecycle != null ? "Local\\DesktopCalendar-LifecycleCheck" : visualChecks ? "Local\\DesktopCalendar-GuiCheck" : "Local\\DesktopCalendar");
+            try { ownsInstance = instance.WaitOne(0); }
+            catch (AbandonedMutexException) { ownsInstance = true; }
+            if (!ownsInstance)
+            {
+                if (lifecycle != null) { LifecycleChecks.Duplicate(); Shutdown(23); }
+                else { MessageBox.Show(DesktopCalendar.MainWindow.Text("AlreadyRunning"), DesktopCalendar.MainWindow.Text("AppName")); Shutdown(); }
+                return;
+            }
         }
-        session = new DesktopSession(testing || restartCheck, visualChecks, restartCheck);
+        session = new DesktopSession(testing || restartCheck || lifecycle != null, visualChecks, restartCheck, lifecycle != null);
         SessionEnding += (_, _) => session?.Save();
         if (testing) session.Window.ContentRendered += async (_, _) => await PrototypeChecks.Run(session.Window);
         if (restartCheck) session.Window.ContentRendered += async (_, _) => await RevisionChecks.ObserveRestart(session.Window);
+        if (lifecycle != null) session.Window.ContentRendered += async (_, _) => await LifecycleChecks.Observe(session.Window, lifecycle);
     }
-    protected override void OnExit(ExitEventArgs e) { session?.Dispose(); instance?.Dispose(); base.OnExit(e); }
+    protected override void OnExit(ExitEventArgs e) { session?.Dispose(); if (ownsInstance) instance?.ReleaseMutex(); instance?.Dispose(); base.OnExit(e); }
 }

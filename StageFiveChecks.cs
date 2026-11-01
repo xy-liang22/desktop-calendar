@@ -63,6 +63,16 @@ internal static class StageFiveChecks
                     cells.Max(c => c.ActualHeight) - cells.Min(c => c.ActualHeight) < 1 && cells.All(c => c.Preview.VisibleRows == CalendarTaskPanel.Capacity(c.Preview.ActualHeight, c.Preview.VisibleRows + c.Preview.Remaining)));
                 Render(days, Path.Combine(output, "calendar-" + month + "-" + height + ".png"));
             }
+            Layout(days, 312, 180); // Calendar inner width at the supported minimum window size.
+            bool datesFit = days.Children.OfType<Button>().All(button =>
+            {
+                var cell = (CalendarPreviewCell)button.Content; var header = (Grid)cell.Children[0];
+                var number = (TextBlock)header.Children[0];
+                var text = new FormattedText(number.Text, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                    new Typeface(number.FontFamily, number.FontStyle, number.FontWeight, number.FontStretch), number.FontSize, number.Foreground, 1.0);
+                return text.WidthIncludingTrailingWhitespace <= header.ColumnDefinitions[0].ActualWidth + .25;
+            });
+            check("minimum calendar preserves two-digit date priority month=" + month, datesFit);
         }
         var slotsTest = new[] { new DemoContent.Block(0, -1, .5, "clipped", "", 0), new(0, 9, 11, "long", "", 0),
             new(0, 10, 10.5, "short", "", 1), new(0, 10.25, 12, "overlap", "", 2), new(0, 12, 13, "adjacent", "", 0), new(0, 23, 25, "end", "", 0) };

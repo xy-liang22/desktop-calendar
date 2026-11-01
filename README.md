@@ -1,135 +1,156 @@
 # Desktop Calendar
 
-Windows 本地桌面日历、计划与实际时间记录工具。待办表示计划，Activity 表示实际发生的时间；两者可关联，状态独立。
+![Desktop Calendar Logo](assets/branding/logo-64.png)
 
-**当前为 P1.1-5 原型，使用模拟业务内容。** P1.1-4 已由用户基本验收：启动恢复无明显闪烁、贴边正常，偶发轻抖可接受。本轮增加月历自适应预览、两页时间轴缩放和小巧把手，真实滚轮与新把手悬停仍待人工确认。已验收的 Explorer 桌面 owner + 透明顶层 WPF 保持不变，不使用 SetParent、WS_CHILD、Explorer 私有消息或层级纠正循环。
+Windows 本地桌面日历：第一页是月历、计划待办与实际时间轴，第二页是七天时间轴、周计划和周总结。待办是计划，Activity 是实际发生的时间；两者可以关联，状态独立。
 
-## 当前功能与 Planned
+**P1.1：开发完成，已验证范围内通过。** 用户已验收 P1.1-4/5 的核心交互；本轮完成品牌、用户级开始菜单入口和综合回归。当前仍为模拟业务内容，不能用于保存正式待办或日程。没有已知阻碍 P2 数据模型开发的重大窗口问题；**尚未开始 P2，需另行批准**。
 
-| 功能 | 当前状态 |
+## 已实现与 Planned
+
+| 能力 | 状态 |
 |---|---|
-| 深色半透明、圆角、无系统白框 | 已实现；设置可调整背景不透明度 |
-| 两页、三栏月历及七天时间轴、可调整分栏 | 已实现，内容为模拟数据 |
-| 默认桌面 owner、免任务栏/Alt+Tab、置顶往返 | 已整合并保留人工认可的 owner 方向；Win10 等兼容门槛仍待验 |
-| 移动、八方向缩放 | P1.1-4 用户基本验收；偶发一两下轻抖保留为可接受的已知限制 |
-| 今日待办折叠视图 | 已实现，日期、模拟勾选列表、设置和恢复入口；继承桌面/置顶模式 |
-| 托盘、显示定位、安全找回、设置、退出 | 已实现，默认常驻托盘；正式图标 Planned |
-| 窗口偏好记忆 | 已实现，分别保存完整/折叠矩形、显示器与 DPI，并恢复页面、分栏、视图及桌面/置顶偏好 |
-| 模拟待办时间与完成沉底 | 已实现，完整与折叠均显示计划时间；子任务同样先未完成后已完成，取消完成恢复原顺序 |
-| 左右贴边收起 | 原逻辑已由用户验收；本轮可见把手约9×48 DIP、命中仍28×110 DIP，左右对称 |
-| 月历按高度显示更多待办 | 已实现，0/1/3/10条样例，完整行和剩余 +N；五/六周布局检查通过 |
-| Ctrl+滚轮时间轴缩放 | 已实现，24–160 DIP/小时、默认50；两页独立记忆，刻度/块/24小时范围统一比例，重叠日程分列 |
-| 正式 Logo、ICO、稳定部署和开始菜单入口 | **Planned：P1.1-6**，需另行确认设计与部署位置 |
-| 真实待办、Activity、重复/顺延、周计划与统计 | **Planned：P2–P8**；当前勾选仅改变内存中的模拟状态 |
-| 业务 JSON 迁移、Markdown 图片、ZIP 备份恢复 | **Planned**；窗口偏好备份不等于业务备份 |
-| 农历/节气、内地及香港假日、手动资料更新 | **Planned** |
-| 完整中英切换、开机启动 | **Planned**；当前中文文案集中管理 |
+| 默认桌面 owner、Win+D 保留、免任务栏/Alt+Tab、普通应用覆盖 | 当前 Win11 环境用户人工通过；顶层透明 WPF，无 SetParent/WS_CHILD |
+| 深色半透明、圆角无白框、置顶往返、八方向缩放 | 已实现；偶发轻微缩放抖动为用户接受的限制 |
+| 两页、分栏拖动、今日待办折叠、托盘设置/找回/退出 | 已实现；窗口位置/大小/显示器/视图/置顶偏好可恢复 |
+| 月历动态完整行、+N、完成划线 | 已实现，0/1/3/10条模拟内容；五/六周及临界高度测试 |
+| Ctrl+滚轮缩放、重叠日程分列 | 已实现；两页比例独立记忆，完整24小时范围 |
+| 同级未完成在前、完成在后，取消恢复基础排序 | 已实现，含子任务；勾选仅本次运行有效 |
+| SVG、九尺寸 ICO、托盘/标题/EXE/快捷方式正式图标 | 已实现，方案 A；图标资源从 SVG 离线生成 |
+| 当前用户安装、更新、卸载、开始菜单入口 | 已实现，不需要管理员，不写注册表或PATH |
+| 真实Todo/Activity、重复/顺延、周目标计算、业务撤销 | **Planned：P2–P8**，当前不是正式持久化业务功能 |
+| 真实JSON迁移、Markdown图片、ZIP备份/恢复 | **Planned**；现有备份仅是窗口偏好 |
+| 农历/节气、内地/HK假日、黄历、手动资料更新 | **Planned**；当前无资料更新按钮或脚本 |
+| 完整中英切换、主题扩展、开机启动 | **Planned**；当前中文文案集中管理 |
 
-## 系统及开发要求
+主界面仍使用2026年10月及固定样例周，选日期仅切换演示标题；没有完整月份导航、日程编辑或业务统计。范围以 [PRD](docs/PRD.md) 为准，未删除后续目标。
 
-- 目标 Windows 10/11 x64；当前验证机为 Windows 11 build 26200，两屏均 144 DPI。Win10、混合 DPI、Explorer 重启及休眠恢复保留后续综合验收。
-- 运行需要 .NET Desktop Runtime 10 x64，SDK 已包含；当前不是自包含安装包。
-- 开发使用 Windows 本机 PowerShell、.NET 10 x64 SDK 和 Git；已验证 SDK 10.0.403。可用 VS Code，不要求完整 Visual Studio、Build Tools 或扩展。
-- 不使用 WSL，无第三方 NuGet 包。`NuGet.Config` 清空包源，使用现有 SDK 框架包离线构建。脚本不会安装工具或修改系统设置。
+## 系统与开发环境
 
-## 获取、构建及运行
+- 目标 Windows 10/11 x64；实际验证为 Windows 11 build 26200、两屏均144 DPI。Windows 10、真实混合DPI、Explorer重启和休眠恢复尚未全量验证。
+- 运行需要 **Microsoft .NET Desktop Runtime 10 x64**。本机已有10.0.14，SDK也包含该运行时。选择框架依赖发布以减小体积，没有捆绑或自动下载运行时。
+- 源码构建需现有 .NET 10 SDK x64（本机10.0.403）、Windows PowerShell和Git；可使用VS Code，不需要完整Visual Studio、Build Tools或额外扩展。
+- 无第三方NuGet依赖。NuGet.Config清空包源，构建离线；脚本不安装软件、不改系统设置、不使用WSL。应用默认不联网。
 
-仓库为 `https://github.com/xy-liang22/desktop-calendar`。目前没有正式安装包、Release 下载或已验收发布标签，通过源码构建获得原型。已有项目请勿覆盖。
+## 安装、更新与卸载
 
-在 Windows PowerShell 执行：
+[仓库](https://github.com/xy-liang22/desktop-calendar) 当前在 `dev/p1.1` 开发，没有公开的安装包Release。获取源码后，在 Windows PowerShell 执行：
 
 ```powershell
 cd D:\projects\desktop-calendar
-powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
-powershell -NoProfile -ExecutionPolicy Bypass -File .\Start-Prototype.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Install-DesktopCalendar.ps1 -Action Install
 ```
 
-也可双击 `bin\Release\net10.0-windows\DesktopCalendar.exe`，或构建生成的根目录 `Desktop Calendar P1.lnk`。这仍是开发路径，不是开始菜单安装入口。构建前从设置或托盘真正退出程序，避免 EXE 被占用。
+这会离线构建/发布，然后仅写入：
 
-正常模式限制单实例；重复启动会提示使用托盘找回。首次启动默认桌面模式，以后恢复已保存的置顶和折叠偏好。托盘可能位于系统隐藏图标区。脚本的 ExecutionPolicy Bypass 仅作用于当前进程，不改变系统策略。
+- `%LOCALAPPDATA%\Programs\DesktopCalendar\versions\v<包指纹>\`：四个运行文件及包清单。
+- `%LOCALAPPDATA%\Programs\DesktopCalendar\installation.json`：当前版本信息。
+- 当前用户开始菜单 `Programs\Desktop Calendar.lnk`：唯一入口，目标与图标都指向上述稳定版本目录的EXE。
 
-若 Release 正被旧实例占用，可离线构建到独立目录：`.\build.ps1 -Configuration P115 -Test`，再用 `.\Start-Prototype.ps1 -Configuration P115` 启动；也可直接运行 `bin\P115\net10.0-windows\DesktopCalendar.exe`。正常模式仍共用单实例和窗口偏好，应先通过托盘退出旧版。构建生成的根目录快捷方式指向本次选择的配置；默认配置仍为 Release。
+不会创建桌面快捷方式、开机启动项或系统级安装，不修改PATH、注册表、任务栏、Snap和数据目录。项目根已有的P1快捷方式仍供开发使用，构建会更新其正式图标；它与正式开始菜单入口不同。
 
-## 窗口与主要操作
+**先从旧实例托盘/设置退出，再从开始菜单搜索 `Desktop Calendar` 启动新版。** 安装/更新不擅自结束或重启现有程序。搜索尚未收录时，可直接打开当前用户开始菜单中的同名快捷方式；不需要改索引设置。
 
-- 第一页为较宽月历、当日模拟待办及实际时间轴；选日期改变标题，仍展示固定样例。第二页为七天时间轴及周目标/总结样例，没有真实计算或保存。
-- 顶部空白区拖动，四边四角缩放，分隔线调整栏宽；时间轴普通滚轮滚动，初始显示 06:00。模拟时间块不可编辑。
-- 月历日期下按剩余高度展示完整待办，为 `+N` 预留空间；极小时计数进入日期头，完成划线变淡。当前主界面仍为2026年10月固定样例；六周网格以11月同一生成器测试，不表示已有月份导航或农历数据。
-- 时间轴按住Ctrl滚轮向上放大、向下缩小，每格默认50 DIP/小时，范围24–160；普通滚轮继续滚动完整24小时。尽量保持指针时间位置，靠近滚动边界会夹入。两页比例分别保存到窗口偏好，切页保留各自当前滚动位置；重叠块分列，短块文字可能被裁剪，悬停提示可看完整样例内容。
-- 设置中的“始终置顶”开启后脱离桌面 owner；关闭先清除原生 TOPMOST 再恢复桌面 owner。切换保留当前 HWND、位置、大小、页面和内存 UI 状态。
-- “—”折叠为今日待办，显示真实今日日期与固定模拟列表；勾选与完整页同步，但重新启动会重置模拟勾选。折叠约 360×350 DIP，可缩放并滚动；“恢复完整视图”返回原完整矩形。
-- 完整与折叠视图分别保存最后有效位置、尺寸及显示器；首次无折叠历史才默认右上角。重启恢复最后展开/折叠和桌面/置顶偏好；显示器不可用时回退主屏并确保窗口在工作区内。旧 v1 偏好未记录折叠矩形，首次迁移无法恢复从未保存的位置。
-- 计划时间以“09:30 任务名称”显示，时间为浅绿色半粗体，无时间任务不加占位。未完成在前、已完成在后，两个组都按相同基础排序排列，勾选先后不参与排序；取消完成恢复原本相对位置。子任务独立分组，父子状态互不自动覆盖。本轮没有新增手动拖排或时间排序开关；相应约束由共享视图及自动检查覆盖。
-- 组件和折叠视图均有设置入口。开启“贴边自动收起”，拖完整窗口到当前工作区左/右边，松手并移开约 900ms 后变窄条，悬停展开；设置打开时暂停收起。折叠/托盘隐藏不参与贴边，置顶偏好保持。关闭开关立即恢复完整视图且不再自动收起。不改变系统 Snap 设置。
-- **× / Alt+F4 隐藏到托盘，不是退出。** 托盘双击或“显示 / 定位组件”找回；保留折叠状态。设置或托盘“退出”才真正退出。
-- 托盘还提供置顶切换、设置及“安全找回（普通窗口）”。安全找回清除 owner/置顶并将窗口放回工作区；这种回退不保证 Win+D 后可见，可再用显示/定位重试桌面模式。
-- owner 失效时回退为普通非置顶工具窗口；组件窗口意外关闭时最多自动重建一次回退窗口。托盘管理器独立于组件 HWND，仍可显式找回或退出。真实 Explorer 重启仍待验收。
+```powershell
+# 更新到当前源码；重复执行不会重复创建入口
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Install-DesktopCalendar.ps1 -Action Update
 
-| 输入 | 当前行为 |
-|---|---|
-| 普通滚轮 | 滚动列表或时间轴 |
-| Ctrl + 滚轮 | 指向第一页实际日程或第二页周时间轴时缩放；两页独立记忆 |
-| Tab / Enter / Space | 标准控件焦点、按钮及勾选操作 |
-| Alt+F4 / × | 隐藏到托盘 |
-| Ctrl+Z | 业务撤销尚未实现（Planned） |
+# 查看当前版本（无构建、无下载）
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Install-DesktopCalendar.ps1 -Action Status
 
-## 本地数据、隐私、图片及备份
-
-程序默认不联网，不保存真实日程。本阶段只在 `%LOCALAPPDATA%\DesktopCalendar\window-preferences.json` 保存窗口偏好，稳定 ID 为 `desktop-calendar-window`，schemaVersion 为 2，兼容 v1 读取迁移。写入先刷盘临时文件，再原子替换，保留上一版 `.bak`；主文件损坏尝试备份，无法恢复则提示并使用默认值。不认识的 schema 禁止覆盖并提示，不冒充已经实现业务迁移。
-
-窗口偏好不包含模拟待办文字或完成状态；这些只存在进程内。手动保留偏好时，先退出程序，再复制 JSON 及 `.bak`；当前没有业务导入/导出界面。自动检查使用隔离临时目录，不覆盖正常偏好。截图、报告、日志、构建产物和个人备份不提交 Git。
-
-以下均为 **Planned**，未来默认放在同一用户本地数据目录，独立于项目与程序部署位置：
-
-- `planner-data.json`：真实数据的稳定 ID、可迁移 schema、原子保存与恢复。
-- `assets/images/`：Markdown 本地图片与相对引用。
-- `backups/`：ZIP 完整备份、校验、恢复预览及失败回滚；单独 JSON 不包含图片。
-- `calendar-data/`：离线历法资料、来源及版本；仅用户主动更新时联网，不上传私人记录。
-
-当前没有“检查资料更新”、图片导入或业务备份恢复按钮，也没有可运行的资料更新脚本。对应阶段实现后补充真实步骤，不提供虚构命令。
-
-## 项目结构
-
-```text
-App.xaml / .cs              启动、单实例及检查入口
-MainWindow.xaml / .cs       窗口外壳、折叠、设置与交互
-DesktopWindowMode.cs        桌面 owner / 置顶 / 安全回退
-DesktopSession.cs           独立托盘、窗口生命周期及找回
-WindowPreferences.cs        窗口偏好验证、原子保存及备份读取
-WindowGeometry.cs          几何、DPI 和原生窗口辅助
-CalendarPreviewCell.cs     日期固定信息与自适应待办预览
-TimelineView.cs            统一比例、时间锚点、重叠日程布局
-PrototypeViews.cs          两页模拟布局与固定时间轴
-DemoContent.cs             内存模拟内容，不是业务数据模型
-Strings.zh-CN.xaml          中文界面资源
-PrototypeChecks.cs         无第三方依赖的自动检查
-RevisionChecks.cs          同级排序、真实进程重启与窗口恢复回归
-StageFiveChecks.cs         动态月历、时间轴和小把手的布局/渲染检查
-AGENTS.md                  用户提供的长期开发工作规则
-DesktopCalendar.csproj     WPF / net10.0-windows
-app.manifest               PerMonitorV2 声明
-NuGet.Config               离线包源
-build.ps1 / Start-Prototype.ps1  构建、检查及启动
-docs/                      需求、决定、测试及研究记录
-experiments/DesktopHostProbe/   已验收 O 的独立实验及历史对照
+# 先从托盘退出安装版，再卸载
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Install-DesktopCalendar.ps1 -Action Uninstall
 ```
 
-## 测试与已知限制
+更新先校验包指纹/长度/SHA256，准备新版本，再原子切换快捷方式及当前版本记录；损坏包拒绝，旧入口保留。旧版本目录保留，避免覆盖运行文件。卸载仅删除本安装器管理的入口和未修改的程序文件；外来/修改文件保留，**不访问或删除 `%LOCALAPPDATA%\DesktopCalendar` 的个人数据、图片或备份**。运行中的安装版会阻止卸载，不强制结束进程。遇到同名外来快捷方式、陌生安装目录或重解析路径时拒绝覆盖。
+
+如已准备好本机包，可免SDK安装，不重新发布：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Publish-DesktopCalendar.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Install-DesktopCalendar.ps1 -Action Install -PackagePath .\artifacts\package
+```
+
+`artifacts/package` 是本地发布产物，不提交Git。只选用自己从可信源码构建的包；包内哈希用于完整性校验，并非发行者数字签名。ExecutionPolicy Bypass仅作用本次PowerShell进程，不更改系统策略。
+
+## 从源码构建、运行与测试
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -Test
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Start-Prototype.ps1
 ```
 
-P1.1-5 正常桌面会话完整检查 **359 PASS / 0 FAIL，构建0警告/错误**，包含既有owner/窗口回归，以及五/六周、行数临界、0/1/3/10条、缩放锚点/上下限/重叠/滚动、两页比例的八次真实进程重启。初次失败及证据边界见 [TESTING](docs/TESTING.md)，报告 `artifacts/p1-checks.txt`，渲染图仅留忽略的 artifacts。比例为 schema2 新增兼容字段，旧偏好缺字段默认50；真实Todo/Activity仍不存储。
+也可运行 `bin\Release\net10.0-windows\DesktopCalendar.exe`。构建前退出使用该目录的实例，避免文件占用。可指定 `-Configuration P117` 隔离构建；对应启动 `Start-Prototype.ps1 -Configuration P117`，本轮构建生成的根目录P1快捷方式也指向该配置。
 
-可显式运行 `DesktopCalendar.exe --ui-check`：使用同一主界面、独立 `artifacts/ui-check-preferences`，临时呈现普通透明窗口供电脑工具选择；设置中提供仅诊断可见的“移到下一显示器”。这不改变正常启动方案，不用于证明桌面 owner、Win+D 或任务切换。2026-10-30 前一轮代理已实际点击完整/折叠任务及子任务，观察时间、完成沉底/取消恢复；跨屏调整折叠窗口后退出重启，截图矩形一致；完整窗口和置顶偏好重启也一致。真实 owner 模式由八次进程原生检查补充；不重复已验收的 Win+D/任务切换项目。
+```powershell
+# 先发布，再做项目 artifacts 下的安装/卸载隔离测试
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Publish-DesktopCalendar.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-UserInstall.ps1
+```
 
-computer-use 原生管道仍不可用，已按技能重试及重置；不把离屏渲染或程序调用缩放当作真实Ctrl滚轮/悬停验收。只需一组人工检查：退出旧版、打开 `bin\P115\net10.0-windows\DesktopCalendar.exe`，纵向调整窗口看月历条数，再分别在两页Ctrl滚轮/普通滚轮、切页检查锚点与独立比例，最后悬停新把手检查易用性。不重复P1.1-4已验收的启动/Win+D等操作。Win10、真实混合DPI、Explorer重启、休眠仍为后续门槛。
+图标维护：编辑 [logo.svg](assets/branding/logo.svg)，运行 `scripts/New-BrandAssets.ps1`（构建也会运行）。仅支持当前所需rect/line原语，未支持的新原语会报错，不能静默丢失。ICO含16/20/24/32/40/48/64/128/256；PNG64用于窗口标题，其他尺寸/预览保留在忽略的 `artifacts/branding`。不要手改生成的ICO/PNG。图标资产是明确授权的公共程序资源，不是用户图片。
 
-独立实验的失败子窗口 A–F 历史与成功 O 方案见 [研究记录](docs/DESKTOP_MODE_RESEARCH.md)。O 没有 SetParent，不代表旧黑屏根因已查明；无需重做 A–F。
+## 桌面模式与日常操作
 
-## 分支与后续计划
+- 首次启动默认桌面模式：WPF顶层窗口以Explorer桌面为owner，普通应用可覆盖；不进入任务栏/Alt+Tab。不是Explorer子窗口，不靠持续置顶或抢焦点模拟桌面。
+- 设置/托盘“始终置顶”开启后成为置顶组件；关闭时清除原生TOPMOST并恢复桌面owner，保留当前HWND、尺寸、页面和状态。
+- 顶部空白区拖动，四边四角缩放；页面分隔线调整栏宽。第一页面左侧月历优先较宽，第二页七天时间轴及右侧周总结。
+- “—”切为今日待办，显示系统今日日期与带计划时间的模拟列表；可以缩放/滚动，“恢复完整视图”返回独立保存的完整矩形。不自动置顶。
+- 开启贴边后，拖完整窗口到当前工作区左右边缘，松手并移开约900ms变为小把手；悬停展开。可见区域约9×48 DIP，实际命中保留28×110 DIP。设置打开时暂停收起，折叠/托盘隐藏不参与贴边。
+- 月历按剩余高度显示完整待办，并为+N预留空间；极小时计数进入日期头。已完成划线、弱化；无时间事项不显示虚假时间占位。
+- 普通滚轮滚动；在日程区域 **Ctrl+滚轮向上放大、向下缩小**，默认50、范围24–160 DIP/小时。刻度与块共享比例，重叠分列；靠近滚动边界时锚点安全夹入。切页保留各自比例/当前偏移，比例跨重启保存。
+- 未完成始终在同级完成组之前，两组内部使用相同基础排序。完成先后不参与排序，取消恢复原本相对位置；子任务独立，父子状态不自动互改。模拟勾选退出后重置。
+- **× / Alt+F4隐藏到托盘，并不退出。** 托盘双击显示/定位，右键有置顶、设置、安全找回和退出。设置/托盘“退出”才结束程序。Tab、Enter、Space遵循标准按钮/勾选行为；Ctrl+Z业务撤销尚未实现。
 
-`main` 保持项目基线，`dev/p1.1` 存放当前开发；未人工验收的主程序不标记已验收版本。不强推，不覆盖远程历史，认证由用户本人完成。
+## 数据、隐私、JSON、图片与备份
 
-P1.1-1 基线完成 → P1.1-2 O 核心人工通过 → P1.1-3 收尾 → P1.1-4 基本人工通过 → **P1.1-5 本轮交付、真实滚轮/新把手待验** → P1.1-6 Logo/开始菜单 → P1.1-7 综合验收。本轮到P1.1-5即停，后续仍须批准。P2–P8 目标全部保留在 [PRD](docs/PRD.md)。
+当前只持久化 `%LOCALAPPDATA%\DesktopCalendar\window-preferences.json`，稳定ID为 `desktop-calendar-window`，schemaVersion=2，兼容v1。完整/折叠物理矩形、显示器/工作区/DPI、页面/分栏、置顶、贴边、透明度及两页时间轴比例分别保存。临时文件刷盘后原子替换，保留 `.bak`；损坏尝试备份，未知schema禁止覆盖。缺失显示器回退可用工作区，重连不擅自跳回。
+
+窗口偏好不包含待办/Activity正文或完成状态。需手动备份时先退出程序，再复制该JSON与 `.bak`；这不是业务导入/导出。安装目录、源码与数据目录分离，卸载不删除个人资料。
+
+以下仍为 **Planned**，不是现有可用功能：
+
+- `planner-data.json`：真实业务的稳定ID、可迁移schema、原子保存与恢复。
+- `assets/images/`：Markdown图片及相对引用；当前没有导入界面。
+- `backups/`：完整ZIP备份、校验、恢复预览与失败回滚；单独JSON不能包含未来图片。
+- `calendar-data/`：离线历法、假日来源及版本；未来仅主动手动更新时联网，不上传私人记录。当前不能把固定模拟日期当作真实历法资料。
+
+## 已知限制、恢复与常见问题
+
+| 问题 | 处理 / 边界 |
+|---|---|
+| 找不到组件 | 托盘可能在隐藏图标区；双击或选择显示/定位。安全找回会退到普通非置顶工具窗口，不保证Win+D保留 |
+| 更新后仍见旧图标/旧版本 | 先从旧实例托盘退出，再用开始菜单启动；不会强行替换运行中的版本 |
+| 重复启动提示已运行 | 正常单实例。异常退出后的遗留互斥体使用非阻塞获取/abandoned恢复，不凭对象存在直接误判 |
+| Explorer owner失效 | 回退并保留托盘找回；组件HWND丢失最多自动重建一次。实际Explorer重启/休眠尚未全量验证 |
+| 无法安装/运行 | 检查Desktop Runtime 10 x64；无SDK时使用预构建包参数。脚本不会自动下载工具 |
+| 同名入口、修改的程序文件、重解析目录 | 安装器拒绝覆盖或删除，不以强制方式修复陌生内容；保留个人数据，检查提示后处理 |
+| 轻微缩放抖动 | 用户已接受的偶发限制，无高频补偿或窗口系统重构 |
+| Win10/混合DPI/休眠兼容 | 尚未实机全量验证；纯数学DPI/拓扑通过不能等同硬件兼容通过 |
+| 托盘/搜索新Logo的实际画面 | 元数据、资源与部署启动已验证；本轮电脑控制管道不可用，Windows搜索收录/托盘表面仍需实际观察 |
+
+## 项目结构与验证基线
+
+```text
+App.xaml / .cs               启动、单实例、窗口生命周期
+MainWindow.xaml / .cs        外壳、折叠、设置、拖动缩放
+DesktopWindowMode.cs         已验收的桌面owner / 置顶 / 回退
+DesktopSession.cs            托盘及窗口偏好生命周期
+WindowPreferences.cs         原子偏好、备份与兼容读取
+WindowGeometry.cs            物理坐标/DPI几何
+CalendarPreviewCell.cs       固定信息与动态完整待办行
+TimelineView.cs              比例、滚动锚点、重叠布局
+PrototypeViews.cs / DemoContent.cs  两页模拟布局与数据
+AppBrand.cs / assets/branding/     品牌资源与SVG源
+PrototypeChecks / RevisionChecks / StageFiveChecks / LifecycleChecks.cs
+                             无外部测试框架的回归与进程检查
+Install-DesktopCalendar.ps1  当前用户安装/更新/卸载/状态
+Publish-DesktopCalendar.ps1  离线框架依赖发布
+scripts/                    图标生成与安装隔离测试
+AGENTS.md / docs/            长期规范、PRD、决定、测试、研究
+experiments/DesktopHostProbe/     旧实验，未复制失败的子窗口路线
+```
+
+综合回归：应用 **371 PASS / 0 FAIL**，安装 **14 PASS / 0 FAIL**，构建0警告/错误；实际用户目录的部署版也已启动验证并正常退出。自动检查涵盖负坐标、缺失屏/分辨率/DPI数学、最小布局、5/6周、缩放、排序、托盘/置顶、真实进程重启/重复启动/异常退出、ICO和安装边界。核心真实GUI证据包括用户对O、P1.1-4、P1.1-5的验收；代理新增渲染图不冒充桌面截图。细节、初次失败与未验证矩阵见 [TESTING](docs/TESTING.md)。
+
+`main` 保持原基线，开发提交在 `dev/p1.1`，不强推、不标记未测环境全部通过。P1.1作为后续开发技术基础已具备条件；P2–P8仍待逐阶段批准，目标均保留在PRD。

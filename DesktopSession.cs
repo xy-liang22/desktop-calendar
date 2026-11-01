@@ -11,6 +11,7 @@ internal sealed class DesktopSession : IDisposable
 {
     readonly WindowPreferencesStore store;
     readonly Forms.NotifyIcon tray;
+    readonly System.Drawing.Icon trayIcon;
     readonly Forms.ToolStripMenuItem pin;
     readonly DispatcherTimer saveTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
     bool closing, recovered, disposed;
@@ -20,11 +21,11 @@ internal sealed class DesktopSession : IDisposable
     internal bool VisualChecks { get; }
     internal bool TrayVisible => tray.Visible;
     internal string Notice => store.Notice;
-    internal DesktopSession(bool testing, bool visualChecks = false, bool restartCheck = false)
+    internal DesktopSession(bool testing, bool visualChecks = false, bool restartCheck = false, bool lifecycleCheck = false)
     {
         Testing = testing;
         VisualChecks = visualChecks;
-        string directory = restartCheck ? RevisionChecks.RestartDirectory
+        string directory = lifecycleCheck ? LifecycleChecks.DirectoryPath : restartCheck ? RevisionChecks.RestartDirectory
             : visualChecks ? Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "artifacts", "ui-check-preferences"))
             : testing ? Path.Combine(Path.GetTempPath(), "DesktopCalendar-Checks-" + Guid.NewGuid().ToString("N"))
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DesktopCalendar");
@@ -37,7 +38,8 @@ internal sealed class DesktopSession : IDisposable
         menu.Items.Add(MainWindow.Text("Settings"), null, (_, _) => Dispatch(() => { Locate(); Window.OpenSettings(); }));
         menu.Items.Add(MainWindow.Text("SafeLocate"), null, (_, _) => Dispatch(() => Locate(true)));
         menu.Items.Add(MainWindow.Text("Exit"), null, (_, _) => Dispatch(() => Exit(0)));
-        tray = new Forms.NotifyIcon { Text = MainWindow.Text("AppName"), Icon = System.Drawing.SystemIcons.Application, ContextMenuStrip = menu, Visible = true };
+        trayIcon = AppBrand.TrayIcon();
+        tray = new Forms.NotifyIcon { Text = MainWindow.Text("AppName"), Icon = trayIcon, ContextMenuStrip = menu, Visible = true };
         tray.DoubleClick += (_, _) => Dispatch(() => Locate());
         saveTimer.Tick += (_, _) => { saveTimer.Stop(); Save(); };
         CreateWindow(false);
@@ -104,6 +106,6 @@ internal sealed class DesktopSession : IDisposable
     public void Dispose()
     {
         if (disposed) return;
-        disposed = true; saveTimer.Stop(); tray.ContextMenuStrip?.Dispose(); tray.Dispose();
+        disposed = true; saveTimer.Stop(); tray.ContextMenuStrip?.Dispose(); tray.Dispose(); trayIcon.Dispose();
     }
 }

@@ -13,12 +13,12 @@ internal sealed class CalendarPreviewCell : Grid
     internal TextBlock HeaderMore { get; }
     internal CalendarPreviewCell(DateTime date, DemoTodo[] tasks, bool currentMonth, string information = "")
     {
-        Margin = new Thickness(6, 4, 4, 2); ClipToBounds = true;
+        Margin = new Thickness(4, 4, 2, 2); ClipToBounds = true;
         RowDefinitions.Add(new() { Height = GridLength.Auto });
         RowDefinitions.Add(new() { Height = GridLength.Auto });
         RowDefinitions.Add(new() { Height = new GridLength(1, GridUnitType.Star) });
         var header = new Grid { Height = 21 };
-        header.ColumnDefinitions.Add(new()); header.ColumnDefinitions.Add(new() { Width = new GridLength(28) });
+        header.ColumnDefinitions.Add(new()); header.ColumnDefinitions.Add(new() { Width = new GridLength(18) });
         header.Children.Add(new TextBlock { Text = date.Day.ToString(CultureInfo.InvariantCulture), FontSize = 14,
             FontWeight = currentMonth && date.Day == 29 ? FontWeights.Bold : FontWeights.Normal,
             Foreground = PrototypeViews.Brush(currentMonth ? "#EDF2F5" : "#6E7C89") });

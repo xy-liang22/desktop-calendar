@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Desktop Calendar">
+  <!-- Canonical source. Only rect/line primitives; rebuild with scripts/New-BrandAssets.ps1. -->
+  <rect x="8" y="8" width="240" height="240" rx="52" fill="#1B2835"/>
+  <rect x="52" y="66" width="152" height="144" rx="20" fill="none" stroke="#B9CEDC" stroke-width="12"/>
+  <line x1="92" y1="46" x2="92" y2="80" stroke="#B9CEDC" stroke-width="14" stroke-linecap="round"/>
+  <line x1="164" y1="46" x2="164" y2="80" stroke="#B9CEDC" stroke-width="14" stroke-linecap="round"/>
+  <line x1="54" y1="108" x2="202" y2="108" stroke="#B9CEDC" stroke-width="10"/>
+  <rect x="72" y="128" width="48" height="24" rx="6" fill="#95B5A8"/>
+  <rect x="136" y="128" width="48" height="24" rx="6" fill="#AFC8D8"/>
+  <rect x="72" y="168" width="72" height="24" rx="6" fill="#B7ADD0"/>
+</svg>
