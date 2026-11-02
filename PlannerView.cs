@@ -19,12 +19,16 @@ internal sealed class PlannerView : Grid
     readonly MainWindow owner;
     internal readonly PlannerController Controller;
     internal TextBox Quick { get; } = new() { MinHeight = 30 };
+    internal TodoAppearance QuickAppearance { get; }
     readonly TextBlock monthTitle, dateTitle, notice, empty;
     readonly Grid calendarHost = new();
     internal StackPanel Items { get; } = new();
     readonly Button add, quickAdd, undo, redo, reload, recover;
     readonly Dictionary<DateOnly, Button> days = [];
     readonly HashSet<Guid> collapsed = [];
+    readonly HashSet<Guid> calendarExpanded = [];
+    InlineTitleDraft? renderedInline;
+    System.Collections.Immutable.ImmutableArray<Category> renderedCategories;
     PlannerState? rendered;
     DateOnly renderedMonth;
     bool renderedColors;
@@ -67,7 +71,11 @@ internal sealed class PlannerView : Grid
         empty = Text(T("PlannerEmpty"), 12, "#A2AFBC"); empty.TextWrapping = TextWrapping.Wrap;
         var list = new StackPanel(); list.Children.Add(empty); list.Children.Add(Items); At(todo, new ScrollViewer { Content = list, VerticalScrollBarVisibility = ScrollBarVisibility.Auto }, 1);
         var quick = new DockPanel { Margin = new Thickness(0, 8, 0, 0) }; quickAdd = Button("＋", async () => await AddQuickAsync(), T("PlannerQuickAdd")); DockPanel.SetDock(quickAdd, Dock.Right); quick.Children.Add(quickAdd); quick.Children.Add(Quick); AutomationProperties.SetName(Quick, T("PlannerQuickInput")); Quick.ToolTip = T("PlannerQuickHint");
-        Quick.KeyDown += async (_, e) => { if (e.Key == Key.Enter) { e.Handled = true; await AddQuickAsync(); } }; At(todo, quick, 2);
+        Quick.KeyDown += async (_, e) => { if (e.Key == Key.Enter) { e.Handled = true; await AddQuickAsync(); } };
+        var quickArea = new StackPanel();
+        var options = new DockPanel(); var moreOptions = Button("⋯", MoreOptions, T("QuickMore")); DockPanel.SetDock(moreOptions, Dock.Right); options.Children.Add(moreOptions);
+        QuickAppearance = new TodoAppearance(controller, controller.QuickCategory, controller.QuickColor, true); QuickAppearance.Changed += () => { controller.QuickCategory = QuickAppearance.CategoryId; controller.QuickColor = QuickAppearance.Color.Value; }; options.Children.Add(QuickAppearance);
+        quickArea.Children.Add(options); quickArea.Children.Add(quick); At(todo, quickArea, 2);
         var status = new StackPanel { Margin = new Thickness(0, 8, 0, 0) }; notice = Text("", 10, "#A2AFBC"); notice.TextWrapping = TextWrapping.Wrap; status.Children.Add(notice);
         var recovery = new WrapPanel(); reload = Button(T("PlannerReload"), async () => await Controller.ReloadAsync()); recover = Button(T("PlannerRecover"), () => PlannerDialogs.Recover(owner, Controller)); recovery.Children.Add(reload); recovery.Children.Add(recover); status.Children.Add(recovery); At(todo, status, 3);
         var actual = RowGrid(GridLength.Auto, GridLength.Auto, new GridLength(1, GridUnitType.Star)); At(actual, Text(T("ActivityTitle"), 17)); var actualNote = Text(T("PlannerActivityDemo"), 10, "#A2AFBC"); actualNote.Margin = new Thickness(0, 7, 0, 10); At(actual, actualNote, 1); At(actual, timeline, 2);
@@ -80,21 +88,30 @@ internal sealed class PlannerView : Grid
         if (!PlannerController.QuickInput(Quick.Text, out var title, out var time)) { notice.Text = T("PlannerQuickInvalid"); return false; }
         if (!Controller.Writable) return false;
         string draft = Quick.Text;
-        bool ok = await Controller.ExecuteAsync(new SaveTodo(Controller.NewTodo(title) with { PlannedTime = time }));
+        if (!QuickAppearance.Color.Valid) { notice.Text = T("PlannerColorInvalid"); return false; }
+        bool ok = await Controller.ExecuteAsync(new SaveTodo(Controller.NewTodo(title) with { PlannedTime = time, CategoryId = QuickAppearance.CategoryId, Color = QuickAppearance.Color.Value }));
         if (ok && Quick.Text == draft) Quick.Clear(); if (ok) Quick.Focus(); return ok;
     }
     internal void Edit(Todo? task, Guid? parent = null) => PlannerDialogs.Edit(owner, Controller, task, parent);
+    void MoreOptions()
+    {
+        string raw = Quick.Text; string title = ""; TimeOnly? time = null;
+        if (raw.Trim().Length > 0 && !PlannerController.QuickInput(raw, out title, out time)) { notice.Text = T("PlannerQuickInvalid"); return; }
+        var draft = Controller.NewTodo(title) with { PlannedTime = time, CategoryId = QuickAppearance.CategoryId, Color = QuickAppearance.Color.Value };
+        if (PlannerDialogs.Edit(owner, Controller, null, newDraft: draft) && Controller.State!.Todos.Any(t => t.Id == draft.Id) && Quick.Text == raw) Quick.Clear();
+    }
     internal void FocusDate(DateOnly date) { Controller.Select(date); owner.ShowPlannerMonth(); Quick.Focus(); }
     internal void Refresh()
     {
         monthTitle.Text = Controller.Month.ToString(T("PlannerMonthFormat"), CultureInfo.CurrentCulture);
         dateTitle.Text = Controller.SelectedDate.ToString("yyyy-MM-dd dddd", CultureInfo.GetCultureInfo("zh-CN"));
         notice.Text = T(Controller.NoticeKey); notice.ToolTip = Controller.Diagnostic;
-        add.IsEnabled = quickAdd.IsEnabled = Quick.IsEnabled = Controller.Writable;
+        add.IsEnabled = quickAdd.IsEnabled = Quick.IsEnabled = QuickAppearance.IsEnabled = Controller.Writable;
+        if (Controller.State != null && renderedCategories != Controller.State.Categories) { QuickAppearance.Refresh(); renderedCategories = Controller.State.Categories; }
         undo.IsEnabled = Controller.CanUndo; redo.IsEnabled = Controller.CanRedo;
         reload.IsEnabled = !Controller.Busy; recover.IsEnabled = !Controller.Busy && Controller.Storage?.Status != StoreStatus.NewerSchema && Controller.Storage?.Candidates.Length > 0;
-        if (rendered != Controller.State || renderedMonth != Controller.Month || renderedColors != Controller.ColorBackground || renderedToday != Controller.Today)
-        { BuildCalendar(); rendered = Controller.State; renderedMonth = Controller.Month; renderedColors = Controller.ColorBackground; renderedToday = Controller.Today; }
+        if (rendered != Controller.State || renderedMonth != Controller.Month || renderedColors != Controller.ColorBackground || renderedToday != Controller.Today || renderedInline != Controller.Inline)
+        { BuildCalendar(); rendered = Controller.State; renderedMonth = Controller.Month; renderedColors = Controller.ColorBackground; renderedToday = Controller.Today; renderedInline = Controller.Inline; }
         foreach (var day in days) day.Value.BorderBrush = PrototypeViews.Brush(day.Key == Controller.SelectedDate ? "#A3D9C4" : day.Key == Controller.Today ? "#607C9DB0" : "#00FFFFFF");
         Items.Children.Clear(); var rows = Controller.Tree(Controller.SelectedDate); empty.Visibility = rows.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         empty.Text = Controller.Storage?.CanWrite == true ? T("PlannerEmpty") : T(Controller.NoticeKey);
@@ -114,9 +131,22 @@ internal sealed class PlannerView : Grid
         foreach (var value in dates)
         {
             if (value is not DateOnly date) { grid.Children.Add(new Border()); continue; }
-            var tasks = Controller.On(date).OrderBy(t => t.Status == TodoStatus.Completed).ThenBy(t => t.ParentId != null).ToArray();
-            var entries = tasks.Select(t => new CalendarTodoEntry(t.Title, Prefix(t), t.Status == TodoStatus.Completed, Controller.Color(t), t.Important || t.Urgent, async () => { if (Controller.Writable) await Controller.ExecuteAsync(new SetTodoCompleted(TodoRef.Of(t), t.Status != TodoStatus.Completed)); })).ToArray();
-            var cell = new CalendarPreviewCell(date, entries, date.Month == Controller.Month.Month, Controller.ColorBackground, () => FocusDate(date));
+            var tasks = Controller.On(date);
+            var entries = new List<CalendarTodoEntry>();
+            void AddCalendar(TodoDateNode node, int depth)
+            {
+                if (node.ContextOnly) { foreach (var child in node.Children) AddCalendar(child, depth); return; }
+                var t = node.Value;
+                entries.Add(new(t.Title, Prefix(t), t.Status == TodoStatus.Completed, Controller.Color(t), t.Important || t.Urgent,
+                    async () => { if (Controller.Writable) await Controller.ExecuteAsync(new SetTodoCompleted(TodoRef.Of(t), t.Status != TodoStatus.Completed)); },
+                    t.Id, t.ParentId, depth, node.Children.Length > 0, calendarExpanded.Contains(t.Id),
+                    () => { if (!calendarExpanded.Add(t.Id)) calendarExpanded.Remove(t.Id); renderedMonth = default; Refresh(); },
+                    t.Kind == TodoKind.Once ? () => Controller.BeginInline(t) : null,
+                    Controller.Inline?.Id == t.Id ? Controller.Inline : null, Controller, Controller.Writable));
+                if (calendarExpanded.Contains(t.Id)) foreach (var child in node.Children) AddCalendar(child, depth + 1);
+            }
+            foreach (var node in Controller.Tree(date)) AddCalendar(node, 0);
+            var cell = new CalendarPreviewCell(date, entries.ToArray(), date.Month == Controller.Month.Month, Controller.ColorBackground, () => FocusDate(date));
             string? decoration = Controller.State?.Decorations.FirstOrDefault(d => d.Date == date)?.Color;
             var button = new Button { Content = cell, Tag = date, Padding = new Thickness(0), Margin = new Thickness(2), BorderThickness = new Thickness(1), Background = PrototypeViews.Brush(decoration == null ? date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday ? "#162A3D48" : "#0BFFFFFF" : "#38" + decoration.TrimStart('#')[^6..]), HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Stretch, ClipToBounds = true, ToolTip = date.ToString("yyyy-MM-dd") + "\n" + string.Join("\n", tasks.Select(t => Prefix(t) + t.Title)) };
             // Preserve the button through selection changes, so the second click can be recognized.
@@ -130,20 +160,22 @@ internal sealed class PlannerView : Grid
     internal static string Prefix(Todo t) => t.PlannedTime is TimeOnly time ? time.ToString("HH:mm", CultureInfo.InvariantCulture) + " " : "";
     static bool InputOrigin(DependencyObject? origin, DependencyObject stop)
     {
-        for (var input = origin; input != null && input != stop; input = input is FrameworkContentElement content ? content.Parent : VisualTreeHelper.GetParent(input)) if (input is ButtonBase) return true;
+        for (var input = origin; input != null && input != stop; input = input is FrameworkContentElement content ? content.Parent : VisualTreeHelper.GetParent(input)) if (input is ButtonBase or TextBoxBase or ComboBox || input is FrameworkElement element && element.Tag is CalendarTodoEntry) return true;
         return false;
     }
     void AddNode(Panel parent, TodoDateNode node, int depth)
     {
         var task = node.Value;
-        var outer = new Border { Padding = new Thickness(0, 5, 0, 7), Margin = new Thickness(Math.Min(depth, 6) * 12, 0, 0, 4), BorderThickness = new Thickness(0, 2, 0, 0), BorderBrush = Brushes.Transparent, AllowDrop = true, Tag = task };
+        var outer = new Border { Padding = new Thickness(7, 7, 6, 8), Margin = new Thickness(Math.Min(depth, 6) * 12, 0, 0, 6), BorderThickness = new Thickness(1), BorderBrush = ThemeColors.Brush("#304352"), Background = ThemeColors.Brush("#151E2A"), CornerRadius = new CornerRadius(7), AllowDrop = true, Tag = task };
         var row = new Grid(); row.ColumnDefinitions.Add(new() { Width = new GridLength(4) }); row.ColumnDefinitions.Add(new() { Width = new GridLength(26) }); row.ColumnDefinitions.Add(new()); row.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
-        At(row, new Border { Background = PrototypeViews.Brush(Controller.Color(task)), CornerRadius = new CornerRadius(2), Margin = new Thickness(0, 2, 0, 2) });
+        At(row, new Border { Background = ThemeColors.Brush(ThemeColors.Accent(Controller.Color(task))), CornerRadius = new CornerRadius(2), Margin = new Thickness(0, 2, 0, 2) });
         var check = new CheckBox { IsChecked = task.Status == TodoStatus.Completed, IsEnabled = Controller.Writable && !node.ContextOnly, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(6, 2, 3, 0) }; AutomationProperties.SetName(check, T("PlannerToggle") + " " + task.Title);
         check.Click += async (_, e) => { e.Handled = true; bool complete = check.IsChecked == true; check.IsChecked = task.Status == TodoStatus.Completed; await Controller.ExecuteAsync(new SetTodoCompleted(TodoRef.Of(task), complete)); }; At(row, check, 0, 1);
         var content = new StackPanel(); var line = new TextBlock { TextWrapping = TextWrapping.Wrap, TextDecorations = task.Status == TodoStatus.Completed ? TextDecorations.Strikethrough : null, Opacity = task.Status == TodoStatus.Completed ? .55 : 1 };
         line.Inlines.Add(new System.Windows.Documents.Run(Prefix(task)) { FontWeight = FontWeights.SemiBold, Foreground = PrototypeViews.Brush("#A3D9C4") }); line.Inlines.Add(new System.Windows.Documents.Run(task.Title) { FontWeight = task.Important || task.Urgent ? FontWeights.SemiBold : FontWeights.Normal }); content.Children.Add(line);
         string meta = string.Join(" · ", new[] { Controller.State?.Categories.FirstOrDefault(c => c.Id == task.CategoryId)?.Name, task.Important ? T("PlannerImportant") : null, task.Urgent ? T("PlannerUrgent") : null, task.Kind != TodoKind.Once ? T("PlannerAdvancedTask") : null }.Where(s => !string.IsNullOrWhiteSpace(s)));
+        if (task.CompletionIntent == CompletionIntent.ManualIncomplete && node.Children.Length > 0) meta += (meta.Length > 0 ? " · " : "") + T("ParentPendingOverride");
+        if (task.CompletionSnapshotInvalidated) meta += (meta.Length > 0 ? " · " : "") + T("ParentSnapshotInvalidated");
         if (meta.Length > 0) content.Children.Add(Text(meta, 10, "#A2AFBC"));
         decimal progress = Controller.State == null ? 0 : PlannerQueries.Progress(Controller.State, TodoRef.Of(task));
         if (progress > 0 || node.Children.Length > 0) { content.Children.Add(new ProgressBar { Minimum = 0, Maximum = 100, Value = (double)progress, Height = 3, Margin = new Thickness(0, 5, 0, 3), Foreground = PrototypeViews.Brush("#A3D9C4"), Background = PrototypeViews.Brush("#263B45"), BorderThickness = new Thickness(0) }); content.Children.Add(Text(progress.ToString("0.#", CultureInfo.CurrentCulture) + "%", 10, "#A2AFBC")); }
@@ -166,13 +198,14 @@ internal sealed class PlannerView : Grid
             if (InputOrigin(e.OriginalSource as DependencyObject, outer)) return;
             var p = e.GetPosition(outer); if (Math.Abs(p.X - dragStart.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(p.Y - dragStart.Y) < SystemParameters.MinimumVerticalDragDistance) return;
             dragTodo = null; try { DragDrop.DoDragDrop(outer, new DataObject("DesktopCalendar.Todo", task.Id.ToString("D")), DragDropEffects.Move); }
-            finally { foreach (var item in Items.Children.OfType<Border>()) item.BorderBrush = Brushes.Transparent; }
+            finally { foreach (var item in Items.Children.OfType<Border>()) ResetDrop(item); }
         };
         outer.DragOver += (_, e) => { bool valid = CanDrop(e, task, out var ignored); e.Effects = valid ? DragDropEffects.Move : DragDropEffects.None; outer.BorderThickness = new Thickness(0, e.GetPosition(outer).Y < outer.ActualHeight / 2 ? 2 : 0, 0, e.GetPosition(outer).Y >= outer.ActualHeight / 2 ? 2 : 0); outer.BorderBrush = valid ? PrototypeViews.Brush("#A3D9C4") : Brushes.Transparent; e.Handled = true; };
-        outer.DragLeave += (_, _) => outer.BorderBrush = Brushes.Transparent;
-        outer.Drop += async (_, e) => { e.Handled = true; outer.BorderBrush = Brushes.Transparent; if (CanDrop(e, task, out var source)) await DropAsync(source!, task, e.GetPosition(outer).Y >= outer.ActualHeight / 2); };
+        outer.DragLeave += (_, _) => ResetDrop(outer);
+        outer.Drop += async (_, e) => { e.Handled = true; ResetDrop(outer); if (CanDrop(e, task, out var source)) await DropAsync(source!, task, e.GetPosition(outer).Y >= outer.ActualHeight / 2); };
         if (!collapsed.Contains(task.Id)) foreach (var child in node.Children) AddNode(parent, child, depth + 1);
     }
+    static void ResetDrop(Border row) { row.BorderThickness = new Thickness(1); row.BorderBrush = ThemeColors.Brush("#304352"); }
     bool CanDrop(DragEventArgs e, Todo target, out Todo? source)
     {
         source = DragId(e.Data) is Guid id ? Controller.State?.Todos.FirstOrDefault(t => t.Id == id) : null;

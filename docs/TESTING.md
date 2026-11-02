@@ -1,5 +1,51 @@
 # 阶段验证记录
 
+## 2026-11-02：P3.1 待办交互与完成语义修订
+
+状态：开发完成，自动及控件渲染验证范围内通过，物理键鼠/真实桌面像素 NOT VERIFIED。用户已确认P3核心新增/编辑/三视图/排序/撤销总体正常，本轮不要求重复旧Win+D/任务栏/Alt+Tab验收。仅P3.1，不开始P4。
+
+### 可复现执行
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Test-Planner.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Test-P3.ps1 -Configuration P31
+powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -Configuration P31Regression -Test
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Publish-DesktopCalendar.ps1 -Configuration P31
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-UserInstall.ps1
+```
+
+WPF/owner测试在正常用户桌面会话执行，未使用管理员或更改系统设置。所有业务夹具、只读属性试验、报告和渲染图均在忽略的artifacts/临时测试目录，未读写个人planner-data.json、未替换真实开始菜单安装版。四个独立WPF进程覆盖main/restart/corrupt/newer；退出后新进程恢复完成快照，再取消父完成核对原混合子状态。
+
+| 范围 | 结果 | 实际证据 |
+|---|---|---|
+| 数据/存储/业务 | PASS：194，FAIL：0 | 包含P2原子写入/中断/并发/损坏/关联、P3复制，以及默认递归进度、自然完成与显式未完成覆盖、级联快照、独立状态/进度/结构失效、嵌套、删除/提升、UndoRedo、排序不变、标题并发校验、schema2原件不写/首次保存字节备份 |
+| P3及P3.1 WPF | PASS：111，FAIL：0 | 真实模态窗口、控件路由事件/焦点及文件操作：中文冒号/空格/全角、快速分类覆盖色、更多选项复用、叶手动进度、保存/X/Esc/取消/无修改/无效日期/写失败、历史分类保留、颜色Popup及旧alpha HEX可读预览、月历层级与9个高度临界值、内联Enter/Esc/失焦、折叠回今天、独立进程快照恢复和只读保护 |
+| 原窗口/owner/几何/时间轴 | PASS：374，FAIL：0 | 原371项保留并调整3项过时页面期望，新增3项“仅置顶往返保留周页面”。折叠展开按新要求回今日页；同HWND、矩形、透明度、原生TOPMOST清除、托盘、贴边、缩放、分栏、5/6周、DPI/显示器拓扑数学、启动可见时序、重启/单实例/异常终止保留 |
+| 渲染图核对 | PASS（控件渲染范围） | 检查完整/最小窗口、编辑器、卡片层级、内联无效草稿、HSV/选色标记、分类下拉、菜单正常/高亮/勾选/禁用、日期Popup。三点菜单暗底亮字；颜色按钮与勾选色标显式前景；日期选择保留系统浅色模板、局部暗字隔离。不是桌面截图 |
+| 历史时区 | NOT VERIFIED：1 | 沿用Windows资料下Samoa2011跳日差异，可控DST与日期边界测试通过，不修改系统资料 |
+| 真实输入/实际屏幕 | NOT VERIFIED | computer-use技能初始化list_apps、重置后list_windows均native pipe unavailable / os error 2，停止重试。程序内RaiseEvent/焦点变化不是物理鼠标双击或Esc输入，RenderTargetBitmap不是桌面像素，不据此宣称完整GUI验收 |
+
+0.3.1离线发布与隔离安装/更新/回滚/卸载 **15 PASS / 0 FAIL**，五文件包含Core；构建0警告/错误。最新WPF证据目录`artifacts/p3-checks/run-38c82ba7014c44bcaa8fd118da53a088/`，Core报告`artifacts/p2-checks/checks.txt`，窗口`artifacts/p1-checks.txt`；均忽略提交。Git交付在dev/p3.1，main保持不变，不标记未测环境已验收。
+
+参考[Microsoft Calendar样式/模板说明](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/controls/calendar)：日期选择仍用框架原有月/年/十年交互，本轮只调整主题资源和文字继承，未重写日期控件。
+
+### 发现与修正（不隐藏失败）
+
+- Core首轮2项旧断言仍假定父不会自然完成，改为验证新自然完成及历史保护，同时保留取消父的上下文导航用例。补测真实发现“删除父并提升子任务后遗留Cascade来源”，在事务归一中释放孤立来源，新增校验/用例后194/0。
+- WPF首次编译HSV元组0整型、测试Key方法名遮蔽枚举及未await提示已修正，后续构建0警告/错误。首次分类测试夹具未预分配ID导致3项失败，修正夹具ID，不改生产分类规则绕过。
+- 原窗口首轮368/3：全部为“折叠恢复仍保留周页”的旧期望，用户现要求回今天。保留HWND/矩形/透明度断言，改成今日页，并新增仅置顶往返不得换页检查；完整374/0。
+- **实际渲染发现两项属性检查未能揭示的问题**：浅色颜色按钮/选色勾号受全局TextBlock样式覆盖而呈浅字；日期Popup结构检查通过但实际为浅底浅字。分别显式设置色块文字前景、对Calendar传入局部样式，并移除全局TextBlock强制前景，改由窗口/控件继承文字颜色（仅局部Calendar资源不能覆盖模板内的全局样式），重新生成并观察渲染图。分类下拉使用真实名称/色点而非对象描述；ContextMenu模板覆盖正常/高亮/选中/禁用。未把旧结构PASS冒充颜色可读PASS。
+- Esc读取DatePicker实际编辑缓冲，避免尚未失焦时只校验旧SelectedDate；颜色Popup/下拉Esc不误关闭编辑器。内联仅RenameTodo，不覆盖其他字段；删除/完成与快照同事务且失败不发布。
+
+### 最少人工核对（仅目前工具无法观察的新交互）
+
+先从托盘退出旧版，运行`bin/P31/net10.0-windows/DesktopCalendar.exe`（项目开发快捷方式也指向最新构建；开始菜单旧安装不会被本轮测试替换）。
+
+1. **上下文键盘手感**：完整编辑改标题按Esc应保存；月历双击该标题改字再按Esc应取消，Enter应保存；空标题应保留输入且不删除。
+2. **实际屏幕弹层/选色**：打开⋯菜单、分类下拉、颜色HSV及日期选择，确认文字可读、色块选中清晰；这里只核对屏幕呈现与鼠标命中，保存/快照/重启等程序已自主验证，不要求重做数据矩阵或旧桌面行为。
+
+Win10、真实混合DPI、Explorer重启/休眠及长期性能仍是历史边界；偶发轻微缩放抖动仍为用户接受限制。
+
 ## 2026-11-02：P3 真实月历/待办接入与验证
 
 状态：实现已完成，自动验证范围内通过；真实输入与实际桌面视觉受工具限制待最小核对，不开始P4。最终结果：P3 WPF **56 PASS / 0 FAIL**、数据 **165 PASS / 0 FAIL**（沿用历史时区1项NOT VERIFIED）、原窗口回归 **371/0**、五文件安装/更新/卸载 **15/0**，构建0警告/错误。实现提交8c5364f已推送dev/p3，并对该提交重新执行窗口回归、离线发布及安装验证通过；随后仅更新最终文档。下面P2及更早“UI未接入”仅为历史。

@@ -1,6 +1,6 @@
 <Window x:Class="DesktopCalendar.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  Title="{DynamicResource AppName}" Icon="assets/branding/DesktopCalendar.ico" Width="1240" Height="760" MinWidth="880" MinHeight="520" ShowInTaskbar="False"
- WindowStyle="None" AllowsTransparency="True" Background="Transparent" BorderThickness="0" ResizeMode="CanResize"
+ WindowStyle="None" AllowsTransparency="True" Background="Transparent" Foreground="{DynamicResource Ink}" BorderThickness="0" ResizeMode="CanResize"
  FontFamily="Segoe UI, Microsoft YaHei UI" FontSize="13" UseLayoutRounding="True" SnapsToDevicePixels="True" WindowStartupLocation="Manual">
  <Grid x:Name="Surface">
   <Border x:Name="Shell" CornerRadius="18" Background="#F519232E" Padding="8">

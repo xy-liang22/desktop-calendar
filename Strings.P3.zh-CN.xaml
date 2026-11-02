@@ -3,7 +3,7 @@
  <s:String x:Key="PlannerExitDraft">快速输入中还有未提交的文字。确认退出并放弃这段草稿？已成功保存的待办不会丢失。</s:String>
  <s:String x:Key="TimelineTip">示例时间块 · 实际日程编辑将在 P5 接入</s:String>
  <s:String x:Key="WeekTitle">示例周 · 10 月 26 日 — 11 月 1 日</s:String><s:String x:Key="WeekSubtitle">布局示例 · 真实周计划与总结将在 P6 接入</s:String>
- <s:String x:Key="Prototype">P3 · 真实待办 · 日程与周总结仍为示例</s:String>
+ <s:String x:Key="Prototype">P3.1 · 真实待办 · 日程与周总结仍为示例</s:String>
  <s:String x:Key="DemoNotice">待办即时保存到本机 · 日程仍为示例</s:String>
  <s:String x:Key="CompactDemoNotice">与月历共享真实待办 · 修改即时保存</s:String>
  <s:String x:Key="SettingsNotice">窗口偏好与待办分别保存在本机。日程仍为示例；设置和托盘均可退出。</s:String>
@@ -31,10 +31,13 @@
  <s:String x:Key="PlannerCancel">取消</s:String><s:String x:Key="PlannerSave">保存</s:String><s:String x:Key="PlannerConfirm">确认</s:String>
  <s:String x:Key="PlannerTitle">标题</s:String><s:String x:Key="PlannerDescription">说明</s:String><s:String x:Key="PlannerDateTime">计划日期 / 可选时间</s:String><s:String x:Key="PlannerDate">计划日期</s:String><s:String x:Key="PlannerTime">计划时间</s:String><s:String x:Key="PlannerTimeHint">可留空；例如 09:30</s:String>
  <s:String x:Key="PlannerCategory">分类</s:String><s:String x:Key="PlannerUnclassified">无分类</s:String><s:String x:Key="PlannerManageCategories">管理分类</s:String><s:String x:Key="PlannerColor">颜色覆盖（留空继承分类）</s:String><s:String x:Key="PlannerColorHint">例如 #A3D9C4；留空使用分类色</s:String>
- <s:String x:Key="PlannerPriority">优先级</s:String><s:String x:Key="PlannerProgress">手动进度 %（0–100）</s:String><s:String x:Key="PlannerDerivedProgress">按子任务自动计算进度（不会自动勾选父任务）</s:String><s:String x:Key="PlannerCompleted">已完成</s:String><s:String x:Key="PlannerParent">所属父任务：</s:String>
+ <s:String x:Key="PlannerPriority">优先级</s:String><s:String x:Key="PlannerProgress">手动进度 %（0–100）</s:String><s:String x:Key="PlannerDerivedProgress">按直接子分支自动计算；无子任务时使用手动进度</s:String><s:String x:Key="PlannerCompleted">已完成</s:String><s:String x:Key="PlannerParent">所属父任务：</s:String>
  <s:String x:Key="PlannerTitleRequired">标题不能为空；取消编辑不会删除任何待办。</s:String><s:String x:Key="PlannerDateRequired">请选择有效日期。</s:String><s:String x:Key="PlannerTimeInvalid">时间无效，请输入 09:30 或留空。</s:String><s:String x:Key="PlannerColorInvalid">请输入 # 加六位十六进制颜色，例如 #A3D9C4。</s:String><s:String x:Key="PlannerProgressInvalid">进度须为 0–100 的数字。</s:String><s:String x:Key="PlannerStaleEdit">该待办已发生变化，请取消并重新打开，避免覆盖更新。</s:String>
  <s:String x:Key="PlannerDeleteConfirm">删除“{0}”及其子任务？关联实际日程将保留。可在本次会话撤销。</s:String>
  <s:String x:Key="PlannerCopyDate">复制到日期</s:String><s:String x:Key="PlannerCopyHint">创建独立的新待办及子任务，保留属性与相对日期；完成状态和手动进度重置，原待办不变。</s:String>
  <s:String x:Key="PlannerCategoryName">分类名称</s:String><s:String x:Key="PlannerCategoryColor">颜色，例如 #A3D9C4</s:String><s:String x:Key="PlannerNewCategory">新增分类</s:String><s:String x:Key="PlannerArchiveCategory">归档所选分类</s:String><s:String x:Key="PlannerArchiveHint">将分类从新增列表隐藏？已有待办和日程仍保留历史分类。</s:String><s:String x:Key="PlannerDefaultCategories">补齐预置分类</s:String><s:String x:Key="PlannerCategoryInvalid">请填写分类名称和有效的六位十六进制颜色。</s:String>
  <s:String x:Key="PlannerRecoveryCandidate">选择经过校验的恢复候选</s:String><s:String x:Key="PlannerRecoveryHint">恢复会替换当前业务文件，原始文件会另存证据。不会自动选择或恢复。</s:String><s:String x:Key="PlannerRecoveryConfirm">确认恢复候选中的 {0} 条待办、{1} 条实际日程（版本序号 {2}）？请确认内容范围，原件将保留。</s:String>
+ <s:String x:Key="ColorPlane">颜色饱和度和明度</s:String><s:String x:Key="ColorHue">色相</s:String><s:String x:Key="ColorChoose">选择颜色</s:String><s:String x:Key="ColorHex">高级：HEX 色值</s:String><s:String x:Key="ColorInherit">继承分类颜色</s:String><s:String x:Key="ColorDone">完成选色</s:String><s:String x:Key="ColorContrastHint">原色在深色背景上对比度偏低；文字和标记会自动提亮，大面积背景会柔化。</s:String>
+ <s:String x:Key="LegacyCategory">历史分类</s:String><s:String x:Key="QuickMore">更多选项：日期、优先级和详细说明</s:String><s:String x:Key="CalendarExpand">展开 / 收起子任务</s:String><s:String x:Key="CalendarInlineHint">双击文字修改标题；其他属性请打开完整编辑器</s:String><s:String x:Key="CalendarInlineTitle">编辑待办标题：Enter 保存，Esc 取消</s:String><s:String x:Key="ParentPendingOverride">手动保持未完成</s:String><s:String x:Key="ParentSnapshotInvalidated">子任务已独立修改，不再恢复旧完成快照</s:String><s:String x:Key="SaveClose">保存并关闭；放弃修改请点取消</s:String>
+ <s:String x:Key="ParentCompletionHint">子任务全完成时父任务自然完成。手动完成父任务会完成整个子树；取消时仅在子树未独立改动的情况下恢复原状态。取消自然完成不会取消子任务，父任务会保持未完成直到下次子任务状态或结构改动。</s:String>
 </ResourceDictionary>

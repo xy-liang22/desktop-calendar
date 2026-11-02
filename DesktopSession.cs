@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Threading;
 using Forms = System.Windows.Forms;
@@ -104,6 +105,16 @@ internal sealed class DesktopSession : IDisposable
     internal async void Exit(int code)
     {
         if (closing) return;
+        if (Planner != null && !Testing)
+        {
+            // A tray exit follows the editor's save-on-close contract, including failures.
+            var sheets = Application.Current.Windows.OfType<PlannerDialogs.Sheet>().Reverse().ToArray();
+            foreach (var sheet in sheets)
+            {
+                if (!sheet.AutoSaveClose || !await sheet.SaveAndCloseAsync(true)) { sheet.Activate(); return; }
+            }
+            if (!await Planner.CommitInlineAsync()) { Window.Activate(); return; }
+        }
         if (Planner != null && !Testing && Planner.QuickDraft.Length > 0 && !PlannerDialogs.Confirm(Window, MainWindow.Text("Exit"), MainWindow.Text("PlannerExitDraft"))) return;
         closing = true; if (Planner != null) await Planner.StopAsync();
         Save(); Dispose(); Window.CloseForRecovery(); Application.Current.Shutdown(code);

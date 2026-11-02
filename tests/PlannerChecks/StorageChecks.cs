@@ -83,7 +83,7 @@ internal static partial class Checks
         string migratedPath = TestFile(output, "migration"); await File.WriteAllBytesAsync(migratedPath, PlannerCodec.EncodeLegacyV1ForMigration(original));
         var migrationStore = new PlannerStore(migratedPath); var migration = await migrationStore.OpenAsync(Utc);
         var migrationSave = await migrationStore.CommitAsync(migration.State! with { Revision = 1 }, migration.Fingerprint);
-        Check("migration committed atomically retaining v1 backup", migration.Migrated && migrationSave.Success && JsonNode.Parse(await File.ReadAllBytesAsync(migratedPath))!["schemaVersion"]!.GetValue<int>() == 2 && JsonNode.Parse(await File.ReadAllBytesAsync(migratedPath + ".bak"))!["schemaVersion"]!.GetValue<int>() == 1);
+        Check("migration committed atomically retaining v1 backup", migration.Migrated && migrationSave.Success && JsonNode.Parse(await File.ReadAllBytesAsync(migratedPath))!["schemaVersion"]!.GetValue<int>() == PlannerCodec.CurrentSchema && JsonNode.Parse(await File.ReadAllBytesAsync(migratedPath + ".bak"))!["schemaVersion"]!.GetValue<int>() == 1);
         foreach (var stage in Enum.GetValues<WriteStage>())
         {
             var faultPath = TestFile(output, stage.ToString()); var seed = new PlannerStore(faultPath); var seedLoad = await seed.OpenAsync(Utc);

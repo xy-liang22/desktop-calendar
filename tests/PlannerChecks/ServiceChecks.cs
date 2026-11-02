@@ -106,7 +106,7 @@ internal static partial class Checks
         await Run(w, new EditSeries(series, day.AddDays(2), EditScope.Single, Templates: [root with { Title = "single" }, child], MoveTo: day.AddDays(4)));
         Check("single reschedule retains original identity and no duplicate", PlannerQueries.Resolve(w.Snapshot!, future).PlannedDate == day.AddDays(4) && !PlannerQueries.TodosOn(w.Snapshot!, day.AddDays(2), day).Any(t => t.Id == future.Id) && PlannerQueries.TodosOn(w.Snapshot!, day.AddDays(4), day).Any(t => t.Id == future.Id));
         await Run(w, new EditSeries(series, day.AddDays(3), EditScope.FromDate, Templates: [root with { Title = "future" }, child]));
-        Check("future version preserves prior pending history", PlannerQueries.Resolve(w.Snapshot!, Occ(root.Id, 1)).Title == "edited series" && PlannerQueries.Resolve(w.Snapshot!, Occ(root.Id, 3)).Title == "future");
+        Check("future version preserves naturally completed prior history", PlannerQueries.Resolve(w.Snapshot!, Occ(root.Id, 1)).Title == "daily" && PlannerQueries.Resolve(w.Snapshot!, Occ(root.Id, 1)).Status == TodoStatus.Completed && PlannerQueries.Resolve(w.Snapshot!, Occ(root.Id, 3)).Title == "future");
         await Run(w, new CancelSeries(series, day.AddDays(3), EditScope.Single));
         Throws("single recurrence cancellation excludes only one date", () => PlannerQueries.Resolve(w.Snapshot!, Occ(root.Id, 3)), "OccurrenceNotFound");
         Check("single cancellation leaves next occurrence", PlannerQueries.Resolve(w.Snapshot!, Occ(root.Id, 4)).Title == "future");

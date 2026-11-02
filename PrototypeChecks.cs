@@ -127,9 +127,12 @@ internal static class PrototypeChecks
             window.SetPage(true); window.OpacitySlider.Value = .85;
             for (int cycle = 0; cycle < 3; cycle++)
             {
+                window.SetPage(true);
+                window.SetPinned(true); window.SetPinned(false);
+                Check("pin-only roundtrip retains selected weekly page " + cycle, window.IsWeek);
                 window.SetPinned(true); window.EnterCompact(); window.SetPinned(false); window.RestoreNormal();
                 Check("native TOPMOST cleared and desktop restored " + cycle, !window.DesktopMode.NativeTopmost && !window.Topmost && window.DesktopMode.Layer == WindowLayer.Desktop && window.DesktopMode.Owner != IntPtr.Zero);
-                Check("mode switch preserves HWND/view/opacity/bounds " + cycle, window.Handle == keptHandle && window.IsWeek && window.OpacitySlider.Value == .85 && Near(NativeWindow.Bounds(window.Handle), before));
+                Check("compact restore selects today page preserving HWND/opacity/bounds " + cycle, window.Handle == keptHandle && !window.IsWeek && window.OpacitySlider.Value == .85 && Near(NativeWindow.Bounds(window.Handle), before));
             }
             window.SetPage(false); window.OpacitySlider.Value = .96;
             int changes = window.DesktopMode.LayerChanges;

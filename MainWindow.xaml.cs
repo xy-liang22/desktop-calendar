@@ -421,6 +421,7 @@ public partial class MainWindow : Window
     }
     internal void RestoreNormal(bool activate = true)
     {
+        bool fromToday = Mode == DisplayMode.Compact || Mode == DisplayMode.Tray && beforeTray == DisplayMode.Compact;
         bool needsRestore = Mode != DisplayMode.Normal;
         CapturePlacement(); changingView = true;
         Mode = DisplayMode.Normal;
@@ -429,6 +430,7 @@ public partial class MainWindow : Window
         ResizeHandles.Visibility = Visibility.Visible;
         RestoreButton.Visibility = Visibility.Collapsed;
         CompactContent.Visibility = Visibility.Collapsed;
+        if (fromToday) { Session.Planner?.Select(DateOnly.FromDateTime(DateTime.Now), true); SetPage(false); }
         SettingsPanel.Visibility = Visibility.Collapsed;
         Shell.CornerRadius = new CornerRadius(18);
         if (needsRestore)

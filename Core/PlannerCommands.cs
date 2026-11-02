@@ -6,6 +6,7 @@ namespace DesktopCalendar.Core;
 public abstract record PlannerCommand;
 public sealed record BatchCommand(ImmutableArray<PlannerCommand> Commands) : PlannerCommand;
 public sealed record SaveTodo(Todo Value) : PlannerCommand;
+public sealed record RenameTodo(TodoRef Todo, string Title, string ExpectedTitle) : PlannerCommand;
 public sealed record SetTodoCompleted(TodoRef Todo, bool Completed) : PlannerCommand;
 public sealed record MoveCarryTodo(TodoRef Todo, DateOnly Date) : PlannerCommand;
 public sealed record ReorderTodos(ImmutableArray<TodoRef> Siblings, DateOnly? DisplayDate = null) : PlannerCommand;
@@ -62,6 +63,14 @@ internal static class PlannerCommands
     }
     internal static CommandChange Apply(PlannerState s, PlannerCommand command, DateTimeOffset now, int depth = 0)
     {
+        var change = ApplyCore(s, command, now, depth);
+        if (command is BatchCommand) return change;
+        var protect = command is SetTodoCompleted completion && change.State.Todos.SingleOrDefault(t => t.Id == completion.Todo.Id) is Todo root
+            ? TodoCompletion.Descendants(change.State, root).Select(t => t.Id).Append(root.Id).ToHashSet() : null;
+        return change with { State = TodoCompletion.Reconcile(s, change.State, now, protect) };
+    }
+    static CommandChange ApplyCore(PlannerState s, PlannerCommand command, DateTimeOffset now, int depth)
+    {
         if (depth > 16) throw new PlannerException("CommandTooDeep");
         switch (command)
         {
@@ -78,21 +87,24 @@ internal static class PlannerCommands
                 var t = Stamp(c.Value, old, now);
                 if (old == null)
                 {
-                    if (t.Kind is not (TodoKind.Once or TodoKind.CarryHistory or TodoKind.CarryLatest) || t.Status != TodoStatus.Pending || t.CompletedAt != null) throw new PlannerException("UseExplicitTodoCommand");
+                    if (t.Kind is not (TodoKind.Once or TodoKind.CarryHistory or TodoKind.CarryLatest) || t.Status != TodoStatus.Pending || t.CompletedAt != null || t.CompletionIntent != CompletionIntent.Automatic || t.CompletionSnapshot != null) throw new PlannerException("UseExplicitTodoCommand");
                     if (t.Kind is TodoKind.CarryHistory or TodoKind.CarryLatest) t = t with { CarryDate = t.PlannedDate, FrozenCarryDate = null, Moves = [] };
                 }
-                else if (t.Status != old.Status || t.CompletedAt != old.CompletedAt || t.Kind != old.Kind || t.Origin != old.Origin || t.CarryDate != old.CarryDate || t.FrozenCarryDate != old.FrozenCarryDate || !t.Moves.SequenceEqual(old.Moves)) throw new PlannerException("UseExplicitTodoCommand");
+                else if (t.Status != old.Status || t.CompletedAt != old.CompletedAt || t.Kind != old.Kind || t.Origin != old.Origin || t.CarryDate != old.CarryDate || t.FrozenCarryDate != old.FrozenCarryDate || !t.Moves.SequenceEqual(old.Moves) || t.CompletionIntent != old.CompletionIntent || t.CompletionSnapshot != old.CompletionSnapshot || t.CompletionSnapshotInvalidated != old.CompletionSnapshotInvalidated) throw new PlannerException("UseExplicitTodoCommand");
                 if (old?.Origin != null && old.ParentId != t.ParentId) throw new PlannerException("OccurrenceReparentNotSupported");
                 return new(s with { Todos = Put(s.Todos, t) }, t.Id);
+            }
+            case RenameTodo c:
+            {
+                s = Materialize(s, c.Todo); var t = Get(s, c.Todo);
+                if (t.Title != c.ExpectedTitle) throw new PlannerException("StaleTodoTitle");
+                return new(s with { Todos = Put(s.Todos, t with { Title = c.Title, ModifiedAt = now }) }, t.Id);
             }
             case SetTodoCompleted c:
             {
                 s = Materialize(s, c.Todo); var t = Get(s, c.Todo);
-                if (t.Status == TodoStatus.Cancelled) throw new PlannerException("CancelledTodo");
-                var freeze = t.Kind is TodoKind.CarryHistory or TodoKind.CarryLatest && c.Completed
-                    ? PlannerQueries.CarryEnd(t, PlannerTime.LocalDate(now, s.Options.TimeZoneId)) : (DateOnly?)null;
-                t = t with { Status = c.Completed ? TodoStatus.Completed : TodoStatus.Pending, CompletedAt = c.Completed ? t.CompletedAt ?? now : null, FrozenCarryDate = freeze, ModifiedAt = now };
-                return new(s with { Todos = Put(s.Todos, t) }, t.Id);
+                foreach (var child in TodoCompletion.Descendants(s, t)) s = Materialize(s, TodoRef.Of(child));
+                return new(TodoCompletion.Set(s, t, c.Completed, now), t.Id);
             }
             case MoveCarryTodo c:
             {
@@ -138,7 +150,7 @@ internal static class PlannerCommands
                 decimal next = s.Todos.Where(t => t.ParentId == null && t.PlannedDate == c.TargetDate).Select(t => t.SortKey).DefaultIfEmpty(-1024).Max() + 1024;
                 var copies = source.Select(t => t with { Id = ids[t.Id], ParentId = t.Id == root.Id ? null : ids[t.ParentId!.Value],
                     PlannedDate = t.PlannedDate.AddDays(c.TargetDate.DayNumber - root.PlannedDate.DayNumber), SortKey = t.Id == root.Id ? next : t.SortKey,
-                    Status = TodoStatus.Pending, CompletedAt = null, ManualProgress = 0, CopiedFromId = t.Id, CreatedAt = now, ModifiedAt = now }).ToArray();
+                    Status = TodoStatus.Pending, CompletedAt = null, CompletionIntent = CompletionIntent.Automatic, CompletionSnapshot = null, CompletionSnapshotInvalidated = false, ManualProgress = 0, CopiedFromId = t.Id, CreatedAt = now, ModifiedAt = now }).ToArray();
                 var ordering = s.TodoOrderings.Where(o => o.ParentId is Guid parent && tree.Contains(parent)).Select(o => o with { Id = Guid.NewGuid(), ParentId = ids[o.ParentId!.Value], CreatedAt = now, ModifiedAt = now });
                 return new(s with { Todos = s.Todos.AddRange(copies), TodoOrderings = s.TodoOrderings.AddRange(ordering) }, ids[root.Id]);
             }
@@ -235,7 +247,7 @@ internal static class PlannerCommands
         if (nodes.IsDefaultOrEmpty || nodes.Any(t => t == null || t.Id == Guid.Empty)) throw new PlannerException("TemplateIdsRequired");
         if (nodes.Count(t => t.ParentId == null) != 1 || nodes.Select(t => t.Id).Distinct().Count() != nodes.Length) throw new PlannerException("InvalidTemplateTree");
         return [.. nodes.Select(t => Stamp(t, previous.SingleOrDefault(p => p.Id == t.Id), now) with
-        { Kind = TodoKind.SeriesTemplate, SeriesId = series, Origin = null, Status = TodoStatus.Pending, CompletedAt = null, CarryDate = null, FrozenCarryDate = null, Moves = [] })];
+        { Kind = TodoKind.SeriesTemplate, SeriesId = series, Origin = null, Status = TodoStatus.Pending, CompletedAt = null, CompletionIntent = CompletionIntent.Automatic, CompletionSnapshot = null, CompletionSnapshotInvalidated = false, CarryDate = null, FrozenCarryDate = null, Moves = [] })];
     }
     static CommandChange Edit(PlannerState s, EditSeries c, DateTimeOffset now)
     {
@@ -254,7 +266,7 @@ internal static class PlannerCommands
                 if (old.Status == TodoStatus.Completed) continue;
                 var draft = nodes.SingleOrDefault(t => t.Id == node.Id);
                 if (draft == null) throw new PlannerException("SingleEditCannotChangeTree");
-                var updated = draft with { Id = old.Id, ParentId = old.ParentId, Kind = TodoKind.Occurrence, Origin = old.Origin, SeriesId = null, CreatedAt = old.CreatedAt, ModifiedAt = now, PlannedDate = c.MoveTo ?? old.PlannedDate };
+                var updated = draft with { Id = old.Id, ParentId = old.ParentId, Kind = TodoKind.Occurrence, Origin = old.Origin, SeriesId = null, CreatedAt = old.CreatedAt, ModifiedAt = now, PlannedDate = c.MoveTo ?? old.PlannedDate, Status = old.Status, CompletedAt = old.CompletedAt, CompletionIntent = old.CompletionIntent, CompletionSnapshot = old.CompletionSnapshot, CompletionSnapshotInvalidated = old.CompletionSnapshotInvalidated };
                 s = s with { Todos = Put(s.Todos, updated) };
             }
             if (nodes.Length != version.Templates.Length) throw new PlannerException("SingleEditCannotChangeTree");
@@ -279,7 +291,7 @@ internal static class PlannerCommands
             if (draft == null || !Recurrence.Matches(applicable!.Rule, old.Origin!.Date))
             { if (!protectedIds.Contains(old.Id)) removed.Add(old.Id); else s = s with { Todos = Put(s.Todos, old with { Status = TodoStatus.Cancelled, ModifiedAt = now }) }; continue; }
             // Existing instances keep their explicit tree/date exceptions; generated future instances use the new tree.
-            s = s with { Todos = Put(s.Todos, draft with { Id = old.Id, ParentId = old.ParentId, Kind = TodoKind.Occurrence, SeriesId = null, Origin = old.Origin, PlannedDate = old.PlannedDate, CreatedAt = old.CreatedAt, ModifiedAt = now, Status = old.Status, CompletedAt = old.CompletedAt }) };
+            s = s with { Todos = Put(s.Todos, draft with { Id = old.Id, ParentId = old.ParentId, Kind = TodoKind.Occurrence, SeriesId = null, Origin = old.Origin, PlannedDate = old.PlannedDate, CreatedAt = old.CreatedAt, ModifiedAt = now, Status = old.Status, CompletedAt = old.CompletedAt, CompletionIntent = old.CompletionIntent, CompletionSnapshot = old.CompletionSnapshot, CompletionSnapshotInvalidated = old.CompletionSnapshotInvalidated }) };
         }
         s = Detach(s, removed, now);
         return new(s with { Todos = [.. s.Todos.Where(t => !removed.Contains(t.Id))], TodoOrderings = [.. s.TodoOrderings.Where(o => o.ParentId == null || !removed.Contains(o.ParentId.Value))], Series = Put(s.Series, series with { Versions = versions, RetiredNodeIds = retired, ModifiedAt = now }) }, series.Id);

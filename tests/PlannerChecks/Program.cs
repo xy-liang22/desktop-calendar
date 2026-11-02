@@ -19,7 +19,7 @@ internal static partial class Checks
         if (args.Length > 0 && args[0] is "--read" or "--verify") return await ReadChild(args);
         string output = args.Length > 0 ? Path.GetFullPath(args[0]) : Path.GetFullPath("artifacts/p2-checks");
         Directory.CreateDirectory(output);
-        try { ModelChecks(); await StorageChecks(output); await ServiceChecks(output); await BoundaryChecks(output); }
+        try { ModelChecks(); await StorageChecks(output); await ServiceChecks(output); await BoundaryChecks(output); await CompletionChecks(output); }
         catch (Exception e) { Results.Add("FAIL unhandled " + e); }
         File.WriteAllLines(Path.Combine(output, "checks.txt"), Results);
         int failures = Results.Count(s => s.StartsWith("FAIL "));
@@ -31,14 +31,14 @@ internal static partial class Checks
     {
         var day = new DateOnly(2026, 11, 2);
         var a = Todo("A", day, 0); var b = Todo("B", day, 1); var c = Todo("C", day, 2); var d = Todo("D", day, 3);
-        var state = PlannerState.Empty("UTC") with { Todos = [a, b with { Status = TodoStatus.Completed, CompletedAt = Now }, c, d with { Status = TodoStatus.Completed, CompletedAt = Now }] };
+        var state = PlannerState.Empty("UTC") with { Todos = [a, b with { Status = TodoStatus.Completed, CompletionIntent = CompletionIntent.ManualComplete, CompletedAt = Now }, c, d with { Status = TodoStatus.Completed, CompletionIntent = CompletionIntent.ManualComplete, CompletedAt = Now }] };
         PlannerIntegrity.Validate(state);
         Check("state validation and stable sibling grouping", string.Concat(PlannerQueries.Order(state.Todos, TodoSort.Manual).Select(t => t.Title)) == "ACBD");
         Throws("duplicate IDs rejected", () => PlannerIntegrity.Validate(state with { Todos = [a, a] }), "DuplicateOrEmptyId");
         Throws("parent cycle rejected", () => PlannerIntegrity.Validate(state with { Todos = [a with { ParentId = b.Id }, b with { ParentId = a.Id }] }), "ParentCycle");
         Throws("unknown category association rejected", () => PlannerIntegrity.Validate(state with { Todos = [a with { CategoryId = Guid.NewGuid() }] }), "CategoryNotFound");
         Throws("invalid override color rejected", () => PlannerIntegrity.Validate(state with { Todos = [a with { Color = "not-a-color" }] }), "InvalidColor");
-        var history = a with { Kind = TodoKind.CarryHistory, CarryDate = day, FrozenCarryDate = day.AddDays(2), Status = TodoStatus.Completed, CompletedAt = Now.AddDays(2) };
+        var history = a with { Kind = TodoKind.CarryHistory, CarryDate = day, FrozenCarryDate = day.AddDays(2), Status = TodoStatus.Completed, CompletionIntent = CompletionIntent.ManualComplete, CompletedAt = Now.AddDays(2) };
         var carryState = state with { Todos = [history] };
         PlannerIntegrity.Validate(carryState);
         Check("completed history appears crossed on all prior dates", Enumerable.Range(0, 3).All(i => PlannerQueries.TodosOn(carryState, day.AddDays(i), day.AddDays(8)).Single().Status == TodoStatus.Completed));

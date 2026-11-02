@@ -13,7 +13,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using DesktopCalendar.Core;
 namespace DesktopCalendar;
-internal static class StageThreeChecks
+internal static partial class StageThreeChecks
 {
     static readonly string project = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
     internal static string DirectoryPath
@@ -47,7 +47,7 @@ internal static class StageThreeChecks
         {
             var dialog = Application.Current.Windows.OfType<PlannerDialogs.Sheet>().LastOrDefault();
             try { if (dialog == null) throw new Exception("No modal"); action(dialog); }
-            catch (Exception ex) { results.Add("FAIL modal driver " + ex); dialog?.Close(); }
+            catch (Exception ex) { results.Add("FAIL modal driver " + ex); if (dialog != null) Click(dialog.Actions.Children.OfType<Button>().First()); }
         }));
         open();
     }
@@ -66,6 +66,11 @@ internal static class StageThreeChecks
                 Check("fresh WPF process restores collapsed view with real today items", window.Mode == DisplayMode.Compact && window.CompactRealList.Children.OfType<CheckBox>().Any());
                 Check("startup has no visible default full layout", !window.VisibleBeforePrepared && window.StartupVisible.All(v => v.Mode == DisplayMode.Compact));
                 Check("manual sibling mode survives actual app restart", controller.State!.TodoOrderings.Any(o => o.Mode == TodoSort.Manual));
+                var savedRoot = Guid.Parse(File.ReadAllText(Path.Combine(DirectoryPath, "p31-snapshot-id.txt")));
+                var snapshot = controller.State!.Todos.Single(x => x.Id == savedRoot).CompletionSnapshot;
+                Check("fresh process retains manual cascade source and child snapshot", snapshot?.Entries.Length == 2 && controller.State.Todos.Single(x => x.Id == savedRoot).CompletionIntent == CompletionIntent.ManualComplete);
+                await controller.ExecuteAsync(new SetTodoCompleted(new(savedRoot), false));
+                Check("fresh process cancellation restores mixed child completion", controller.State!.Todos.Single(x => x.Title == "P31 child A").Status == TodoStatus.Completed && controller.State.Todos.Single(x => x.Title == "P31 child B").Status == TodoStatus.Pending);
                 window.RestoreNormal(false); window.SetPage(false); Image(window.Surface, "restart-real-data.png");
             }
             else if (phase == "newer")
@@ -88,7 +93,7 @@ internal static class StageThreeChecks
             }
             else
             {
-                Check("real GUI starts empty with built-in categories and no demo todos", controller.State?.Todos.Length == 0 && controller.State.Categories.Length == 5 && window.PlannerView!.Items.Children.Count == 0 && window.CompactItems.Items.Count == 0);
+                Check("real GUI starts empty with built-in categories and no demo todos", controller.State?.Todos.Length == 0 && controller.State.Categories.Length == 3 && window.PlannerView!.Items.Children.Count == 0 && window.CompactItems.Items.Count == 0);
                 controller.Select(controller.Today, true); var view = window.PlannerView!;
                 view.Quick.Text = "09:30 GUI alpha";
                 view.Quick.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(view.Quick), 0, Key.Enter) { RoutedEvent = Keyboard.KeyDownEvent }); await controller.Pending; await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
@@ -102,7 +107,8 @@ internal static class StageThreeChecks
                     window.SetPinned(false); Check("open editor clears topmost on desktop return", !sheet.Topmost && (NativeWindow.GetWindowLong(new System.Windows.Interop.WindowInteropHelper(sheet).Handle, -20) & 8) == 0);
                     Field(sheet, "PlannerTitle").Clear(); Click(sheet.Actions.Children.OfType<Button>().Last());
                     Check("empty editor does not delete or save the original", sheet.IsVisible && sheet.Error.Text.Length > 0 && controller.State!.Todos.Any(t => t.Id == alpha.Id));
-                    Field(sheet, "PlannerTitle").Text = "GUI edited"; Field(sheet, "PlannerDescription").Text = "saved description"; Field(sheet, "PlannerColor").Text = "#B6B5E6";
+                    Field(sheet, "PlannerTitle").Text = "GUI edited"; Field(sheet, "PlannerDescription").Text = "saved description"; Children<ColorField>(sheet).Single().Value = "#B6B5E6";
+                    var auto = Children<CheckBox>(sheet).Single(c => Equals(c.Content, MainWindow.Text("PlannerDerivedProgress"))); auto.IsChecked = false; auto.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, auto));
                     Field(sheet, "PlannerProgress").Text = "35";
                     Children<CheckBox>(sheet).Single(c => Equals(c.Content, MainWindow.Text("PlannerImportant"))).IsChecked = true;
                     Click(sheet.Actions.Children.OfType<Button>().Last());
@@ -114,10 +120,11 @@ internal static class StageThreeChecks
                 Drive(() => view.Edit(null, alpha.Id), sheet => { Field(sheet, "PlannerTitle").Text = "GUI child"; Click(sheet.Actions.Children.OfType<Button>().Last()); }); await controller.Pending;
                 var child = controller.State!.Todos.Single(t => t.ParentId == alpha.Id);
                 Check("GUI creates independently persisted child", child.Title == "GUI child" && controller.State.Todos.Length == 2);
-                Drive(() => view.Edit(alpha), sheet => { Children<CheckBox>(sheet).Single(c => Equals(c.Content, MainWindow.Text("PlannerDerivedProgress"))).IsChecked = true; Click(sheet.Actions.Children.OfType<Button>().Last()); }); await controller.Pending;
+                Drive(() => view.Edit(alpha), sheet => { var auto = Children<CheckBox>(sheet).Single(c => Equals(c.Content, MainWindow.Text("PlannerDerivedProgress"))); auto.IsChecked = true; auto.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, auto)); Click(sheet.Actions.Children.OfType<Button>().Last()); }); await controller.Pending;
                 var childCheck = Children<CheckBox>(view.Items).Single(b => AutomationProperties.GetName(b).EndsWith("GUI child", StringComparison.Ordinal)); childCheck.IsChecked = true; childCheck.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, childCheck)); await controller.Pending;
-                Check("child checkbox derives progress without completing parent", PlannerQueries.Progress(controller.State!, new(alpha.Id)) == 100 && controller.State!.Todos.Single(t => t.Id == alpha.Id).Status == TodoStatus.Pending);
+                Check("child checkbox derives progress and naturally completes parent", PlannerQueries.Progress(controller.State!, new(alpha.Id)) == 100 && controller.State!.Todos.Single(t => t.Id == alpha.Id).Status == TodoStatus.Completed && controller.State.Todos.Single(t => t.Id == alpha.Id).CompletionIntent == CompletionIntent.Automatic);
                 Check("month/day/compact use identical committed IDs and completion state", controller.On(controller.Today).Any(t => t.Id == child.Id && t.Status == TodoStatus.Completed) && Children<CheckBox>(window.CompactRealList).Any(c => AutomationProperties.GetName(c) == "GUI child" && c.IsChecked == true));
+                await controller.ExecuteAsync(new SetTodoCompleted(new(alpha.Id), false));
                 foreach (var name in new[] { "GUI beta", "GUI gamma" }) { view.Quick.Text = name; await view.AddQuickAsync(); }
                 var beta = controller.State!.Todos.Single(t => t.Title == "GUI beta"); var gamma = controller.State.Todos.Single(t => t.Title == "GUI gamma");
                 Check("native drag payload uses canonical inert ID", PlannerView.DragId(new DataObject("DesktopCalendar.Todo", gamma.Id.ToString("D"))) == gamma.Id);
@@ -133,13 +140,13 @@ internal static class StageThreeChecks
                 Check("child uncomplete restores retained manual order", PlannerQueries.Children(controller.State!, controller.State!.Todos.Single(t => t.Id == alpha.Id)).Select(t => t.Id).SequenceEqual([secondChild.Id, child.Id]));
                 Drive(() => PlannerDialogs.Copy(window, controller, alpha), sheet => { Children<DatePicker>(sheet).Single().SelectedDate = controller.Today.AddDays(1).ToDateTime(TimeOnly.MinValue); Click(sheet.Actions.Children.OfType<Button>().Last()); }); await controller.Pending;
                 Check("copy dialog clones subtree with new IDs and reset state", controller.On(controller.Today.AddDays(1)).Length == 3 && controller.On(controller.Today.AddDays(1)).All(t => t.Status == TodoStatus.Pending) && controller.State!.Todos.Any(t => t.CopiedFromId == alpha.Id));
-                Drive(() => PlannerDialogs.ManageCategories(window, controller), sheet => { Field(sheet, "PlannerCategoryName").Text = "GUI custom"; Field(sheet, "PlannerCategoryColor").Text = "#AFC5D8"; Click(sheet.Actions.Children.OfType<Button>().Last()); }); await controller.Pending;
+                Drive(() => PlannerDialogs.ManageCategories(window, controller), sheet => { Field(sheet, "PlannerCategoryName").Text = "GUI custom"; Children<ColorField>(sheet).Single().Value = "#AFC5D8"; Click(sheet.Actions.Children.OfType<Button>().Last()); }); await controller.Pending;
                 Check("category dialog creates persistent custom category", controller.State!.Categories.Any(c => c.Name == "GUI custom" && c.Color == "#AFC5D8"));
                 var custom = controller.State!.Categories.Single(c => c.Name == "GUI custom");
                 Drive(() => view.Edit(controller.State!.Todos.Single(t => t.Id == beta.Id)), sheet => { Children<ComboBox>(sheet).Single().SelectedValue = custom.Id; Click(sheet.Actions.Children.OfType<Button>().Last()); }); await controller.Pending;
                 window.UpdateLayout();
                 Check("category selection persists and paints shared row metadata", controller.State!.Todos.Single(t => t.Id == beta.Id).CategoryId == custom.Id && controller.Color(controller.State.Todos.Single(t => t.Id == beta.Id)) == custom.Color && Children<TextBlock>(view.Items).Any(t => t.Text == "GUI custom"));
-                Drive(() => PlannerDialogs.Decoration(window, controller, controller.Today), sheet => { Field(sheet, "PlannerCategoryColor").Text = "#A3BDB0"; Click(sheet.Actions.Children.OfType<Button>().Last()); }); await controller.Pending;
+                Drive(() => PlannerDialogs.Decoration(window, controller, controller.Today), sheet => { Children<ColorField>(sheet).Single().Value = "#A3BDB0"; Click(sheet.Actions.Children.OfType<Button>().Last()); }); await controller.Pending;
                 Check("date decoration dialog writes shared data", controller.State!.Decorations.Single().Date == controller.Today);
                 controller.SetColors(true); window.UpdateLayout(); Check("calendar color mode changes existing task panel representation", controller.ColorBackground && Children<CalendarTaskPanel>(view).Any());
                 int count = controller.State.Todos.Length;
@@ -176,6 +183,7 @@ internal static class StageThreeChecks
                 window.Width = 1240; window.Height = 760; window.UpdateLayout(); Image(window.Surface, "full.png");
                 Check("real adaptive panels expose more rows when taller", Children<CalendarTaskPanel>(view).Select(p => p.VisibleRows).Sum() > smallCounts.Sum());
                 window.SetPinned(true); window.SetPinned(false); Check("real data UI retains owner/topmost roundtrip", window.DesktopMode.Layer == WindowLayer.Desktop && !window.IsPinned);
+                await RunP31Checks(window);
                 view.Quick.Text = "recovery draft"; session.TestWindowLoss(); await Task.Delay(150); window = session.Window;
                 window.Show();
                 for (int i = 0; i < 100 && !window.Ready; i++) await Task.Delay(50);

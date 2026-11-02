@@ -36,9 +36,10 @@ public static partial class PlannerIntegrity
         void Task(Todo t, bool template)
         {
             Title(t.Title); Color(t.Color); Category(t.CategoryId);
-            Require(t.Description != null && t.Description.Length <= 4_000_000 && Enum.IsDefined(t.Kind) && Enum.IsDefined(t.Status) && Enum.IsDefined(t.ProgressMode) && !t.Moves.IsDefault && t.ManualProgress is >= 0 and <= 100, "InvalidTodo");
+            Require(t.Description != null && t.Description.Length <= 4_000_000 && Enum.IsDefined(t.Kind) && Enum.IsDefined(t.Status) && Enum.IsDefined(t.ProgressMode) && Enum.IsDefined(t.CompletionIntent) && !t.Moves.IsDefault && t.ManualProgress is >= 0 and <= 100, "InvalidTodo");
             Require((t.Status == TodoStatus.Completed) == (t.CompletedAt != null), "InvalidCompletion");
             Require(template == (t.Kind == TodoKind.SeriesTemplate), "InvalidTemplateKind");
+            Require(!template || t.CompletionIntent == CompletionIntent.Automatic && t.CompletionSnapshot == null && !t.CompletionSnapshotInvalidated, "InvalidTemplateCompletion");
             Require((t.Kind == TodoKind.Occurrence) == (t.Origin != null) && (template ? t.SeriesId != null : t.SeriesId == null), "InvalidOccurrenceIdentity");
             if (t.Origin is OccurrenceKey key) Require(key.StableId() == t.Id && state.Series.Any(s => s.Id == key.SeriesId && (s.RetiredNodeIds.Contains(key.NodeId) || s.Versions.Any(v => v.Templates.Any(n => n.Id == key.NodeId)))), "InvalidOccurrenceIdentity");
             bool carry = t.Kind is TodoKind.CarryHistory or TodoKind.CarryLatest;
@@ -91,6 +92,23 @@ public static partial class PlannerIntegrity
         }
         foreach (var t in state.Todos) { Stamp(t); Task(t, false); }
         Forest(state.Todos);
+        foreach (var t in state.Todos)
+        {
+            if (t.CompletionSnapshot is CompletionSnapshot snapshot)
+            {
+                Id(snapshot.Id); Require(snapshot.CapturedAt != default && snapshot.Guard != null && HashPattern().IsMatch(snapshot.Guard) && !snapshot.Entries.IsDefaultOrEmpty && snapshot.Entries.All(e => e != null && e.TodoId != t.Id && state.Todos.Any(n => n.Id == e.TodoId) && Enum.IsDefined(e.Intent) && Enum.IsDefined(e.Status) && (e.Status == TodoStatus.Completed) == (e.CompletedAt != null)) && snapshot.Entries.Select(e => e.TodoId).Distinct().Count() == snapshot.Entries.Length, "InvalidCompletionSnapshot");
+                Require(t.CompletionIntent == CompletionIntent.CascadeComplete || snapshot.Guard == TodoCompletion.Guard(state, t), "StaleCompletionSnapshot");
+                Require(t.CompletionIntent is CompletionIntent.ManualComplete or CompletionIntent.CascadeComplete, "InvalidSnapshotSource");
+                Require(t.CompletionIntent == CompletionIntent.CascadeComplete || snapshot.Entries.Select(e => e.TodoId).ToHashSet().SetEquals(TodoCompletion.Descendants(state, t).Select(n => n.Id)), "InvalidSnapshotScope");
+            }
+            Require(t.CompletionIntent != CompletionIntent.CascadeComplete || state.Todos.Any(p => p.CompletionSnapshot?.Entries.Any(e => e.TodoId == t.Id) == true), "OrphanedCompletionCascade");
+            if (t.Status != TodoStatus.Cancelled)
+            {
+                var children = PlannerQueries.Children(state, t).Where(c => c.Status != TodoStatus.Cancelled).ToArray();
+                bool completed = t.CompletionIntent is CompletionIntent.ManualComplete or CompletionIntent.CascadeComplete || t.CompletionIntent == CompletionIntent.Automatic && children.Length > 0 && children.All(c => c.Status == TodoStatus.Completed);
+                Require((t.Status == TodoStatus.Completed) == completed, "InvalidCompletionSource");
+            }
+        }
         Require(state.TodoOrderings.Select(o => (o.ParentId, o.Date)).Distinct().Count() == state.TodoOrderings.Length, "DuplicateOrderingGroup");
         foreach (var o in state.TodoOrderings)
         {

@@ -1,9 +1,9 @@
-param([switch]$SkipBuild)
+param([switch]$SkipBuild, [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]*$')][string]$Configuration = 'P3')
 $ErrorActionPreference = 'Stop'
-if (-not $SkipBuild) { & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'build.ps1') -Configuration P3; if ($LASTEXITCODE -ne 0) { throw 'Build failed.' } }
+if (-not $SkipBuild) { & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'build.ps1') -Configuration $Configuration; if ($LASTEXITCODE -ne 0) { throw 'Build failed.' } }
 $root = Join-Path $PSScriptRoot ('artifacts\p3-checks\run-' + [Guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($root) | Out-Null
-$exe = Join-Path $PSScriptRoot 'bin\P3\net10.0-windows\DesktopCalendar.exe'
+$exe = Join-Path $PSScriptRoot "bin\$Configuration\net10.0-windows\DesktopCalendar.exe"
 function Run($phase, $directory) {
     $info = [Diagnostics.ProcessStartInfo]::new($exe, '--planner-check ' + $phase)
     $info.UseShellExecute = $false; $info.EnvironmentVariables['DESKTOP_CALENDAR_P3_CHECK_ROOT'] = $directory

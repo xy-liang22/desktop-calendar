@@ -10,7 +10,8 @@ public sealed class PlannerException(string code) : Exception(code)
 }
 public enum TodoKind { Once, CarryHistory, CarryLatest, SeriesTemplate, Occurrence }
 public enum TodoStatus { Pending, Completed, Cancelled }
-public enum ProgressMode { Manual, Children }
+public enum ProgressMode { Manual, Children, Default }
+public enum CompletionIntent { Automatic, ManualComplete, ManualIncomplete, CascadeComplete }
 public enum TodoSort { Manual, PlannedTime }
 public enum Frequency { Daily, Weekly, Monthly }
 public enum EditScope { Single, FromDate, FutureUnfinished, EntireSeries }
@@ -48,6 +49,8 @@ public sealed record TodoRef(Guid Id, OccurrenceKey? Occurrence = null)
     public static TodoRef For(OccurrenceKey key) => new(key.StableId(), key);
 }
 public sealed record TodoMove(DateOnly From, DateOnly To, DateTimeOffset At);
+public sealed record CompletionBefore(Guid TodoId, TodoStatus Status, CompletionIntent Intent, DateTimeOffset? CompletedAt, DateOnly? FrozenCarryDate);
+public sealed record CompletionSnapshot(Guid Id, DateTimeOffset CapturedAt, string Guard, ImmutableArray<CompletionBefore> Entries);
 public sealed record Todo : Entity
 {
     public string Title { get; init; } = "";
@@ -66,7 +69,10 @@ public sealed record Todo : Entity
     public ImmutableArray<TodoMove> Moves { get; init; } = [];
     public Guid? ParentId { get; init; }
     public decimal SortKey { get; init; }
-    public ProgressMode ProgressMode { get; init; }
+    public ProgressMode ProgressMode { get; init; } = ProgressMode.Default;
+    public CompletionIntent CompletionIntent { get; init; }
+    public CompletionSnapshot? CompletionSnapshot { get; init; }
+    public bool CompletionSnapshotInvalidated { get; init; }
     public decimal ManualProgress { get; init; }
     public Guid? SeriesId { get; init; }
     public OccurrenceKey? Origin { get; init; }

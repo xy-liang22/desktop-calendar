@@ -121,8 +121,8 @@ internal static partial class Checks
         var defaults = await PlannerWorkspace.OpenAsync(new(TestFile(output, "defaults")), Utc, () => Now);
         await Run(defaults, new InitializeCategories()); var categoryIds = defaults.Snapshot!.Categories.Select(c => c.Id).Order().ToArray();
         await Run(defaults, new InitializeCategories());
-        Check("built-in category initialization is idempotent", defaults.Snapshot!.Categories.Length == 5 && defaults.Snapshot.Categories.Select(c => c.Id).Order().SequenceEqual(categoryIds));
-        Check("initial category labels support both languages", PlannerDefaults.Categories("en", Now).Select(c => c.Name).SequenceEqual(["Daily", "Important", "Urgent", "Work", "Life"]) && PlannerDefaults.Categories("zh-CN", Now).First().Name == "日常");
+        Check("built-in category initialization is idempotent", defaults.Snapshot!.Categories.Length == 3 && defaults.Snapshot.Categories.Select(c => c.Id).Order().SequenceEqual(categoryIds));
+        Check("initial category labels support both languages", PlannerDefaults.Categories("en", Now).Select(c => c.Name).SequenceEqual(["Daily", "Work", "Life"]) && PlannerDefaults.Categories("zh-CN", Now).First().Name == "日常");
         var builtIn = defaults.Snapshot!.Categories.First();
         var inheritedTodo = await Run(defaults, new SaveTodo(Todo("inherit", day) with { CategoryId = builtIn.Id }));
         var inherited = await Run(defaults, new SaveActivity(new() { Title = "inherit actual", Todo = Ref(inheritedTodo), Intervals = [new(Guid.Empty, Now, Now.AddHours(1))] }));
@@ -163,6 +163,7 @@ internal static partial class Checks
         var tr = Todo("tree root", day); var tc = Todo("tree child", day) with { ParentId = tr.Id };
         var ts = await Run(tree, new CreateSeries(new() { Start = day }, [tr, tc]));
         await Run(tree, new SetTodoCompleted(TodoRef.For(new(ts, tc.Id, day)), true));
+        await Run(tree, new SetTodoCompleted(TodoRef.For(new(ts, tr.Id, day)), false)); // explicit parent override, children remain complete
         await Run(tree, new CancelSeries(ts, day, EditScope.EntireSeries));
         var nodes = PlannerQueries.TodoTreeOn(tree.Snapshot!, day, day);
         Check("cancelled ancestor is context only, completed descendant remains accessible", nodes.Length == 1 && nodes[0].ContextOnly && !nodes[0].Children[0].ContextOnly && nodes[0].Children[0].Value.Status == TodoStatus.Completed);

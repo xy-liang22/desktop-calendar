@@ -97,7 +97,7 @@ public static class PlannerQueries
         if (todo.Status == TodoStatus.Completed) return 100;
         if (todo.ProgressMode == ProgressMode.Manual) return todo.ManualProgress;
         var children = Children(state, todo).Where(t => t.Status != TodoStatus.Cancelled).ToArray();
-        return children.Length == 0 ? 0 : children.Average(t => Progress(state, TodoRef.Of(t)));
+        return children.Length == 0 ? todo.ManualProgress : children.Average(t => Progress(state, TodoRef.Of(t)));
     }
     public static ImmutableArray<Todo> Children(PlannerState state, Todo parent)
     {

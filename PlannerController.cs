@@ -30,6 +30,9 @@ internal sealed class PlannerController
     internal DateOnly Month { get; private set; }
     internal bool ColorBackground { get; private set; }
     internal string QuickDraft { get; set; } = ""; // Unsubmitted UI text; never treated as saved planner data.
+    internal Guid? QuickCategory { get; set; }
+    internal string? QuickColor { get; set; }
+    internal InlineTitleDraft? Inline { get; private set; }
     internal string NoticeKey { get; private set; } = "PlannerLoading";
     internal string Diagnostic { get; private set; } = "";
     internal string FilePath => store.FilePath;
@@ -135,14 +138,37 @@ internal sealed class PlannerController
         SortKey = (State?.Todos.Where(t => t.ParentId == parent && (parent != null || t.PlannedDate == SelectedDate)).Select(t => t.SortKey).DefaultIfEmpty(-1024).Max() ?? -1024) + 1024
     };
     internal static bool QuickInput(string value, out string title, out TimeOnly? time)
+        => TodoDraftRules.Quick(value, out title, out time);
+    internal async void BeginInline(Todo todo)
     {
-        title = value.Trim(); time = null;
-        var match = Regex.Match(title, @"^(\d{1,2}:\d{2})(?:\s+(.*))?$");
-        if (match.Success)
-        {
-            if (!TimeOnly.TryParseExact(match.Groups[1].Value, ["H:mm", "HH:mm"], CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed)) return false;
-            time = parsed; title = match.Groups[2].Value.Trim();
-        }
-        return title.Length is > 0 and <= 10000;
+        if (!Writable || todo.Kind != TodoKind.Once || Inline?.Id == todo.Id) return;
+        if (Inline != null && !await CommitInlineAsync()) return;
+        Inline = new(todo.Id, todo.Title); Changed?.Invoke();
     }
+    internal void CancelInline() { Inline = null; Changed?.Invoke(); }
+    internal async Task<bool> CommitInlineAsync()
+    {
+        var draft = Inline; if (draft == null) return true; if (draft.Saving) return false;
+        if (!TodoDraftRules.Title(draft.Text)) { draft.Error = MainWindow.Text("PlannerTitleRequired"); draft.Notify(); return false; }
+        if (draft.Text.Trim() == draft.Original) { CancelInline(); return true; }
+        draft.Saving = true;
+        try
+        {
+            bool ok = await ExecuteAsync(new RenameTodo(new(draft.Id), draft.Text.Trim(), draft.Original));
+            if (ok) { if (Inline == draft) Inline = null; Changed?.Invoke(); }
+            else { draft.Error = MainWindow.Text(NoticeKey); draft.Notify(); }
+            return ok;
+        }
+        finally { draft.Saving = false; }
+    }
+}
+internal sealed class InlineTitleDraft(Guid id, string original)
+{
+    internal Guid Id { get; } = id;
+    internal string Original { get; } = original;
+    internal string Text { get; set; } = original;
+    internal string Error { get; set; } = "";
+    internal bool Saving { get; set; }
+    internal event Action? Changed;
+    internal void Notify() => Changed?.Invoke();
 }
