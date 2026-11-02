@@ -20,6 +20,8 @@
     <Resource Include="assets\branding\DesktopCalendar.ico" />
     <Resource Include="assets\branding\logo-64.png" />
     <Compile Remove="experiments\**\*.cs" />
+    <Compile Remove="Core\**\*.cs" />
+    <Compile Remove="tests\**\*.cs" />
     <Page Remove="experiments\**\*.xaml" />
     <EmbeddedResource Remove="experiments\**\*" />
     <None Remove="experiments\**\*" />
