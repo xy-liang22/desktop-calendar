@@ -1,6 +1,6 @@
 <Application x:Class="DesktopCalendar.App" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" ShutdownMode="OnExplicitShutdown">
  <Application.Resources><ResourceDictionary>
-  <ResourceDictionary.MergedDictionaries><ResourceDictionary Source="Strings.zh-CN.xaml" /></ResourceDictionary.MergedDictionaries>
+  <ResourceDictionary.MergedDictionaries><ResourceDictionary Source="Strings.zh-CN.xaml" /><ResourceDictionary Source="Strings.P3.zh-CN.xaml" /></ResourceDictionary.MergedDictionaries>
   <SolidColorBrush x:Key="Ink" Color="#EDF2F5"/><SolidColorBrush x:Key="Muted" Color="#A2AFBC"/>
   <SolidColorBrush x:Key="Accent" Color="#A3D9C4"/>
   <DataTemplate x:Key="TodoLineTemplate">
@@ -33,7 +33,7 @@
    <Setter Property="Padding" Value="12,7"/><Setter Property="Cursor" Value="Hand"/><Setter Property="BorderThickness" Value="0"/>
    <Setter Property="HorizontalContentAlignment" Value="Center"/><Setter Property="VerticalContentAlignment" Value="Center"/>
    <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
-    <Border x:Name="Chrome" CornerRadius="8" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}"><ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/></Border>
+    <Border x:Name="Chrome" CornerRadius="8" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"><ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/></Border>
     <ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Chrome" Property="Background" Value="#36516B64"/></Trigger><Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Chrome" Property="BorderBrush" Value="#A3D9C4"/><Setter TargetName="Chrome" Property="BorderThickness" Value="1"/></Trigger><Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45"/></Trigger></ControlTemplate.Triggers>
    </ControlTemplate></Setter.Value></Setter>
   </Style>
@@ -52,5 +52,16 @@
    <Style.Triggers><Trigger Property="Orientation" Value="Horizontal"><Setter Property="Width" Value="Auto"/><Setter Property="Height" Value="10"/></Trigger></Style.Triggers>
   </Style>
   <Style TargetType="ToolTip"><Setter Property="Background" Value="#26323D"/><Setter Property="Foreground" Value="#EDF2F5"/></Style>
+  <Style TargetType="TextBox"><Setter Property="Foreground" Value="#EDF2F5"/><Setter Property="Background" Value="#17232F"/><Setter Property="BorderBrush" Value="#526474"/><Setter Property="CaretBrush" Value="#A3D9C4"/><Setter Property="SelectionBrush" Value="#507967"/></Style>
+  <Style TargetType="ListBox"><Setter Property="Background" Value="#17232F"/><Setter Property="Foreground" Value="#EDF2F5"/><Setter Property="BorderBrush" Value="#526474"/></Style>
+  <Style TargetType="ComboBox">
+   <Setter Property="Foreground" Value="#EDF2F5"/><Setter Property="Background" Value="#17232F"/>
+   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBox">
+    <Grid><ToggleButton Focusable="False" IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" Background="{TemplateBinding Background}" Foreground="{TemplateBinding Foreground}" BorderBrush="#526474" HorizontalContentAlignment="Stretch" Padding="6,4">
+     <DockPanel><TextBlock DockPanel.Dock="Right" Text="⌄" Margin="8,0,0,0"/><ContentPresenter Content="{TemplateBinding Text}"/></DockPanel>
+    </ToggleButton><Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True" Focusable="False"><Border Background="#202E3B" BorderBrush="#526474" BorderThickness="1" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"><ScrollViewer MaxHeight="220"><ItemsPresenter/></ScrollViewer></Border></Popup></Grid>
+   </ControlTemplate></Setter.Value></Setter>
+  </Style>
+  <Style TargetType="ComboBoxItem"><Setter Property="Foreground" Value="#EDF2F5"/><Setter Property="Padding" Value="6,5"/></Style>
  </ResourceDictionary></Application.Resources>
 </Application>

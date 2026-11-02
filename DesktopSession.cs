@@ -21,16 +21,18 @@ internal sealed class DesktopSession : IDisposable
     internal bool VisualChecks { get; }
     internal bool TrayVisible => tray.Visible;
     internal string Notice => store.Notice;
-    internal DesktopSession(bool testing, bool visualChecks = false, bool restartCheck = false, bool lifecycleCheck = false)
+    internal PlannerController? Planner { get; }
+    internal DesktopSession(bool testing, bool visualChecks = false, bool restartCheck = false, bool lifecycleCheck = false, bool plannerCheck = false)
     {
         Testing = testing;
         VisualChecks = visualChecks;
-        string directory = lifecycleCheck ? LifecycleChecks.DirectoryPath : restartCheck ? RevisionChecks.RestartDirectory
+        string directory = plannerCheck ? StageThreeChecks.DirectoryPath : lifecycleCheck ? LifecycleChecks.DirectoryPath : restartCheck ? RevisionChecks.RestartDirectory
             : visualChecks ? Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "artifacts", "ui-check-preferences"))
             : testing ? Path.Combine(Path.GetTempPath(), "DesktopCalendar-Checks-" + Guid.NewGuid().ToString("N"))
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DesktopCalendar");
         store = new WindowPreferencesStore(Path.Combine(directory, "window-preferences.json"));
         Preferences = store.Load();
+        if (!testing || plannerCheck) Planner = new PlannerController(Path.Combine(directory, "planner-data.json"), Preferences);
         var menu = new Forms.ContextMenuStrip();
         menu.Items.Add(MainWindow.Text("Locate"), null, (_, _) => Dispatch(() => Locate()));
         pin = new Forms.ToolStripMenuItem(MainWindow.Text("Topmost"));
@@ -43,6 +45,7 @@ internal sealed class DesktopSession : IDisposable
         tray.DoubleClick += (_, _) => Dispatch(() => Locate());
         saveTimer.Tick += (_, _) => { saveTimer.Stop(); Save(); };
         CreateWindow(false);
+        if (Planner != null) { Planner.PreferencesChanged += Changed; _ = Planner.InitializeAsync(); }
     }
     static void Dispatch(Action action) => Application.Current.Dispatcher.Invoke(action);
     void CreateWindow(bool fallback)
@@ -98,14 +101,16 @@ internal sealed class DesktopSession : IDisposable
     internal void TestTrayPin() => pin.PerformClick();
     internal void TestTraySettings() => tray.ContextMenuStrip!.Items[2].PerformClick();
     internal void TestWindowLoss() { Save(); Window.CloseForRecovery(); }
-    internal void Exit(int code)
+    internal async void Exit(int code)
     {
         if (closing) return;
-        Save(); closing = true; Dispose(); Window.CloseForRecovery(); Application.Current.Shutdown(code);
+        if (Planner != null && !Testing && Planner.QuickDraft.Length > 0 && !PlannerDialogs.Confirm(Window, MainWindow.Text("Exit"), MainWindow.Text("PlannerExitDraft"))) return;
+        closing = true; if (Planner != null) await Planner.StopAsync();
+        Save(); Dispose(); Window.CloseForRecovery(); Application.Current.Shutdown(code);
     }
     public void Dispose()
     {
         if (disposed) return;
-        disposed = true; saveTimer.Stop(); tray.ContextMenuStrip?.Dispose(); tray.Dispose(); trayIcon.Dispose();
+        disposed = true; Planner?.Dispose(); saveTimer.Stop(); tray.ContextMenuStrip?.Dispose(); tray.Dispose(); trayIcon.Dispose();
     }
 }

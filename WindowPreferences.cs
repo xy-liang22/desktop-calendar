@@ -21,6 +21,9 @@ internal sealed record WindowPreferences
     public WindowPlacement? CompactPlacement { get; set; }
     public bool Collapsed { get; set; }
     public bool Week { get; set; }
+    public DateOnly? PlannerDate { get; set; }
+    public DateOnly? PlannerMonth { get; set; }
+    public bool CalendarColorBackground { get; set; }
     public bool Pinned { get; set; }
     public bool EdgeAutoHide { get; set; }
     public double BackgroundOpacity { get; set; } = .96;

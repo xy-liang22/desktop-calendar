@@ -208,5 +208,17 @@ internal static partial class Checks
         await Run(restructure, new EditSeries(rs, day, EditScope.FromDate, Templates: [rr, middle, rc with { ParentId = middle.Id }]));
         var virtualMiddle = PlannerQueries.Resolve(restructure.Snapshot!, TodoRef.For(new(rs, middle.Id, day)));
         Check("template reparent cannot show materialized exception in two sibling groups", PlannerQueries.Children(restructure.Snapshot!, virtualMiddle).IsEmpty && PlannerQueries.Children(restructure.Snapshot!, PlannerQueries.Resolve(restructure.Snapshot!, TodoRef.For(new(rs, rr.Id, day)))).Count(t => t.Id == TodoRef.For(new(rs, rc.Id, day)).Id) == 1);
+        var copy = await PlannerWorkspace.OpenAsync(new(TestFile(output, "copy")), Utc, () => Now);
+        var cp = await Run(copy, new SaveTodo(Todo("source", day) with { Important = true, PlannedTime = new(9, 30), Description = "copy description" }));
+        var cc1 = await Run(copy, new SaveTodo(Todo("one", day, 1) with { ParentId = cp, ManualProgress = 40 }));
+        var cc2 = await Run(copy, new SaveTodo(Todo("two", day.AddDays(1), 2) with { ParentId = cp }));
+        await Run(copy, new ReorderTodos([Ref(cc2), Ref(cc1)])); await Run(copy, new SetTodoCompleted(Ref(cc2), true));
+        var copied = await Run(copy, new CopyTodo(Ref(cp), day.AddDays(4)));
+        var copyRoot = copy.Snapshot!.Todos.Single(t => t.Id == copied); var copyChildren = PlannerQueries.Children(copy.Snapshot, copyRoot);
+        Check("copy preserves properties with new root identity", copied != cp && copyRoot.CopiedFromId == cp && copyRoot.Important && copyRoot.PlannedTime == new TimeOnly(9, 30) && copyRoot.Description == "copy description");
+        Check("copy preserves subtree identities and relative dates", copyChildren.Length == 2 && copyChildren.All(t => t.ParentId == copied && t.Id != cc1 && t.Id != cc2) && copyChildren.Single(t => t.CopiedFromId == cc2).PlannedDate == day.AddDays(5));
+        Check("copy resets completed state and manual progress without changing source", copyChildren.All(t => t.Status == TodoStatus.Pending && t.ManualProgress == 0) && copy.Snapshot.Todos.Single(t => t.Id == cc2).Status == TodoStatus.Completed);
+        Check("copy preserves manual child sorting mode", copyChildren[0].CopiedFromId == cc2 && PlannerQueries.Ordering(copy.Snapshot, copied, day.AddDays(4)) == TodoSort.Manual);
+        await copy.UndoAsync(); Check("one undo reverses complete copied subtree", copy.Snapshot!.Todos.All(t => t.Id != copied && t.ParentId != copied) && copy.Snapshot.Todos.Length == 3);
     }
 }

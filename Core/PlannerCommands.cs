@@ -11,6 +11,7 @@ public sealed record MoveCarryTodo(TodoRef Todo, DateOnly Date) : PlannerCommand
 public sealed record ReorderTodos(ImmutableArray<TodoRef> Siblings, DateOnly? DisplayDate = null) : PlannerCommand;
 public sealed record SetTodoOrderMode(Guid? ParentId, DateOnly? Date, TodoSort Mode) : PlannerCommand;
 public sealed record DeleteTodo(TodoRef Todo, ChildDisposition Children) : PlannerCommand;
+public sealed record CopyTodo(TodoRef Todo, DateOnly TargetDate) : PlannerCommand;
 public sealed record CreateSeries(RecurrenceRule Rule, ImmutableArray<Todo> Templates) : PlannerCommand;
 public sealed record EditSeries(Guid SeriesId, DateOnly From, EditScope Scope, RecurrenceRule? Rule = null,
     ImmutableArray<Todo> Templates = default, DateOnly? MoveTo = null) : PlannerCommand;
@@ -127,6 +128,19 @@ internal static class PlannerCommands
                 var ids = c.Children == ChildDisposition.DeleteSubtree ? Subtree(s.Todos, t.Id) : [t.Id];
                 s = Detach(s, ids, now);
                 return new(s with { Todos = [.. s.Todos.Where(x => !ids.Contains(x.Id)).Select(x => x.ParentId == t.Id ? x with { ParentId = t.ParentId, ModifiedAt = now } : x)], TodoOrderings = [.. s.TodoOrderings.Where(o => o.ParentId == null || !ids.Contains(o.ParentId.Value))] });
+            }
+            case CopyTodo c:
+            {
+                var root = Get(s, c.Todo); var tree = Subtree(s.Todos, root.Id);
+                var source = s.Todos.Where(t => tree.Contains(t.Id)).ToArray();
+                if (root.Kind != TodoKind.Once || source.Any(t => t.Kind != TodoKind.Once)) throw new PlannerException("CopyOrdinaryTodosOnly");
+                var ids = source.ToDictionary(t => t.Id, _ => Guid.NewGuid());
+                decimal next = s.Todos.Where(t => t.ParentId == null && t.PlannedDate == c.TargetDate).Select(t => t.SortKey).DefaultIfEmpty(-1024).Max() + 1024;
+                var copies = source.Select(t => t with { Id = ids[t.Id], ParentId = t.Id == root.Id ? null : ids[t.ParentId!.Value],
+                    PlannedDate = t.PlannedDate.AddDays(c.TargetDate.DayNumber - root.PlannedDate.DayNumber), SortKey = t.Id == root.Id ? next : t.SortKey,
+                    Status = TodoStatus.Pending, CompletedAt = null, ManualProgress = 0, CopiedFromId = t.Id, CreatedAt = now, ModifiedAt = now }).ToArray();
+                var ordering = s.TodoOrderings.Where(o => o.ParentId is Guid parent && tree.Contains(parent)).Select(o => o with { Id = Guid.NewGuid(), ParentId = ids[o.ParentId!.Value], CreatedAt = now, ModifiedAt = now });
+                return new(s with { Todos = s.Todos.AddRange(copies), TodoOrderings = s.TodoOrderings.AddRange(ordering) }, ids[root.Id]);
             }
             case CreateSeries c:
             {

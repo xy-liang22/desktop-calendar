@@ -10,6 +10,7 @@ using System.Windows.Threading;
 using System.Linq;
 using System.Collections.Generic;
 using Forms = System.Windows.Forms;
+using DesktopCalendar.Core;
 
 namespace DesktopCalendar;
 public partial class MainWindow : Window
@@ -35,6 +36,8 @@ public partial class MainWindow : Window
     private Grid monthPage = null!, weekPage = null!;
     internal TimelineView DailyTimeline { get; }
     internal TimelineView WeeklyTimeline { get; }
+    internal PlannerView? PlannerView { get; }
+    internal int PlannerDialogDepth { get; set; }
     private DockSide dockSide;
     private HwndSource? source;
     internal sealed record VisiblePlacement(long Milliseconds, Rect Bounds, DisplayMode Mode, string Stage);
@@ -60,7 +63,8 @@ public partial class MainWindow : Window
         DailyTimeline = new TimelineView(false, 3, preferences.DayHourHeight);
         WeeklyTimeline = new TimelineView(true, 0, preferences.WeekHourHeight);
         DailyTimeline.ScaleChanged += Remember; WeeklyTimeline.ScaleChanged += Remember;
-        monthPage = PrototypeViews.Month(DailyTimeline);
+        if (session.Planner == null) { monthPage = PrototypeViews.Month(DailyTimeline); CategorySettingsButton.Visibility = Visibility.Collapsed; }
+        else { PlannerView = new PlannerView(this, session.Planner, DailyTimeline); monthPage = PlannerView; }
         weekPage = PrototypeViews.Week(WeeklyTimeline);
         PageHost.Children.Add(monthPage);
         PageHost.Children.Add(weekPage);
@@ -69,7 +73,14 @@ public partial class MainWindow : Window
         EdgeToggle.IsChecked = preferences.EdgeAutoHide;
         OpacitySlider.Value = preferences.BackgroundOpacity;
         CompactDate.Text = DateTime.Today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
-        CompactItems.ItemsSource = DemoTodo.View(DemoContent.Todos);
+        if (session.Planner == null) CompactItems.ItemsSource = DemoTodo.View(DemoContent.Todos);
+        else
+        {
+            CompactItems.Visibility = Visibility.Collapsed;
+            session.Planner.Changed += RefreshPlanner;
+            PreviewKeyDown += PlannerKey;
+            RefreshPlanner();
+        }
         RestoreColumns(monthPage, preferences.MonthColumns);
         RestoreColumns(weekPage, preferences.WeekColumns);
         BuildResizeHandles();
@@ -92,8 +103,39 @@ public partial class MainWindow : Window
         edgeTimer.Tick += (_, _) => EvaluateEdge();
         RestoreButton.MouseEnter += (_, _) => { if (Mode == DisplayMode.EdgeHandle) RestoreNormal(false); };
         Closing += OnClosing;
-        Closed += (_, _) => { Ready = false; edgeTimer.Stop(); source?.RemoveHook(WindowMessage); };
+        Closed += (_, _) => { Ready = false; edgeTimer.Stop(); source?.RemoveHook(WindowMessage); PlannerView?.Detach(); if (session.Planner != null) session.Planner.Changed -= RefreshPlanner; };
         Surface.SizeChanged += (_, _) => Surface.Clip = new RectangleGeometry(new Rect(0, 0, Surface.ActualWidth, Surface.ActualHeight), Mode == DisplayMode.Normal ? 18 : 12, Mode == DisplayMode.Normal ? 18 : 12);
+    }
+    internal void ShowPlannerMonth() { if (Mode != DisplayMode.Normal) RestoreNormal(); SetPage(false); }
+    async void PlannerKey(object sender, KeyEventArgs e)
+    {
+        if (Session.Planner == null || (Keyboard.Modifiers & ModifierKeys.Control) == 0) return;
+        if (e.OriginalSource is System.Windows.Controls.Primitives.TextBoxBase input && (input != PlannerView?.Quick || PlannerView.Quick.Text.Length > 0)) return;
+        if (e.Key == Key.Z) { e.Handled = true; if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0) await Session.Planner.RedoAsync(); else await Session.Planner.UndoAsync(); }
+        if (e.Key == Key.Y) { e.Handled = true; await Session.Planner.RedoAsync(); }
+    }
+    void CategorySettingsClick(object sender, RoutedEventArgs e) { if (Session.Planner?.Writable == true) PlannerDialogs.ManageCategories(this, Session.Planner); }
+    void RefreshPlanner()
+    {
+        var planner = Session.Planner!;
+        PlannerFooter.Text = CompactNotice.Text = Text(planner.NoticeKey);
+        PlannerFooter.ToolTip = planner.Diagnostic.Length == 0 ? Text(planner.NoticeKey) : planner.Diagnostic;
+        var noticeBrush = PrototypeViews.Brush(planner.NoticeKey is "PlannerLocal" or "PlannerLoading" or "PlannerSaving" ? "#A3D9C4" : "#E3BF89");
+        PlannerFooter.Foreground = CompactNotice.Foreground = noticeBrush;
+        CompactRealList.Children.Clear(); CompactRealList.IsEnabled = planner.Writable;
+        CategorySettingsButton.IsEnabled = planner.Writable;
+        CompactDate.Text = planner.Today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+        var rows = planner.Tree(planner.Today);
+        if (rows.Length == 0) CompactRealList.Children.Add(PlannerView.Text(Text(planner.State == null ? planner.NoticeKey : "PlannerEmpty"), 12, "#A2AFBC"));
+        void Row(TodoDateNode node, int depth)
+        {
+            var task = node.Value; var text = PlannerView.Text(""); text.Inlines.Add(new System.Windows.Documents.Run(PlannerView.Prefix(task)) { FontWeight = FontWeights.SemiBold, Foreground = PrototypeViews.Brush("#A3D9C4") }); text.Inlines.Add(new System.Windows.Documents.Run(task.Title)); text.TextWrapping = TextWrapping.Wrap; text.TextDecorations = task.Status == TodoStatus.Completed ? TextDecorations.Strikethrough : null; text.Opacity = task.Status == TodoStatus.Completed ? .55 : 1;
+            var check = new CheckBox { Content = text, IsChecked = task.Status == TodoStatus.Completed, Margin = new Thickness(depth * 12, 0, 0, 12), IsEnabled = !node.ContextOnly };
+            System.Windows.Automation.AutomationProperties.SetName(check, task.Title);
+            check.Click += async (_, _) => { bool complete = check.IsChecked == true; check.IsChecked = task.Status == TodoStatus.Completed; await planner.ExecuteAsync(new SetTodoCompleted(TodoRef.Of(task), complete)); };
+            CompactRealList.Children.Add(check); foreach (var child in node.Children) Row(child, Math.Min(depth + 1, 6));
+        }
+        foreach (var node in rows) Row(node, 0);
     }
     internal void PrepareStartup(WindowPreferences preferences, bool fallback)
     {
@@ -160,6 +202,7 @@ public partial class MainWindow : Window
     {
         if (DesktopMode == null) return;
         PinToggle.IsChecked = IsPinned;
+        foreach (Window owned in OwnedWindows) if (owned is PlannerDialogs.Sheet) owned.Topmost = IsPinned;
         ModeStatus.Text = Text(DesktopMode.Layer switch { WindowLayer.Desktop => "DesktopMode", WindowLayer.Topmost => "PinnedMode", _ => "FallbackMode" });
         if (Session.VisualChecks) ModeStatus.Text = Text("GuiCheckTitle");
         SettingsNotice.Text = DesktopMode.Layer == WindowLayer.Fallback ? Text("FallbackNotice") : Text("SettingsNotice");
@@ -171,7 +214,9 @@ public partial class MainWindow : Window
         var p = Session.Preferences with { Collapsed = Mode == DisplayMode.Compact || Mode == DisplayMode.Tray && beforeTray == DisplayMode.Compact,
             Week = IsWeek, Pinned = PreferredPinned, EdgeAutoHide = EdgeToggle.IsChecked == true, BackgroundOpacity = OpacitySlider.Value,
             FullPlacement = fullPlacement, CompactPlacement = compactPlacement,
-            DayHourHeight = DailyTimeline.HourHeight, WeekHourHeight = WeeklyTimeline.HourHeight };
+            DayHourHeight = DailyTimeline.HourHeight, WeekHourHeight = WeeklyTimeline.HourHeight,
+            PlannerDate = Session.Planner?.SelectedDate ?? Session.Preferences.PlannerDate, PlannerMonth = Session.Planner?.Month ?? Session.Preferences.PlannerMonth,
+            CalendarColorBackground = Session.Planner?.ColorBackground ?? Session.Preferences.CalendarColorBackground };
         p.SetBounds(fullPlacement?.Bounds ?? SavedBounds);
         if (monthPage.IsVisible) p.MonthColumns = ColumnWidths(monthPage);
         if (weekPage.IsVisible) p.WeekColumns = ColumnWidths(weekPage);
@@ -421,7 +466,7 @@ public partial class MainWindow : Window
             if (NativeWindow.Bounds(Handle).Contains(pointer)) RestoreNormal(false);
             return;
         }
-        if (Mode != DisplayMode.Normal || now < suppressEdgeUntil || SettingsPanel.Visibility == Visibility.Visible) return;
+        if (Mode != DisplayMode.Normal || now < suppressEdgeUntil || SettingsPanel.Visibility == Visibility.Visible || PlannerDialogDepth > 0) return;
         var bounds = NativeWindow.Bounds(Handle);
         var side = WindowGeometry.Edge(bounds, NativeWindow.WorkArea(Handle), Scale);
         if (side == DockSide.None || bounds.Contains(pointer)) { outsideSince = DateTime.MaxValue; return; }

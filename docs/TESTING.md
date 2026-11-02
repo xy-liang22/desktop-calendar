@@ -1,5 +1,52 @@
 # 阶段验证记录
 
+## 2026-11-02：P3 真实月历/待办接入与验证
+
+状态：实现已完成，自动验证范围内通过；真实输入与实际桌面视觉受工具限制待最小核对，不开始P4。当前结果：P3 WPF **56 PASS / 0 FAIL**、数据 **165 PASS / 0 FAIL**（沿用历史时区1项NOT VERIFIED）、原窗口回归 **371/0**、五文件安装/更新/卸载 **15/0**，构建0警告/错误。最终提交后再以同一代码验证发布基线；下面P2及更早“UI未接入”仅为历史。
+
+### 复现与隔离
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Test-Planner.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Test-P3.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -Configuration P3Regression -Test
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Publish-DesktopCalendar.ps1 -Configuration P3
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-UserInstall.ps1
+```
+
+P3使用`artifacts/p3-checks/run-<GUID>/`：main/restart/corrupt/newer四个独立应用进程，报告`checks-*.txt`，渲染图`full/minimum/edit-dialog/compact/month-10/month-11/restart-real-data.png`。测试入口强制路径在项目artifacts内，自己的超时进程才可结束，不影响既有安装版、Explorer或个人业务文件。仅生成发布包和隔离安装，不自动更新真实开始菜单版本。正常生产运行才打开LocalAppData业务文件。
+
+| 项目 | 结果 | 证据与边界 |
+|---|---|---|
+| 真实空状态/快速新增 | PASS | 新文档仅五分类、无模拟待办；真实Quick TextBox路由Enter事件保存09:30及标题，提交完成后清框；空/非法25:00拒绝，原状态与草稿保留 |
+| 编辑/取消/子任务 | PASS | 打开真实模态编辑器，空标题不删、保存保持ID并写说明/优先级/颜色/进度；取消不变；新增子任务，勾选派生100%不自动完成父 |
+| 三视图一致 | PASS | 月历查询、中栏控件与今日折叠读取相同ID/完成状态；折叠时间强调，今日与选择其他日期分别计算；不是重复业务集合 |
+| 同级排序/撤销/复制 | PASS | 实际Drop处理器插入并保存Manual，跨父/状态限制；子任务单独排序、取消恢复原键；Undo/Redo恢复排序/删除；复制弹窗创建独立子树及重置状态。Core新增5项复制测试覆盖相对日期/元数据/子排序/整事务撤销 |
+| 分类/颜色/日期底色 | PASS | 自定义分类对话框、分类选择持久化与实际行元数据/色条、日期底色弹窗、文字/底色模式；色板及HEX存在。归档保留历史由P2服务与接入菜单保证，不冒称测试了所有实际鼠标菜单路径 |
+| 月历与布局 | PASS | 真实0/1/3/10条夹具、五/六周、880×520与1240×760；实际容量增高增加行，+N事件切到完整日列表，日期双击只聚焦管理不新增；检查上述渲染图，无明显重叠/溢出 |
+| 非Todo实体保护 | PASS | 预置P2 Activity/Goal/Review关联夹具后通过GUI新增待办，所有ID/链接/正文保留；重新启动整图规范内容哈希相同，不清空其他实体 |
+| 退出/重启/找回 | PASS | 窗口失效重建复用workspace和QuickDraft；等待新窗首次渲染后保存折叠；退出后的新进程读取相同业务图、Manual模式和真实折叠列表，原生可见时序无默认Full帧。此时序不冒充实际屏幕像素 |
+| 写失败/只读保护 | PASS | 对自己隔离JSON设置真实只读属性，Quick保存失败后原快照/草稿保持，折叠显示失败提示，随后还原属性。损坏文件只读不回空，候选只显式恢复且原件留证据；更新schema主文件即使有旧备份也不降级，恢复按钮禁用 |
+| 窗口与弹窗模式 | PASS | 原371项回归仍含owner/置顶/托盘/尺寸偏好/贴边/分栏/动态预览/时间轴；新真实视图置顶往返，编辑器打开时跟随置顶，回桌面时原生TOPMOST也清除。无SetParent/WS_CHILD、全局钩子、焦点轮询或系统设置改动 |
+| 发布与安装 | PASS | 包含自有Core DLL的五文件哈希清单，版本0.3.0；安装器接受旧四文件管理，0.3.0缺Core拒绝；15项隔离安装更新/回滚/卸载/进程保护通过，不删数据/外来文件 |
+| 真实输入/屏幕 | NOT VERIFIED | computer-use初始化、重连、重置后仍`native pipe unavailable / os error 2`。没有反复429审批。WPF控件事件不等同物理键鼠，RenderTargetBitmap不等同桌面截图；没有通过其他工具绕过限制注入Win键 |
+
+### 初次问题与修正记录
+
+- 首次编译5处错误（Thickness参数、Button方法名与类型模式重名、out变量被lambda下划线占用）修正后0警告/错误；新增测试夹具曾把bool当命令结果取EntityId，改为预分配测试ID再跑，不隐藏失败。
+- 初轮Enter后清框与分类色板元素断言过早，分别等待UI回调/执行UpdateLayout后稳定；保留原断言，不删除测试。渲染图实际发现分类ComboBox显示CategoryChoice对象描述，改成显示其Text；复选框与多行标题对齐、紧凑计划时间强调、日期显示中文也已核对。
+- 重启初次失败是测试在重建窗未完成ContentRendered前折叠并保存，偏好保护正确拒绝采样。测试改为等待Ready，并独立断言折叠偏好确已落盘，再退出/新进程验证；不改已验收窗口恢复机制，不凭文件内容单独判定GUI恢复。
+- 新弹窗最初只在打开时继承置顶，会在托盘改模式后保留旧属性；已在主窗口层级刷新时同步自有弹窗，并断言原生TOPMOST清除。主体桌面owner实现未重写。
+
+### 最少人工核对（仅工具无法覆盖）
+
+先退出旧实例，从`bin/P3/net10.0-windows/DesktopCalendar.exe`或项目开发快捷方式启动，不用实验程序。
+
+1. **输入与拖排手感**：在快速框实际输入并Enter；同父/同状态组拖动文字，观察前/后插入线，再在空快速框按Ctrl+Z。程序内已验证保存/排序/撤销语义，无需重做完整数据矩阵。
+2. **实际视觉**：打开编辑器检查中文输入、分类下拉/色板与窄窗口文字，切今日折叠看计划时间/滚动。渲染图已检查，只需实际桌面画面与鼠标命中。无需重复旧Win+D/任务栏/Alt+Tab验收，owner路线未变。
+
+Win10、混合DPI硬件、Explorer真实重启/休眠及偶发轻微缩放抖动保留P1.1边界；P4复杂重复/持续、P5日程、P6周目标/总结、P7历法/完整语言切换未开发。测试仅用示例夹具，不提交JSON、截图、日志或二进制。
+
 ## 2026-11-02：P2 最终数据/业务/存储验证
 
 **结论：P2开发完成，已验证范围内通过，不开始P3。** 数据检查 **160 PASS / 0 FAIL / 1 NOT VERIFIED**；正常桌面用户会话WPF既有回归 **371 PASS / 0 FAIL**，构建0警告/错误。主窗口/桌面owner/安装源文件未改；根csproj仅增加Core/tests源码排除，避免独立项目被WPF递归编译。P2数据服务未接入模拟UI，不向用户伪装真实编辑。无需人工点击验收。

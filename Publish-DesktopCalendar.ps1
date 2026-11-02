@@ -13,7 +13,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Offline framework-dependent publish failed.' }
 $package = Join-Path $PSScriptRoot 'artifacts\package'
 [IO.Directory]::CreateDirectory($package) | Out-Null
 $files = @()
-foreach ($name in @('DesktopCalendar.exe', 'DesktopCalendar.dll', 'DesktopCalendar.deps.json', 'DesktopCalendar.runtimeconfig.json')) {
+foreach ($name in @('DesktopCalendar.exe', 'DesktopCalendar.dll', 'DesktopCalendar.Core.dll', 'DesktopCalendar.deps.json', 'DesktopCalendar.runtimeconfig.json')) {
     Copy-Item -LiteralPath (Join-Path $staging $name) -Destination (Join-Path $package $name) -Force
     $item = Get-Item -LiteralPath (Join-Path $package $name)
     $files += [pscustomobject][ordered]@{ Name = $name; Length = $item.Length; Sha256 = (Get-FileHash -LiteralPath $item.FullName -Algorithm SHA256).Hash.ToLowerInvariant() }
@@ -21,6 +21,7 @@ foreach ($name in @('DesktopCalendar.exe', 'DesktopCalendar.dll', 'DesktopCalend
 $canonical = ($files | Sort-Object Name | ForEach-Object { $_.Name + ':' + $_.Sha256 }) -join '|'
 $sha = [Security.Cryptography.SHA256]::Create()
 try { $id = ([BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($canonical)))).Replace('-', '').ToLowerInvariant() } finally { $sha.Dispose() }
-$manifest = [ordered]@{ SchemaVersion = 1; AppId = 'desktop-calendar'; Version = '0.1.1'; PackageId = $id; Architecture = 'x64'; SelfContained = $false; Files = $files }
+$version = ([xml][IO.File]::ReadAllText((Join-Path $PSScriptRoot 'DesktopCalendar.csproj'))).Project.PropertyGroup.Version
+$manifest = [ordered]@{ SchemaVersion = 1; AppId = 'desktop-calendar'; Version = $version; PackageId = $id; Architecture = 'x64'; SelfContained = $false; Files = $files }
 [IO.File]::WriteAllText((Join-Path $package 'package.json'), ($manifest | ConvertTo-Json -Depth 5), [Text.UTF8Encoding]::new($false))
 Write-Output "Package: $package (framework-dependent, Windows Desktop Runtime 10 x64 required)"

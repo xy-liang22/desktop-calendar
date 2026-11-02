@@ -1,6 +1,6 @@
-# P2 数据与服务接口
+# 数据与服务接口：P2基础与P3接入
 
-状态：P2开发完成，已验证范围内通过；业务 UI 仍是 P1.1 模拟内容。纯 C# `Core/DesktopCalendar.Core.csproj`（0.2.0）使用 .NET 10 标准库，无 WPF、数据库、联网或第三方依赖。主程序仅排除独立项目源码，不改变窗口与安装包。后续WPF通过ProjectReference引用库，不复制代码或直接更改底层集合。
+状态：P2数据基础已完成，P3已通过ProjectReference接入普通待办与月历GUI。纯C# `Core/DesktopCalendar.Core.csproj`（0.2.0兼容扩展）使用.NET10标准库，无WPF/数据库/联网/第三方依赖；主程序0.3.0发布包含Core DLL。重复/持续、Activity、周目标等完整管理UI仍后续接入。
 
 ## 实体和身份
 
@@ -38,11 +38,21 @@ if (workspace.Storage.CanWrite) {
 
 `SaveTodo/SetTodoCompleted/MoveCarryTodo/ReorderTodos/SetTodoOrderMode/DeleteTodo`、`CreateSeries/EditSeries/CancelSeries`、`SaveActivity/DeleteActivity`、`SaveGoal/DeleteGoal`、`SaveReview/AppendStatistics/DeleteReview`、分类初始化/归档、资产和日期底色命令均经过整图校验、可靠保存，再发布新快照。`BatchCommand`将多个合法步骤一次提交/撤销（最多1000项、嵌套16层）；任一步失败不发布部分状态。UI 应调用命令，不直接修改集合。查询入口为 `PlannerQueries` 和 `PlannerTime`；`TodosOn`仅实际当日项，`TodoTreeOn`额外标记祖先上下文，避免已完成子任务因父取消而无法导航。创建模板树须事先分配节点 GUID 以表达父子关系。
 
+P3新增`CopyTodo(TodoRef, TargetDate)`，仅复制普通待办子树：每项新GUID和CopiedFromId，根变独立待办，保留属性/子相对日期/子组Manual模式，重置完成/完成时间/手动进度，不复制Activity或周目标链接；单事务可撤销。业务JSON仍schema2，无新业务数据源。
+
+## P3界面边界
+
+`DesktopSession`持有一个`PlannerController`，重建HWND也复用；月历、中栏和今日折叠只读取此工作区快照。编辑器使用独立草稿，旧记录发生变化则拒绝覆盖。保存按钮以BatchCommand提交字段与完成操作，保存成功才刷新记录；失败旧快照/草稿保留，状态在完整/折叠均可见。加载未知/损坏版本只读，不初始化空业务数据；新文件只初始化分类，不填DemoTodo。
+
+同级拖放只在同父/同状态组插入，不重挂父；普通子任务独立编辑和排序。主视图显示树，月历摘要优先未完成根项，再子项；每同级基础顺序由P2规则决定。`QuickDraft`是未提交UI文字，同会话隐藏/折叠/找回保留，不是第二份业务状态；正常退出先确认放弃未提交文字并等待当前提交。强制退出仍可能丢未完成且未确认成功的操作，不宣称保存成功。
+
+日期/月/分类文字或底色偏好仅新增到原window-preferences schema2，未把UI状态写入业务文件。根项目排除Core/tests的递归Compile仍保留，避免把独立库重复编译；旧371项显式fixture回归才用DemoTodo，普通运行不使用它。P4/P5/P6后续也应沿用同一controller/workspace，不另造JSON仓库。
+
 单次周期修改不改规则，可用 MoveTo 改日期；FromDate/FutureUnfinished 都以命令From为界分割未来规则版本，整系列更新各版本；各范围均保护已物化完成记录。取消本次记录取消键，未来用 SuppressedFrom，整系列归档；CancelSeries的可选NodeId限定子树。已完成记录及所需祖先保留，不能因范围取消删除已完成历史。已保存实例保留自己的树/移动日期例外，尚未生成的未来实例使用新模板。撤销/重做保存最多100个会话内事务快照，每次仍提交新 Revision；实体历史字段按事务快照恢复；重载清空历史，不做跨进程永久撤销日志。
 
 ## JSON 与恢复
 
-默认 `%LOCALAPPDATA%\DesktopCalendar\planner-data.json`；窗口偏好仍是独立 `window-preferences.json`，未改旧 schema2。`PlannerOptions` 作为调用上下文传入，不写入业务 JSON；后续 UI 设置可持久化到独立设置。当前主 UI 不调用数据层，不会创建正式业务文件。
+默认 `%LOCALAPPDATA%\DesktopCalendar\planner-data.json`；窗口偏好仍是独立 `window-preferences.json`，兼容旧schema2。`PlannerOptions`作为调用上下文传入，不写入业务JSON。P3正常启动读取真实业务文件；只有主/备份/残留都不存在才允许首次初始化，现有P2其他实体与关联保留。
 
 业务 schema2：`schemaVersion/documentId/revision/payload/payloadSha256`，独立 DTO 映射，不存 WPF 对象。严格字段/枚举/重复键/关联校验；未知同版本字段拒绝，避免悄悄丢失。v1 是本阶段定义的早期迁移合同（documentId/data，无 revision/校验和），不是声称 P1.1 曾有业务数据。加载迁移只在内存，下一次明确成功保存后写 schema2 并备份 v1。
 
@@ -54,4 +64,4 @@ if (workspace.Storage.CanWrite) {
 
 ## 验证
 
-Windows PowerShell：`powershell -NoProfile -ExecutionPolicy Bypass -File .\Test-Planner.ps1`。只使用项目忽略的 artifacts 隔离目录。160 PASS/0 FAIL/1 NOT VERIFIED。测试包含真实 Windows 文件占用/只读、两个写入器、独立子进程重读及六个写入阶段的直接进程退出，详细结果见 TESTING；不使用个人数据文件。历史时区以Windows资料为准；Samoa2011整日跳跃在本机资料中未重现，不能保证所有历史政令变更资料完整。没有安装或覆盖时区数据库；硬件断电、满盘、Win10实机未模拟为已通过。
+Windows PowerShell：`powershell -NoProfile -ExecutionPolicy Bypass -File .\Test-Planner.ps1`，165 PASS/0 FAIL/1 NOT VERIFIED；`Test-P3.ps1`验证真实WPF控件/弹窗和进程重启。只用忽略的artifacts，不使用个人文件。测试包含真实Windows占用/只读、两个写入器、六写入阶段直接进程退出、复制子树排序状态及P3不覆盖其他实体。历史时区以Windows资料为准；Samoa2011整日跳跃本机未重现，不能保证所有历史政令资料完整。未安装时区库；物理断电、满盘、Win10实机及真实输入设备未冒称通过，详见TESTING。

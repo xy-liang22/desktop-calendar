@@ -1,0 +1,40 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:s="clr-namespace:System;assembly=System.Runtime">
+ <s:String x:Key="PlannerUiLanguage">zh-CN</s:String><s:String x:Key="PlannerPickColor">选择颜色 {0}</s:String>
+ <s:String x:Key="PlannerExitDraft">快速输入中还有未提交的文字。确认退出并放弃这段草稿？已成功保存的待办不会丢失。</s:String>
+ <s:String x:Key="TimelineTip">示例时间块 · 实际日程编辑将在 P5 接入</s:String>
+ <s:String x:Key="WeekTitle">示例周 · 10 月 26 日 — 11 月 1 日</s:String><s:String x:Key="WeekSubtitle">布局示例 · 真实周计划与总结将在 P6 接入</s:String>
+ <s:String x:Key="Prototype">P3 · 真实待办 · 日程与周总结仍为示例</s:String>
+ <s:String x:Key="DemoNotice">待办即时保存到本机 · 日程仍为示例</s:String>
+ <s:String x:Key="CompactDemoNotice">与月历共享真实待办 · 修改即时保存</s:String>
+ <s:String x:Key="SettingsNotice">窗口偏好与待办分别保存在本机。日程仍为示例；设置和托盘均可退出。</s:String>
+ <s:String x:Key="PlannerLoading">正在读取本地待办…</s:String>
+ <s:String x:Key="PlannerLocal">已保存到本机</s:String>
+ <s:String x:Key="PlannerSaving">正在保存，请稍候…</s:String>
+ <s:String x:Key="PlannerSaveFailed">未能保存，显示内容已保留原状态。请检查文件占用或权限后重试。</s:String>
+ <s:String x:Key="PlannerReadFailed">数据暂不可读，已停止编辑。请检查文件占用、权限或错误详情，然后重新读取。</s:String>
+ <s:String x:Key="PlannerConflict">数据已被其他程序修改，已停止编辑。请重新读取；不会覆盖外部修改。</s:String>
+ <s:String x:Key="PlannerNewer">数据版本较新，已停止编辑及恢复。请使用兼容版本，不会覆盖原文件。</s:String>
+ <s:String x:Key="PlannerCorrupt">数据不完整或损坏，已停止编辑。可选择有效备份确认恢复；原件会保留。</s:String>
+ <s:String x:Key="PlannerReload">重新读取</s:String><s:String x:Key="PlannerRecover">从备份恢复</s:String>
+ <s:String x:Key="PlannerAllTasks">查看这一天的全部待办</s:String><s:String x:Key="PlannerToggle">完成 / 取消完成</s:String>
+ <s:String x:Key="PlannerPrevious">上一月</s:String><s:String x:Key="PlannerNext">下一月</s:String><s:String x:Key="PlannerToday">今天</s:String>
+ <s:String x:Key="PlannerMonthFormat">yyyy 年 M 月</s:String><s:String x:Key="PlannerColorBackground">月历使用分类底色（关闭时使用文字颜色）</s:String>
+ <s:String x:Key="PlannerMon">周一</s:String><s:String x:Key="PlannerTue">周二</s:String><s:String x:Key="PlannerWed">周三</s:String><s:String x:Key="PlannerThu">周四</s:String><s:String x:Key="PlannerFri">周五</s:String><s:String x:Key="PlannerSat">周六</s:String><s:String x:Key="PlannerSun">周日</s:String>
+ <s:String x:Key="PlannerUndo">撤销 · Ctrl+Z</s:String><s:String x:Key="PlannerRedo">重做 · Ctrl+Y</s:String>
+ <s:String x:Key="PlannerNew">新增待办</s:String><s:String x:Key="PlannerEdit">编辑待办</s:String><s:String x:Key="PlannerEmpty">这一天没有待办。可在下方输入，或点击 ＋ 设置更多属性。</s:String>
+ <s:String x:Key="PlannerQuickAdd">快速添加</s:String><s:String x:Key="PlannerQuickInput">快速新增待办</s:String><s:String x:Key="PlannerQuickHint">输入任务，或「09:30 任务名称」；Enter 添加</s:String><s:String x:Key="PlannerQuickInvalid">请输入任务名称；计划时间请使用 09:30 这样的格式。</s:String>
+ <s:String x:Key="PlannerActivityDemo">示例时间轴 · 真实日程编辑将在 P5 接入</s:String>
+ <s:String x:Key="PlannerDateColor">设置日期底色</s:String><s:String x:Key="PlannerClearColor">清除日期底色</s:String>
+ <s:String x:Key="PlannerImportant">重要</s:String><s:String x:Key="PlannerUrgent">紧急</s:String><s:String x:Key="PlannerAdvancedTask">周期 / 持续任务 · P4 管理</s:String>
+ <s:String x:Key="PlannerAddChild">新增子任务</s:String><s:String x:Key="PlannerCopy">复制到其他日期</s:String><s:String x:Key="PlannerDelete">删除待办</s:String>
+ <s:String x:Key="PlannerTimeOrder">恢复按时间排序</s:String><s:String x:Key="PlannerExpandChildren">展开子任务</s:String><s:String x:Key="PlannerCollapseChildren">折叠子任务</s:String><s:String x:Key="PlannerTaskActions">待办操作 · 拖动文字可在同级排序</s:String>
+ <s:String x:Key="PlannerCancel">取消</s:String><s:String x:Key="PlannerSave">保存</s:String><s:String x:Key="PlannerConfirm">确认</s:String>
+ <s:String x:Key="PlannerTitle">标题</s:String><s:String x:Key="PlannerDescription">说明</s:String><s:String x:Key="PlannerDateTime">计划日期 / 可选时间</s:String><s:String x:Key="PlannerDate">计划日期</s:String><s:String x:Key="PlannerTime">计划时间</s:String><s:String x:Key="PlannerTimeHint">可留空；例如 09:30</s:String>
+ <s:String x:Key="PlannerCategory">分类</s:String><s:String x:Key="PlannerUnclassified">无分类</s:String><s:String x:Key="PlannerManageCategories">管理分类</s:String><s:String x:Key="PlannerColor">颜色覆盖（留空继承分类）</s:String><s:String x:Key="PlannerColorHint">例如 #A3D9C4；留空使用分类色</s:String>
+ <s:String x:Key="PlannerPriority">优先级</s:String><s:String x:Key="PlannerProgress">手动进度 %（0–100）</s:String><s:String x:Key="PlannerDerivedProgress">按子任务自动计算进度（不会自动勾选父任务）</s:String><s:String x:Key="PlannerCompleted">已完成</s:String><s:String x:Key="PlannerParent">所属父任务：</s:String>
+ <s:String x:Key="PlannerTitleRequired">标题不能为空；取消编辑不会删除任何待办。</s:String><s:String x:Key="PlannerDateRequired">请选择有效日期。</s:String><s:String x:Key="PlannerTimeInvalid">时间无效，请输入 09:30 或留空。</s:String><s:String x:Key="PlannerColorInvalid">请输入 # 加六位十六进制颜色，例如 #A3D9C4。</s:String><s:String x:Key="PlannerProgressInvalid">进度须为 0–100 的数字。</s:String><s:String x:Key="PlannerStaleEdit">该待办已发生变化，请取消并重新打开，避免覆盖更新。</s:String>
+ <s:String x:Key="PlannerDeleteConfirm">删除“{0}”及其子任务？关联实际日程将保留。可在本次会话撤销。</s:String>
+ <s:String x:Key="PlannerCopyDate">复制到日期</s:String><s:String x:Key="PlannerCopyHint">创建独立的新待办及子任务，保留属性与相对日期；完成状态和手动进度重置，原待办不变。</s:String>
+ <s:String x:Key="PlannerCategoryName">分类名称</s:String><s:String x:Key="PlannerCategoryColor">颜色，例如 #A3D9C4</s:String><s:String x:Key="PlannerNewCategory">新增分类</s:String><s:String x:Key="PlannerArchiveCategory">归档所选分类</s:String><s:String x:Key="PlannerArchiveHint">将分类从新增列表隐藏？已有待办和日程仍保留历史分类。</s:String><s:String x:Key="PlannerDefaultCategories">补齐预置分类</s:String><s:String x:Key="PlannerCategoryInvalid">请填写分类名称和有效的六位十六进制颜色。</s:String>
+ <s:String x:Key="PlannerRecoveryCandidate">选择经过校验的恢复候选</s:String><s:String x:Key="PlannerRecoveryHint">恢复会替换当前业务文件，原始文件会另存证据。不会自动选择或恢复。</s:String><s:String x:Key="PlannerRecoveryConfirm">确认恢复候选中的 {0} 条待办、{1} 条实际日程（版本序号 {2}）？请确认内容范围，原件将保留。</s:String>
+</ResourceDictionary>

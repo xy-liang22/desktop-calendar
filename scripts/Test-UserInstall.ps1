@@ -75,6 +75,12 @@ try {
     [IO.File]::WriteAllText((Join-Path $bad 'package.json'), ($badManifest | ConvertTo-Json -Depth 6))
     Install 'Update' $bad $testRoot $true
     Check 'manifest path traversal rejected' (-not [IO.File]::Exists((Join-Path $testRoot 'outside.exe')) -and $shell.CreateShortcut($link).TargetPath -eq $secondTarget)
+    $missingCore = ClonePackage 'package-missing-core' $false
+    $coreManifest = Get-Content -Encoding UTF8 (Join-Path $missingCore 'package.json') -Raw | ConvertFrom-Json
+    $coreManifest.Files = @($coreManifest.Files | Where-Object { $_.Name -ne 'DesktopCalendar.Core.dll' })
+    [IO.File]::WriteAllText((Join-Path $missingCore 'package.json'), ($coreManifest | ConvertTo-Json -Depth 6))
+    Install 'Update' $missingCore $testRoot $true
+    Check 'P3 manifest cannot omit required Core dependency' ($shell.CreateShortcut($link).TargetPath -eq $secondTarget)
     $holdRoot = Join-Path $testRoot 'hold-check'
     $hold = Child $secondTarget 'hold' $holdRoot
     try {

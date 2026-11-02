@@ -239,7 +239,7 @@ internal static class PrototypeChecks
             Check("component recreation safely falls back without auto owner", window.DesktopMode.Layer == WindowLayer.Fallback && !window.DesktopMode.NativeTopmost && window.DesktopMode.Owner == IntPtr.Zero);
             session.Locate(); window.RestoreNormal();
             Check("recreated component can explicitly return to desktop", window.DesktopMode.Layer == WindowLayer.Desktop && window.FullContent.Visibility == Visibility.Visible);
-            Check("no third-party assembly references", typeof(MainWindow).Assembly.GetReferencedAssemblies().All(a => a.Name!.StartsWith("System") || a.Name.StartsWith("Microsoft") || a.Name is "PresentationCore" or "PresentationFramework" or "WindowsBase"));
+            Check("only platform and owned Core assembly references", typeof(MainWindow).Assembly.GetReferencedAssemblies().All(a => a.Name!.StartsWith("System") || a.Name.StartsWith("Microsoft") || a.Name is "PresentationCore" or "PresentationFramework" or "WindowsBase" or "DesktopCalendar.Core"));
             results.Add("NOT VERIFIED by executable checks: new icon on actual Start search/tray surfaces, Windows 10, mixed DPI hardware, real Explorer restart, suspend/resume. Off-screen WPF render is not on-screen evidence. User P1.1-4/5 GUI acceptance recorded separately; occasional minor resize jitter accepted.");
         }
         catch (Exception ex) { failed++; results.Add("FAIL unhandled check: " + ex); }
