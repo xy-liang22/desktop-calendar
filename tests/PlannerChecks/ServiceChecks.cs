@@ -80,8 +80,15 @@ internal static partial class Checks
         int prior = w.Snapshot!.Todos.Length;
         var writes = await Task.WhenAll(Enumerable.Range(0, 12).Select(i => w.ExecuteAsync(new SaveTodo(Todo("parallel" + i, day.AddMonths(1), i)))));
         Check("workspace serializes 12 concurrent edits without lost data", writes.All(r => r.Success) && w.Snapshot!.Todos.Length == prior + 12);
+        // Persist a nonempty linked graph after exercising deletion cleanup; restarting an
+        // empty navigation list would not prove that Activity/goal/review/asset edges survive.
+        var durableReview = await Run(w, new SaveReview(new() { Week = week, Markdown = "persisted user prose" }));
+        var durableActivity = await Run(w, new SaveActivity(new() { Title = "persisted actual", Todo = Ref(ids[1]), CategoryId = category,
+            Intervals = [new(Guid.Empty, Now, Now.AddMinutes(30))], Notes = new() { Format = NoteFormat.Markdown, Text = "![local](" + PlannerQueries.AssetReference(asset) + ")", AssetIds = [asset] } }));
+        await Run(w, new SaveGoal(w.Snapshot!.Goals.Single() with { Todos = [Ref(ids[1])], Activities = [durableActivity], ReviewId = durableReview }));
         var reopen = await new PlannerStore(servicePath).OpenAsync(Utc);
         Check("full service state survives restart with associations", reopen.Status == StoreStatus.Ready && reopen.State!.Revision == w.Snapshot!.Revision && PlannerCodec.Encode(reopen.State).SequenceEqual(PlannerCodec.Encode(w.Snapshot)));
+        Check("independent process verifies complete service graph identity/revision/content", await Child("--verify", servicePath, w.Snapshot!.Id.ToString(), w.Snapshot.Revision.ToString(System.Globalization.CultureInfo.InvariantCulture), Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(PlannerCodec.Encode(w.Snapshot)))) == 0);
         await w.ReloadAsync(); Check("reload clears obsolete session undo", !w.CanUndo && !w.CanRedo);
     }
     static async Task SeriesChecks(PlannerWorkspace w, DateOnly day)

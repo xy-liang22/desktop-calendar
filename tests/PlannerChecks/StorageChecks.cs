@@ -19,6 +19,8 @@ internal static partial class Checks
     static async Task<int> ReadChild(string[] args)
     {
         var load = await new PlannerStore(args[1]).OpenAsync(Utc);
+        if (args[0] == "--verify") return load.Status == StoreStatus.Ready && load.State?.Id.ToString() == args[2] && load.State.Revision.ToString(System.Globalization.CultureInfo.InvariantCulture) == args[3]
+            && Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(PlannerCodec.Encode(load.State))) == args[4] ? 0 : 75;
         return load.Status == StoreStatus.Ready && load.State?.Todos.Single().Title == "restart" ? 0 : 75;
     }
     static async Task<int> Child(params string[] args)

@@ -4,16 +4,18 @@ namespace DesktopCalendar.Core;
 
 // Commands are the mutation boundary. No UI collection or control is a persistence model.
 public abstract record PlannerCommand;
+public sealed record BatchCommand(ImmutableArray<PlannerCommand> Commands) : PlannerCommand;
 public sealed record SaveTodo(Todo Value) : PlannerCommand;
 public sealed record SetTodoCompleted(TodoRef Todo, bool Completed) : PlannerCommand;
 public sealed record MoveCarryTodo(TodoRef Todo, DateOnly Date) : PlannerCommand;
-public sealed record ReorderTodos(ImmutableArray<TodoRef> Siblings) : PlannerCommand;
+public sealed record ReorderTodos(ImmutableArray<TodoRef> Siblings, DateOnly? DisplayDate = null) : PlannerCommand;
+public sealed record SetTodoOrderMode(Guid? ParentId, DateOnly? Date, TodoSort Mode) : PlannerCommand;
 public sealed record DeleteTodo(TodoRef Todo, ChildDisposition Children) : PlannerCommand;
 public sealed record CreateSeries(RecurrenceRule Rule, ImmutableArray<Todo> Templates) : PlannerCommand;
 public sealed record EditSeries(Guid SeriesId, DateOnly From, EditScope Scope, RecurrenceRule? Rule = null,
     ImmutableArray<Todo> Templates = default, DateOnly? MoveTo = null) : PlannerCommand;
-public sealed record CancelSeries(Guid SeriesId, DateOnly From, EditScope Scope) : PlannerCommand;
-public sealed record SaveActivity(Activity Value) : PlannerCommand;
+public sealed record CancelSeries(Guid SeriesId, DateOnly From, EditScope Scope, Guid? NodeId = null) : PlannerCommand;
+public sealed record SaveActivity(Activity Value, bool InheritCategory = true) : PlannerCommand;
 public sealed record DeleteActivity(Guid Id) : PlannerCommand;
 public sealed record SaveGoal(WeekGoal Value, bool ConfirmTypeChange = false) : PlannerCommand;
 public sealed record DeleteGoal(Guid Id) : PlannerCommand;
@@ -22,8 +24,11 @@ public sealed record DeleteReview(Guid Id) : PlannerCommand;
 public sealed record AppendStatistics(Guid ReviewId, string Markdown) : PlannerCommand;
 public sealed record SaveCategory(Category Value) : PlannerCommand;
 public sealed record ArchiveCategory(Guid Id) : PlannerCommand;
+public sealed record InitializeCategories : PlannerCommand;
 public sealed record SaveAsset(LocalAsset Value) : PlannerCommand;
 public sealed record RemoveAsset(Guid Id) : PlannerCommand;
+public sealed record SaveDecoration(DayDecoration Value) : PlannerCommand;
+public sealed record DeleteDecoration(Guid Id) : PlannerCommand;
 internal sealed record CommandChange(PlannerState State, Guid? EntityId = null);
 
 internal static class PlannerCommands
@@ -43,10 +48,10 @@ internal static class PlannerCommands
         }
         return s with { Todos = s.Todos.Add(todo) };
     }
-    static PlannerState Detach(PlannerState s, HashSet<Guid> ids) => s with
+    static PlannerState Detach(PlannerState s, HashSet<Guid> ids, DateTimeOffset now) => s with
     {
-        Activities = [.. s.Activities.Select(a => a.Todo != null && ids.Contains(a.Todo.Id) ? a with { FormerTodoTitle = Get(s, a.Todo).Title, Todo = null } : a)],
-        Goals = [.. s.Goals.Select(g => g with { Todos = [.. g.Todos.Where(r => !ids.Contains(r.Id))] })]
+        Activities = [.. s.Activities.Select(a => a.Todo != null && ids.Contains(a.Todo.Id) ? a with { FormerTodoTitle = Get(s, a.Todo).Title, Todo = null, ModifiedAt = now } : a)],
+        Goals = [.. s.Goals.Select(g => g.Todos.Any(r => ids.Contains(r.Id)) ? g with { Todos = [.. g.Todos.Where(r => !ids.Contains(r.Id))], ModifiedAt = now } : g)]
     };
     static HashSet<Guid> Subtree(IEnumerable<Todo> rows, Guid root)
     {
@@ -54,10 +59,17 @@ internal static class PlannerCommands
         do { changed = false; foreach (var t in rows) if (t.ParentId is Guid p && result.Contains(p)) changed |= result.Add(t.Id); } while (changed);
         return result;
     }
-    internal static CommandChange Apply(PlannerState s, PlannerCommand command, DateTimeOffset now)
+    internal static CommandChange Apply(PlannerState s, PlannerCommand command, DateTimeOffset now, int depth = 0)
     {
+        if (depth > 16) throw new PlannerException("CommandTooDeep");
         switch (command)
         {
+            case BatchCommand c:
+            {
+                if (c.Commands.IsDefaultOrEmpty || c.Commands.Length > 1000) throw new PlannerException("InvalidCommandBatch");
+                foreach (var part in c.Commands) { s = Apply(s, part, now, depth + 1).State; PlannerIntegrity.Validate(s); }
+                return new(s);
+            }
             case SaveTodo c:
             {
                 var old = s.Todos.SingleOrDefault(t => t.Id == c.Value.Id);
@@ -94,10 +106,18 @@ internal static class PlannerCommands
                 foreach (var r in c.Siblings) s = Materialize(s, r);
                 var rows = c.Siblings.Select(r => Get(s, r)).ToArray();
                 if (rows.Select(t => t.ParentId).Distinct().Count() != 1) throw new PlannerException("DifferentSiblingGroups");
-                var siblings = s.Todos.Where(t => t.ParentId == rows[0].ParentId && (t.ParentId != null || t.PlannedDate == rows[0].PlannedDate)).Select(t => t.Id).ToHashSet();
+                var siblings = rows[0].ParentId is Guid parent
+                    ? PlannerQueries.Children(s, s.Todos.Single(t => t.Id == parent)).Select(t => t.Id).ToHashSet()
+                    : PlannerQueries.TodosOn(s, c.DisplayDate ?? rows[0].PlannedDate, c.DisplayDate ?? rows[0].PlannedDate).Where(t => t.ParentId == null).Select(t => t.Id).ToHashSet();
                 if (!siblings.SetEquals(rows.Select(t => t.Id))) throw new PlannerException("IncompleteSiblingOrder");
                 for (int i = 0; i < rows.Length; i++) s = s with { Todos = Put(s.Todos, rows[i] with { SortKey = i * 1024m, ModifiedAt = now }) };
-                return new(s);
+                return Apply(s, new SetTodoOrderMode(rows[0].ParentId, rows[0].ParentId == null ? c.DisplayDate ?? rows[0].PlannedDate : null, TodoSort.Manual), now, depth + 1);
+            }
+            case SetTodoOrderMode c:
+            {
+                var old = s.TodoOrderings.SingleOrDefault(o => o.ParentId == c.ParentId && o.Date == c.Date);
+                var ordering = Stamp(new TodoOrdering { ParentId = c.ParentId, Date = c.Date, Mode = c.Mode }, old, now);
+                return new(s with { TodoOrderings = Put(s.TodoOrderings, ordering) }, ordering.Id);
             }
             case DeleteTodo c:
             {
@@ -105,8 +125,8 @@ internal static class PlannerCommands
                 if (t.Origin != null) throw new PlannerException("UseSeriesScopeCommand");
                 if (!Enum.IsDefined(c.Children)) throw new PlannerException("InvalidChildDisposition");
                 var ids = c.Children == ChildDisposition.DeleteSubtree ? Subtree(s.Todos, t.Id) : [t.Id];
-                s = Detach(s, ids);
-                return new(s with { Todos = [.. s.Todos.Where(x => !ids.Contains(x.Id)).Select(x => x.ParentId == t.Id ? x with { ParentId = t.ParentId, ModifiedAt = now } : x)] });
+                s = Detach(s, ids, now);
+                return new(s with { Todos = [.. s.Todos.Where(x => !ids.Contains(x.Id)).Select(x => x.ParentId == t.Id ? x with { ParentId = t.ParentId, ModifiedAt = now } : x)], TodoOrderings = [.. s.TodoOrderings.Where(o => o.ParentId == null || !ids.Contains(o.ParentId.Value))] });
             }
             case CreateSeries c:
             {
@@ -121,8 +141,11 @@ internal static class PlannerCommands
             case SaveActivity c:
             {
                 if (c.Value.Todo != null) s = Materialize(s, c.Value.Todo);
-                var a = Stamp(c.Value, s.Activities.SingleOrDefault(x => x.Id == c.Value.Id), now);
-                a = a with { Intervals = [.. a.Intervals.Select(i => i with { Id = i.Id == Guid.Empty ? Guid.NewGuid() : i.Id, Start = i.Start.ToUniversalTime(), End = i.End.ToUniversalTime() })] };
+                var previous = s.Activities.SingleOrDefault(x => x.Id == c.Value.Id);
+                var a = Stamp(c.Value, previous, now);
+                if (c.InheritCategory && a.CategoryId == null && a.Todo != null && (previous == null || previous.Todo != a.Todo))
+                    a = a with { CategoryId = Get(s, a.Todo).CategoryId };
+                a = a with { Intervals = [.. a.Intervals.Select(i => i with { Id = i.Id == Guid.Empty ? Guid.NewGuid() : i.Id })] };
                 return new(s with { Activities = Put(s.Activities, a) }, a.Id);
             }
             case DeleteActivity c:
@@ -161,6 +184,12 @@ internal static class PlannerCommands
                 var v = Stamp(c.Value, s.Categories.SingleOrDefault(x => x.Id == c.Value.Id), now);
                 return new(s with { Categories = Put(s.Categories, v) }, v.Id);
             }
+            case InitializeCategories:
+            {
+                foreach (var v in PlannerDefaults.Categories(s.Options.Language, now))
+                    if (!s.Categories.Any(x => x.BuiltInKey == v.BuiltInKey)) s = s with { Categories = s.Categories.Add(v) };
+                return new(s);
+            }
             case ArchiveCategory c:
             {
                 var v = s.Categories.SingleOrDefault(x => x.Id == c.Id) ?? throw new PlannerException("CategoryNotFound");
@@ -175,12 +204,22 @@ internal static class PlannerCommands
                 if (!s.Assets.Any(a => a.Id == c.Id)) throw new PlannerException("AssetNotFound");
                 if (s.Activities.Any(a => a.Notes.AssetIds.Contains(c.Id)) || s.Reviews.Any(r => r.AssetIds.Contains(c.Id))) throw new PlannerException("AssetInUse");
                 return new(s with { Assets = [.. s.Assets.Where(a => a.Id != c.Id)] });
+            case SaveDecoration c:
+            {
+                var old = s.Decorations.SingleOrDefault(d => c.Value.Id == Guid.Empty ? d.Date == c.Value.Date : d.Id == c.Value.Id);
+                var d = Stamp(c.Value, old, now);
+                return new(s with { Decorations = Put(s.Decorations, d) }, d.Id);
+            }
+            case DeleteDecoration c:
+                if (!s.Decorations.Any(d => d.Id == c.Id)) throw new PlannerException("DecorationNotFound");
+                return new(s with { Decorations = [.. s.Decorations.Where(d => d.Id != c.Id)] });
             default: throw new PlannerException("UnknownCommand");
         }
     }
     static ImmutableArray<Todo> PrepareTemplates(ImmutableArray<Todo> nodes, Guid series, DateTimeOffset now, ImmutableArray<Todo> previous)
     {
-        if (nodes.IsDefaultOrEmpty || nodes.Any(t => t.Id == Guid.Empty)) throw new PlannerException("TemplateIdsRequired");
+        if (nodes.IsDefaultOrEmpty || nodes.Any(t => t == null || t.Id == Guid.Empty)) throw new PlannerException("TemplateIdsRequired");
+        if (nodes.Count(t => t.ParentId == null) != 1 || nodes.Select(t => t.Id).Distinct().Count() != nodes.Length) throw new PlannerException("InvalidTemplateTree");
         return [.. nodes.Select(t => Stamp(t, previous.SingleOrDefault(p => p.Id == t.Id), now) with
         { Kind = TodoKind.SeriesTemplate, SeriesId = series, Origin = null, Status = TodoStatus.Pending, CompletedAt = null, CarryDate = null, FrozenCarryDate = null, Moves = [] })];
     }
@@ -213,34 +252,59 @@ internal static class PlannerCommands
             ? series.Versions.Select(v => v with { Rule = c.Rule ?? v.Rule, Templates = PrepareTemplates(c.Templates.IsDefault ? v.Templates : c.Templates, series.Id, now, v.Templates) }).ToImmutableArray()
             : series.Versions.Where(v => v.EffectiveFrom < c.From).Select(v => v.EffectiveThrough == null || v.EffectiveThrough >= c.From ? v with { EffectiveThrough = c.From.AddDays(-1) } : v)
                 .Append(new RuleVersion(Guid.NewGuid(), c.From, null, c.Rule ?? version.Rule, nodes)).ToImmutableArray();
-        // Keep retired node definitions in prior versions if linked/completed instances need them.
+        // Keep retired identity tombstones: deleting a template must not invalidate a completed snapshot.
         var known = versions.SelectMany(v => v.Templates).Select(t => t.Id).ToHashSet();
-        if (s.Todos.Any(t => t.Origin?.SeriesId == series.Id && !known.Contains(t.Origin.NodeId))) throw new PlannerException("ReferencedTemplateCannotBeRemoved");
-        foreach (var old in s.Todos.Where(t => t.Origin?.SeriesId == series.Id && t.Status != TodoStatus.Completed && (c.Scope == EditScope.EntireSeries || t.Origin.Date >= c.From)).ToArray())
+        var retired = series.RetiredNodeIds.Concat(series.Versions.SelectMany(v => v.Templates).Select(t => t.Id).Where(id => !known.Contains(id))).Distinct().Where(id => !known.Contains(id)).ToImmutableArray();
+        var affected = s.Todos.Where(t => t.Origin?.SeriesId == series.Id && t.Status != TodoStatus.Completed && (c.Scope == EditScope.EntireSeries || t.Origin.Date >= c.From)).ToArray();
+        var protectedIds = Protected(s, series.Id);
+        var removed = new HashSet<Guid>();
+        foreach (var old in affected)
         {
             var applicable = versions.SingleOrDefault(v => v.EffectiveFrom <= old.Origin!.Date && (v.EffectiveThrough == null || old.Origin.Date <= v.EffectiveThrough));
             var draft = applicable?.Templates.SingleOrDefault(t => t.Id == old.Origin!.NodeId);
-            if (draft == null || !Recurrence.Matches(applicable!.Rule, old.Origin!.Date)) continue; // retained exception keeps existing links and explicit history
+            if (draft == null || !Recurrence.Matches(applicable!.Rule, old.Origin!.Date))
+            { if (!protectedIds.Contains(old.Id)) removed.Add(old.Id); else s = s with { Todos = Put(s.Todos, old with { Status = TodoStatus.Cancelled, ModifiedAt = now }) }; continue; }
+            // Existing instances keep their explicit tree/date exceptions; generated future instances use the new tree.
             s = s with { Todos = Put(s.Todos, draft with { Id = old.Id, ParentId = old.ParentId, Kind = TodoKind.Occurrence, SeriesId = null, Origin = old.Origin, PlannedDate = old.PlannedDate, CreatedAt = old.CreatedAt, ModifiedAt = now, Status = old.Status, CompletedAt = old.CompletedAt }) };
         }
-        return new(s with { Series = Put(s.Series, series with { Versions = versions, ModifiedAt = now }) }, series.Id);
+        s = Detach(s, removed, now);
+        return new(s with { Todos = [.. s.Todos.Where(t => !removed.Contains(t.Id))], TodoOrderings = [.. s.TodoOrderings.Where(o => o.ParentId == null || !removed.Contains(o.ParentId.Value))], Series = Put(s.Series, series with { Versions = versions, RetiredNodeIds = retired, ModifiedAt = now }) }, series.Id);
+    }
+    static HashSet<Guid> Protected(PlannerState s, Guid series)
+    {
+        var ids = new HashSet<Guid>();
+        foreach (var done in s.Todos.Where(t => t.Status == TodoStatus.Completed))
+        {
+            var chain = new List<Todo>(); var t = done;
+            while (true) { chain.Add(t); if (t.ParentId is not Guid p) break; t = s.Todos.Single(x => x.Id == p); }
+            if (chain.Any(x => x.Origin?.SeriesId == series)) foreach (var x in chain) ids.Add(x.Id);
+        }
+        return ids;
     }
     static CommandChange Cancel(PlannerState s, CancelSeries c, DateTimeOffset now)
     {
         if (!Enum.IsDefined(c.Scope)) throw new PlannerException("InvalidEditScope");
         var series = s.Series.SingleOrDefault(x => x.Id == c.SeriesId) ?? throw new PlannerException("SeriesNotFound");
+        if (c.NodeId is Guid selected && selected != series.RootTodoId && c.Scope != EditScope.Single)
+        {
+            var version = PlannerQueries.Version(series, c.From) ?? throw new PlannerException("RuleVersionNotFound");
+            if (!version.Templates.Any(t => t.Id == selected)) throw new PlannerException("TemplateNotFound");
+            var subtree = Subtree(version.Templates, selected);
+            return Edit(s, new(series.Id, c.From, c.Scope, Templates: [.. version.Templates.Where(t => !subtree.Contains(t.Id))]), now);
+        }
+        var selectedNodes = c.NodeId is Guid node && node != series.RootTodoId
+            ? Subtree(PlannerQueries.Version(series, c.From)?.Templates ?? [], node) : null;
+        if (selectedNodes != null && !(PlannerQueries.Version(series, c.From)?.Templates.Any(t => t.Id == c.NodeId) ?? false)) throw new PlannerException("TemplateNotFound");
         bool Affects(Todo t) => t.Origin?.SeriesId == series.Id && (c.Scope switch
-        { EditScope.EntireSeries => true, EditScope.Single => t.Origin.Date == c.From, _ => t.Origin.Date >= c.From });
+        { EditScope.EntireSeries => true, EditScope.Single => t.Origin.Date == c.From, _ => t.Origin.Date >= c.From }) && (selectedNodes == null || selectedNodes.Contains(t.Origin.NodeId));
         // Materialized completed items and their ancestors are protected; links to removed pending instances are detached.
-        var protectedIds = new HashSet<Guid>();
-        foreach (var done in s.Todos.Where(t => t.Origin?.SeriesId == series.Id && t.Status == TodoStatus.Completed))
-        { var t = done; while (protectedIds.Add(t.Id) && t.ParentId is Guid p) t = s.Todos.Single(x => x.Id == p); }
+        var protectedIds = Protected(s, series.Id);
         var remove = s.Todos.Where(t => Affects(t) && !protectedIds.Contains(t.Id)).Select(t => t.Id).ToHashSet();
-        s = Detach(s, remove);
-        s = s with { Todos = [.. s.Todos.Where(t => !remove.Contains(t.Id)).Select(t => Affects(t) && t.Status != TodoStatus.Completed ? t with { Status = TodoStatus.Cancelled, ModifiedAt = now } : t)] };
+        s = Detach(s, remove, now);
+        s = s with { Todos = [.. s.Todos.Where(t => !remove.Contains(t.Id)).Select(t => Affects(t) && t.Status != TodoStatus.Completed ? t with { Status = TodoStatus.Cancelled, ModifiedAt = now } : t)], TodoOrderings = [.. s.TodoOrderings.Where(o => o.ParentId == null || !remove.Contains(o.ParentId.Value))] };
         series = c.Scope switch
         {
-            EditScope.Single => series with { Cancelled = [.. series.Cancelled.Concat((PlannerQueries.Version(series, c.From)?.Templates ?? []).Select(t => new OccurrenceKey(series.Id, t.Id, c.From))).Distinct()] },
+            EditScope.Single => series with { Cancelled = [.. series.Cancelled.Concat((PlannerQueries.Version(series, c.From)?.Templates ?? []).Where(t => selectedNodes == null || selectedNodes.Contains(t.Id)).Select(t => new OccurrenceKey(series.Id, t.Id, c.From))).Distinct()] },
             EditScope.EntireSeries => series with { Archived = true },
             _ => series with { SuppressedFrom = series.SuppressedFrom is DateOnly previous && previous < c.From ? previous : c.From }
         };

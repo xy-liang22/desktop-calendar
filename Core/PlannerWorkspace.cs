@@ -13,7 +13,7 @@ public sealed class PlannerWorkspace
     readonly Func<DateTimeOffset> clock;
     readonly SemaphoreSlim gate = new(1, 1);
     readonly List<PlannerState> undo = [], redo = [];
-    StoreLoad loaded;
+    volatile StoreLoad loaded;
     public PlannerState? Snapshot => loaded.State;
     public StoreLoad Storage => loaded;
     public bool CanUndo => undo.Count > 0 && loaded.CanWrite;
@@ -57,6 +57,8 @@ public sealed class PlannerWorkspace
             return result;
         }
         catch (PlannerException e) { return new(StoreStatus.InvalidData, e.Code); }
+        catch (Exception e) when (e is ArgumentException or InvalidOperationException or NullReferenceException or OverflowException)
+        { return new(StoreStatus.InvalidData, "InvalidCommand:" + e.GetType().Name); }
         finally { gate.Release(); }
     }
     public Task<CommandResult> UndoAsync(CancellationToken ct = default) => History(false, ct);

@@ -44,7 +44,10 @@ public sealed class PlannerStore
     }
     async Task<FileStream> Lease(CancellationToken ct)
     {
-        var directory = Path.GetDirectoryName(FilePath)!; CheckPath(directory); Directory.CreateDirectory(directory);
+        var directory = Path.GetDirectoryName(FilePath)!;
+        for (var ancestor = new DirectoryInfo(directory); ancestor != null; ancestor = ancestor.Parent) CheckPath(ancestor.FullName);
+        if (Directory.Exists(FilePath)) throw new IOException("DestinationIsDirectory");
+        Directory.CreateDirectory(directory);
         string path = FilePath + ".lock"; CheckPath(path);
         var started = System.Diagnostics.Stopwatch.StartNew();
         while (true)
@@ -76,6 +79,7 @@ public sealed class PlannerStore
         try
         {
             this.context = context ?? this.context;
+            PlannerIntegrity.ValidateOptions(this.context);
             using var lease = await Lease(ct).ConfigureAwait(false);
             string? token = null; PlannerState? state = null; bool migrated = false; string error = "";
             StoreStatus status = StoreStatus.Missing;
@@ -183,6 +187,7 @@ public sealed class PlannerStore
             if (File.Exists(FilePath)) await Preserve(FilePath, ct).ConfigureAwait(false);
             temporary = FilePath + ".pending-" + Guid.NewGuid().ToString("N");
             await WriteFlushed(temporary, bytes, false, ct).ConfigureAwait(false);
+            ct.ThrowIfCancellationRequested();
             if (File.Exists(FilePath)) File.Replace(temporary, FilePath, null); else File.Move(temporary, FilePath);
             temporary = null;
             return lastLoad = new(StoreStatus.Ready, decoded.State, Fingerprint(bytes), "OriginalPreserved", [], decoded.Migrated);

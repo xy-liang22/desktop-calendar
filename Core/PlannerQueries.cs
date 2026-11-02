@@ -5,9 +5,17 @@ namespace DesktopCalendar.Core;
 public sealed record ActivitySlice(Guid ActivityId, TimeInterval Interval);
 public sealed record GoalProgress(decimal Automatic, decimal? Override, decimal Effective, bool Complete, ImmutableArray<TodoRef> OutsideWeekTodos);
 public sealed record CategoryDuration(Guid? CategoryId, decimal Seconds, decimal FractionOfWeek);
+public sealed record TodoDateNode(Todo Value, bool ContextOnly, ImmutableArray<TodoDateNode> Children);
 
 public static class PlannerQueries
 {
+    public static string AssetReference(Guid id) => id != Guid.Empty ? "asset://" + id.ToString("D") : throw new PlannerException("InvalidAssetReference");
+    public static LocalAsset ResolveAsset(PlannerState state, string reference)
+    {
+        const string prefix = "asset://";
+        if (reference == null || !reference.StartsWith(prefix, StringComparison.Ordinal) || !Guid.TryParseExact(reference[prefix.Length..], "D", out var id)) throw new PlannerException("InvalidAssetReference");
+        return state.Assets.SingleOrDefault(a => a.Id == id) ?? throw new PlannerException("AssetNotFound");
+    }
     public static RuleVersion? Version(TodoSeries series, DateOnly date) => series.Versions.SingleOrDefault(v => v.EffectiveFrom <= date && (v.EffectiveThrough == null || date <= v.EffectiveThrough));
     public static Todo Resolve(PlannerState state, TodoRef reference)
     {
@@ -52,12 +60,37 @@ public static class PlannerQueries
             }
         }
         // Flat results retain ParentId; a UI can request/sort each sibling group.
-        return [.. rows.GroupBy(t => t.ParentId).SelectMany(g => Order(g, sort ?? state.Options.TodoSort))];
+        return [.. rows.GroupBy(t => t.ParentId).SelectMany(g => Order(g, sort ?? Ordering(state, g.Key, date)))];
     }
+    public static TodoSort Ordering(PlannerState state, Guid? parent, DateOnly date) => state.TodoOrderings.SingleOrDefault(o => o.ParentId == parent && (parent != null || o.Date == date))?.Mode ?? state.Options.TodoSort;
     public static IOrderedEnumerable<Todo> Order(IEnumerable<Todo> siblings, TodoSort sort) => siblings
         .OrderBy(t => t.Status == TodoStatus.Completed)
         .ThenBy(t => sort == TodoSort.PlannedTime ? t.PlannedTime?.Ticks ?? long.MaxValue : 0)
         .ThenBy(t => t.SortKey).ThenBy(t => t.Id);
+    // Context ancestors keep completed children reachable when a series/parent is cancelled
+    // or the child's planned day differs. They are not additional tasks counted for that day.
+    public static ImmutableArray<TodoDateNode> TodoTreeOn(PlannerState state, DateOnly date, DateOnly asOf, TodoSort? sort = null)
+    {
+        var visible = TodosOn(state, date, asOf, sort); var originals = visible.Select(t => t.Id).ToHashSet();
+        var map = visible.ToDictionary(t => t.Id);
+        foreach (var row in visible)
+        {
+            var t = row;
+            while (t.ParentId is Guid p)
+            {
+                if (map.ContainsKey(p)) break;
+                var parent = state.Todos.SingleOrDefault(x => x.Id == p);
+                if (parent == null && t.Origin is OccurrenceKey k)
+                {
+                    var template = Version(state.Series.Single(s => s.Id == k.SeriesId), k.Date)!.Templates.Single(x => new OccurrenceKey(k.SeriesId, x.Id, k.Date).StableId() == p);
+                    parent = Resolve(state, TodoRef.For(new(k.SeriesId, template.Id, k.Date)));
+                }
+                t = parent ?? throw new PlannerException("ParentNotFound"); map.Add(t.Id, t);
+            }
+        }
+        TodoDateNode Node(Todo t) => new(t, !originals.Contains(t.Id), [.. Order(map.Values.Where(x => x.ParentId == t.Id), sort ?? Ordering(state, t.Id, date)).Select(Node)]);
+        return [.. Order(map.Values.Where(x => x.ParentId == null), sort ?? Ordering(state, null, date)).Select(Node)];
+    }
     public static decimal Progress(PlannerState state, TodoRef reference)
     {
         var todo = Resolve(state, reference);
@@ -76,10 +109,10 @@ public static class PlannerQueries
             {
                 var childKey = new OccurrenceKey(key.SeriesId, template.Id, key.Date);
                 if (children.Any(c => c.Origin == childKey)) continue;
-                try { children.Add(Resolve(state, TodoRef.For(childKey))); } catch (PlannerException e) when (e.Code == "OccurrenceNotFound") { }
+                try { var resolved = Resolve(state, TodoRef.For(childKey)); if (resolved.ParentId == parent.Id) children.Add(resolved); } catch (PlannerException e) when (e.Code == "OccurrenceNotFound") { }
             }
         }
-        return [.. Order(children, state.Options.TodoSort)];
+        return [.. Order(children, Ordering(state, parent.Id, parent.PlannedDate))];
     }
     public static ImmutableArray<ActivitySlice> ActivitiesIn(PlannerState state, TimeInterval range)
     {

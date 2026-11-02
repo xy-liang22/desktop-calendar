@@ -4,9 +4,7 @@
 
 Windows 本地桌面日历：第一页是月历、计划待办与实际时间轴，第二页是七天时间轴、周计划和周总结。待办是计划，Activity 是实际发生的时间；两者可以关联，状态独立。
 
-**P1.1：开发完成，已验证范围内通过。** 用户已验收 P1.1-4/5 的核心交互；本轮完成品牌、用户级开始菜单入口和综合回归。当前仍为模拟业务内容，不能用于保存正式待办或日程。没有已知阻碍 P2 数据模型开发的重大窗口问题；**尚未开始 P2，需另行批准**。
-
-**P2 进行中**：真实数据基础位于独立 Core 项目；当前窗口继续模拟，不保存正式业务内容。接口与存储约定见 [DATA_MODEL](docs/DATA_MODEL.md)，离线测试入口 Test-Planner.ps1。dev/p2 由用户本轮授权建立，P1.1 分支与 main 保留。
+**P2：数据与业务服务开发完成，已验证范围内通过。** P1.1窗口保持原样，主界面仍使用模拟内容，尚不能通过界面保存正式待办。独立Core已实现真实创建/编辑/查询、重复与持续任务、关联/统计、可靠JSON及事务撤销；后续P3–P7接入UI，不提前开发这些界面。接口见 [DATA_MODEL](docs/DATA_MODEL.md)。
 
 ## 已实现与 Planned
 
@@ -20,8 +18,10 @@ Windows 本地桌面日历：第一页是月历、计划待办与实际时间轴
 | 同级未完成在前、完成在后，取消恢复基础排序 | 已实现，含子任务；勾选仅本次运行有效 |
 | SVG、九尺寸 ICO、托盘/标题/EXE/快捷方式正式图标 | 已实现，方案 A；图标资源从 SVG 离线生成 |
 | 当前用户安装、更新、卸载、开始菜单入口 | 已实现，不需要管理员，不写注册表或PATH |
-| 真实Todo/Activity、重复/顺延、周目标计算、业务撤销 | **Planned：P2–P8**，当前不是正式持久化业务功能 |
-| 真实JSON迁移、Markdown图片、ZIP备份/恢复 | **Planned**；现有备份仅是窗口偏好 |
+| 真实Todo/Activity、重复/持续、周目标/总结、业务撤销 | **P2服务已实现**；UI仍模拟，真实编辑界面Planned |
+| 业务JSON原子保存、schema迁移、损坏恢复、并发冲突保护 | **P2服务已实现**，包含真实文件/独立进程测试 |
+| Markdown本地图片引用/日期底色 | **P2数据表示与接口已实现**；图片导入、渲染、底色编辑UI Planned |
+| 完整ZIP备份、恢复预览、业务Ctrl+Z绑定 | **Planned**；当前有存储备份恢复API与会话Undo/Redo，无导出/恢复界面 |
 | 农历/节气、内地/HK假日、黄历、手动资料更新 | **Planned**；当前无资料更新按钮或脚本 |
 | 完整中英切换、主题扩展、开机启动 | **Planned**；当前中文文案集中管理 |
 
@@ -36,7 +36,7 @@ Windows 本地桌面日历：第一页是月历、计划待办与实际时间轴
 
 ## 安装、更新与卸载
 
-[仓库](https://github.com/xy-liang22/desktop-calendar) 当前在 `dev/p1.1` 开发，没有公开的安装包Release。获取源码后，在 Windows PowerShell 执行：
+[仓库](https://github.com/xy-liang22/desktop-calendar) 当前数据开发在 `dev/p2`，P1.1保留在`dev/p1.1`，没有公开的安装包Release。现有安装入口仍运行P1.1模拟UI；获取源码后，在 Windows PowerShell 执行：
 
 ```powershell
 cd D:\projects\desktop-calendar
@@ -90,6 +90,16 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\Publish-DesktopCalendar.ps
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-UserInstall.ps1
 ```
 
+P2数据层独立构建与可靠性测试（无GUI，无新增依赖，不写个人数据）：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Test-Planner.ps1
+# 或只编译可供后续WPF项目引用的库
+dotnet build .\Core\DesktopCalendar.Core.csproj -c Release
+```
+
+测试明细与隔离数据在忽略的 `artifacts/p2-checks/`；脚本限制报告目录在项目artifacts下。后续UI使用ProjectReference引用Core并调用`PlannerWorkspace`业务命令，当前不把Core复制进现有四文件窗口发布包。
+
 图标维护：编辑 [logo.svg](assets/branding/logo.svg)，运行 `scripts/New-BrandAssets.ps1`（构建也会运行）。仅支持当前所需rect/line原语，未支持的新原语会报错，不能静默丢失。ICO含16/20/24/32/40/48/64/128/256；PNG64用于窗口标题，其他尺寸/预览保留在忽略的 `artifacts/branding`。不要手改生成的ICO/PNG。图标资产是明确授权的公共程序资源，不是用户图片。
 
 ## 桌面模式与日常操作
@@ -102,18 +112,21 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-UserInstall.p
 - 月历按剩余高度显示完整待办，并为+N预留空间；极小时计数进入日期头。已完成划线、弱化；无时间事项不显示虚假时间占位。
 - 普通滚轮滚动；在日程区域 **Ctrl+滚轮向上放大、向下缩小**，默认50、范围24–160 DIP/小时。刻度与块共享比例，重叠分列；靠近滚动边界时锚点安全夹入。切页保留各自比例/当前偏移，比例跨重启保存。
 - 未完成始终在同级完成组之前，两组内部使用相同基础排序。完成先后不参与排序，取消恢复原本相对位置；子任务独立，父子状态不自动互改。模拟勾选退出后重置。
-- **× / Alt+F4隐藏到托盘，并不退出。** 托盘双击显示/定位，右键有置顶、设置、安全找回和退出。设置/托盘“退出”才结束程序。Tab、Enter、Space遵循标准按钮/勾选行为；Ctrl+Z业务撤销尚未实现。
+- **× / Alt+F4隐藏到托盘，并不退出。** 托盘双击显示/定位，右键有置顶、设置、安全找回和退出。设置/托盘“退出”才结束程序。Tab、Enter、Space遵循标准按钮/勾选行为；Ctrl+Z尚未绑定，P2数据服务已有Undo/Redo。
 
 ## 数据、隐私、JSON、图片与备份
 
-当前只持久化 `%LOCALAPPDATA%\DesktopCalendar\window-preferences.json`，稳定ID为 `desktop-calendar-window`，schemaVersion=2，兼容v1。完整/折叠物理矩形、显示器/工作区/DPI、页面/分栏、置顶、贴边、透明度及两页时间轴比例分别保存。临时文件刷盘后原子替换，保留 `.bak`；损坏尝试备份，未知schema禁止覆盖。缺失显示器回退可用工作区，重连不擅自跳回。
+主窗口仍仅持久化 `%LOCALAPPDATA%\DesktopCalendar\window-preferences.json`，稳定ID为 `desktop-calendar-window`，schemaVersion=2，兼容v1。完整/折叠物理矩形、显示器/工作区/DPI、页面/分栏、置顶、贴边、透明度及两页时间轴比例分别保存。临时文件刷盘后原子替换，保留 `.bak`；损坏尝试备份，未知schema禁止覆盖。缺失显示器回退可用工作区，重连不擅自跳回。
 
 窗口偏好不包含待办/Activity正文或完成状态。需手动备份时先退出程序，再复制该JSON与 `.bak`；这不是业务导入/导出。安装目录、源码与数据目录分离，卸载不删除个人资料。
 
-以下仍为 **Planned**，不是现有可用功能：
+P2服务默认业务文件为 `%LOCALAPPDATA%\DesktopCalendar\planner-data.json`（schema2），设置/窗口偏好独立。通过服务才创建/保存，当前主UI不打开业务仓库；本轮测试未创建或修改真实个人业务文件。业务保存先完整写入同目录临时文件并刷盘/校验，再替换并保留 `.bak`；串行队列、跨进程锁和内容指纹防止晚写/旧快照覆盖。
 
-- `planner-data.json`：真实业务的稳定ID、可迁移schema、原子保存与恢复。
-- `assets/images/`：Markdown图片及相对引用；当前没有导入界面。
+损坏时返回`RecoveryRequired`且阻止保存，不能用空数据覆盖；`Storage.Candidates`列出经过验证的备份/临时候选，须明确调用`RecoverAsync(candidate,true)`恢复并保留原件为`.evidence-*`。较新schema禁止写入/降级；外部修改返回Conflict，先Reload，不能强推。诊断不含用户正文。API示例和边界见DATA_MODEL；当前没有恢复对话框，不建议将唯一重要内容先放入开发API试用。
+
+仍为 **Planned** 的界面与完整备份能力：
+
+- `assets/images/`：已有资产ID注册和`asset://<GUID>`解析，仅解析注册信息，不读取任意路径；粘贴/导入/实际图片校验和Markdown渲染待后续接入。
 - `backups/`：完整ZIP备份、校验、恢复预览与失败回滚；单独JSON不能包含未来图片。
 - `calendar-data/`：离线历法、假日来源及版本；未来仅主动手动更新时联网，不上传私人记录。当前不能把固定模拟日期当作真实历法资料。
 
@@ -129,7 +142,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-UserInstall.p
 | 同名入口、修改的程序文件、重解析目录 | 安装器拒绝覆盖或删除，不以强制方式修复陌生内容；保留个人数据，检查提示后处理 |
 | 轻微缩放抖动 | 用户已接受的偶发限制，无高频补偿或窗口系统重构 |
 | Win10/混合DPI/休眠兼容 | 尚未实机全量验证；纯数学DPI/拓扑通过不能等同硬件兼容通过 |
-| 托盘/搜索新Logo的实际画面 | 元数据、资源与部署启动已验证；本轮电脑控制管道不可用，Windows搜索收录/托盘表面仍需实际观察 |
+| 托盘/搜索新Logo的实际画面 | 元数据、资源与部署启动已验证；P1.1时管道不可用，P2未修改图标/入口且未重复观察搜索收录/托盘表面 |
+| P2日期与历史时区资料 | 使用Windows提供的TimeZoneInfo；现代DST及可控午夜跳跃测试通过，本机Samoa 2011历史资料未给出预期整日跳跃，保留NOT VERIFIED，不自行安装时区库或覆盖系统资料 |
+| P2恢复与撤销 | 恢复API须明确确认，Undo/Redo仅限当前会话100次事务；图片导入、ZIP恢复、跨会话撤销和真实业务UI仍Planned |
 
 ## 项目结构与验证基线
 
@@ -149,10 +164,15 @@ PrototypeChecks / RevisionChecks / StageFiveChecks / LifecycleChecks.cs
 Install-DesktopCalendar.ps1  当前用户安装/更新/卸载/状态
 Publish-DesktopCalendar.ps1  离线框架依赖发布
 scripts/                    图标生成与安装隔离测试
+Core/                       独立net10.0不可变实体、查询/命令、JSON存储与工作区
+tests/PlannerChecks/        无第三方框架的数据、故障注入、并发/重启测试
+Test-Planner.ps1             P2离线测试入口（仅artifacts隔离目录）
 AGENTS.md / docs/            长期规范、PRD、决定、测试、研究
 experiments/DesktopHostProbe/     旧实验，未复制失败的子窗口路线
 ```
 
 综合回归：应用 **371 PASS / 0 FAIL**，安装 **14 PASS / 0 FAIL**，构建0警告/错误；实际用户目录的部署版也已启动验证并正常退出。自动检查涵盖负坐标、缺失屏/分辨率/DPI数学、最小布局、5/6周、缩放、排序、托盘/置顶、真实进程重启/重复启动/异常退出、ICO和安装边界。核心真实GUI证据包括用户对O、P1.1-4、P1.1-5的验收；代理新增渲染图不冒充桌面截图。细节、初次失败与未验证矩阵见 [TESTING](docs/TESTING.md)。
 
-`main` 保持原基线，开发提交在 `dev/p1.1`，不强推、不标记未测环境全部通过。P1.1作为后续开发技术基础已具备条件；P2–P8仍待逐阶段批准，目标均保留在PRD。
+P2验证：**160 PASS / 0 FAIL / 1 NOT VERIFIED**，覆盖数据业务、Windows文件锁/只读、六阶段进程中断、迁移/损坏/并发、独立重新读取、手动排序模式及事务撤销。当前P2分支重新运行WPF回归**371/0**；上述安装14项为P1.1已执行基线，本轮没有更改/重装部署逻辑。无新增UI，不要求重复已接受的桌面行为验收。
+
+`main` 与 `dev/p1.1` 保留，P2提交在`dev/p2`，不强推、不标记未测环境全部通过。P2数据层可作为P3基础；P3–P8仍待逐阶段批准，目标均保留在PRD。

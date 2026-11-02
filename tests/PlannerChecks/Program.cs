@@ -16,14 +16,14 @@ internal static partial class Checks
     internal static async Task<int> Main(string[] args)
     {
         if (args.Length > 0 && args[0] == "--interrupt") return await InterruptChild(args);
-        if (args.Length > 0 && args[0] == "--read") return await ReadChild(args);
+        if (args.Length > 0 && args[0] is "--read" or "--verify") return await ReadChild(args);
         string output = args.Length > 0 ? Path.GetFullPath(args[0]) : Path.GetFullPath("artifacts/p2-checks");
         Directory.CreateDirectory(output);
-        try { ModelChecks(); await StorageChecks(output); await ServiceChecks(output); }
+        try { ModelChecks(); await StorageChecks(output); await ServiceChecks(output); await BoundaryChecks(output); }
         catch (Exception e) { Results.Add("FAIL unhandled " + e); }
         File.WriteAllLines(Path.Combine(output, "checks.txt"), Results);
         int failures = Results.Count(s => s.StartsWith("FAIL "));
-        Console.WriteLine($"P2 PASS={Results.Count - failures} FAIL={failures}");
+        Console.WriteLine($"P2 PASS={Results.Count(s => s.StartsWith("PASS "))} FAIL={failures} NOT_VERIFIED={Results.Count(s => s.StartsWith("NOT VERIFIED "))}");
         foreach (var failed in Results.Where(s => s.StartsWith("FAIL "))) Console.WriteLine(failed);
         return failures == 0 ? 0 : 1;
     }
@@ -36,6 +36,8 @@ internal static partial class Checks
         Check("state validation and stable sibling grouping", string.Concat(PlannerQueries.Order(state.Todos, TodoSort.Manual).Select(t => t.Title)) == "ACBD");
         Throws("duplicate IDs rejected", () => PlannerIntegrity.Validate(state with { Todos = [a, a] }), "DuplicateOrEmptyId");
         Throws("parent cycle rejected", () => PlannerIntegrity.Validate(state with { Todos = [a with { ParentId = b.Id }, b with { ParentId = a.Id }] }), "ParentCycle");
+        Throws("unknown category association rejected", () => PlannerIntegrity.Validate(state with { Todos = [a with { CategoryId = Guid.NewGuid() }] }), "CategoryNotFound");
+        Throws("invalid override color rejected", () => PlannerIntegrity.Validate(state with { Todos = [a with { Color = "not-a-color" }] }), "InvalidColor");
         var history = a with { Kind = TodoKind.CarryHistory, CarryDate = day, FrozenCarryDate = day.AddDays(2), Status = TodoStatus.Completed, CompletedAt = Now.AddDays(2) };
         var carryState = state with { Todos = [history] };
         PlannerIntegrity.Validate(carryState);
@@ -45,6 +47,7 @@ internal static partial class Checks
         var rule = new RecurrenceRule { Start = day, Frequency = Frequency.Daily, Interval = 2 };
         Recurrence.Validate(rule);
         Check("every N days", Recurrence.Matches(rule, day.AddDays(4)) && !Recurrence.Matches(rule, day.AddDays(3)));
+        Check("recurrence Until is inclusive and blocks later dates", Recurrence.Matches(rule with { Until = day.AddDays(4) }, day.AddDays(4)) && !Recurrence.Matches(rule with { Until = day.AddDays(4) }, day.AddDays(6)));
         var weekly = rule with { Frequency = Frequency.Weekly, Interval = 2, Weekdays = [DayOfWeek.Monday, DayOfWeek.Friday], Count = 3 };
         Check("two-week cadence and count", Recurrence.Matches(weekly, day.AddDays(4)) && !Recurrence.Matches(weekly, day.AddDays(7)) && Recurrence.Matches(weekly, day.AddDays(14)) && !Recurrence.Matches(weekly, day.AddDays(18)));
         var monthly = rule with { Start = new DateOnly(2024, 1, 31), Frequency = Frequency.Monthly, Interval = 1, MonthDays = [31], Count = 2 };

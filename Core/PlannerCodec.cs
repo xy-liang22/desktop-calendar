@@ -10,7 +10,7 @@ namespace DesktopCalendar.Core;
 // All wire/domain mapping and schema changes are centralized here. Runtime options live
 // in the separate application preferences and are supplied on open, not copied into data.
 internal sealed record PlannerPayloadDto(JsonElement Categories, JsonElement Todos, JsonElement Series,
-    JsonElement Activities, JsonElement Goals, JsonElement Reviews, JsonElement Assets);
+    JsonElement Activities, JsonElement Goals, JsonElement Reviews, JsonElement Assets, JsonElement Decorations, JsonElement TodoOrderings);
 internal sealed record PlannerEnvelopeDto(int SchemaVersion, Guid DocumentId, long Revision, PlannerPayloadDto Payload, string PayloadSha256);
 internal sealed record LegacyPlannerDto(int SchemaVersion, Guid DocumentId, PlannerPayloadDto Data);
 public sealed record DecodedPlanner(PlannerState State, bool Migrated);
@@ -37,7 +37,7 @@ public static class PlannerCodec
     static PlannerPayloadDto Payload(PlannerState state) => new(
         JsonSerializer.SerializeToElement(state.Categories, Json), JsonSerializer.SerializeToElement(state.Todos, Json),
         JsonSerializer.SerializeToElement(state.Series, Json), JsonSerializer.SerializeToElement(state.Activities, Json),
-        JsonSerializer.SerializeToElement(state.Goals, Json), JsonSerializer.SerializeToElement(state.Reviews, Json), JsonSerializer.SerializeToElement(state.Assets, Json));
+        JsonSerializer.SerializeToElement(state.Goals, Json), JsonSerializer.SerializeToElement(state.Reviews, Json), JsonSerializer.SerializeToElement(state.Assets, Json), JsonSerializer.SerializeToElement(state.Decorations, Json), JsonSerializer.SerializeToElement(state.TodoOrderings, Json));
     static string Hash(PlannerPayloadDto payload) => Convert.ToHexStringLower(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(payload, Json)));
     public static byte[] Encode(PlannerState state)
     {
@@ -61,7 +61,13 @@ public static class PlannerCodec
         {
             if (root.EnumerateObject().Select(p => p.Name).Except(["schemaVersion", "documentId", "data"]).Any()) throw new PlannerException("UnknownLegacyFields");
             id = root.GetProperty("documentId").GetGuid(); revision = 0;
-            payload = root.GetProperty("data").Deserialize<PlannerPayloadDto>(Json) ?? throw new PlannerException("InvalidPayload");
+            // v1 predates date decorations and retired template identity tombstones.
+            var legacy = System.Text.Json.Nodes.JsonNode.Parse(root.GetProperty("data").GetRawText())!;
+            legacy["decorations"] ??= new System.Text.Json.Nodes.JsonArray();
+            legacy["todoOrderings"] ??= new System.Text.Json.Nodes.JsonArray();
+            if (legacy["series"] is System.Text.Json.Nodes.JsonArray series)
+                foreach (var row in series) if (row != null) row["retiredNodeIds"] ??= new System.Text.Json.Nodes.JsonArray();
+            payload = legacy.Deserialize<PlannerPayloadDto>(Json) ?? throw new PlannerException("InvalidPayload");
         }
         else if (version == CurrentSchema)
         {
@@ -73,7 +79,7 @@ public static class PlannerCodec
         ImmutableArray<T> Array<T>(JsonElement rows) => rows.Deserialize<ImmutableArray<T>>(Json);
         var state = new PlannerState { Id = id, Revision = revision, Options = options ?? new() { TimeZoneId = TimeZoneInfo.Local.Id },
             Categories = Array<Category>(payload.Categories), Todos = Array<Todo>(payload.Todos), Series = Array<TodoSeries>(payload.Series),
-            Activities = Array<Activity>(payload.Activities), Goals = Array<WeekGoal>(payload.Goals), Reviews = Array<WeeklyReview>(payload.Reviews), Assets = Array<LocalAsset>(payload.Assets) };
+            Activities = Array<Activity>(payload.Activities), Goals = Array<WeekGoal>(payload.Goals), Reviews = Array<WeeklyReview>(payload.Reviews), Assets = Array<LocalAsset>(payload.Assets), Decorations = Array<DayDecoration>(payload.Decorations), TodoOrderings = Array<TodoOrdering>(payload.TodoOrderings) };
         PlannerIntegrity.Validate(state);
         return new(state, version < CurrentSchema);
     }

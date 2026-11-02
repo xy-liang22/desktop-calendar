@@ -18,18 +18,22 @@ public static class PlannerTime
         if (offsets.Length > 1 && ambiguousOffset == null) throw new PlannerException("AmbiguousLocalTime");
         var offset = ambiguousOffset ?? offsets[0];
         if (!offsets.Contains(offset)) throw new PlannerException("InvalidTimeOffset");
-        return new DateTimeOffset(local, offset).ToUniversalTime();
+        try { return new DateTimeOffset(local, offset); }
+        catch (ArgumentOutOfRangeException) { throw new PlannerException("DateOutOfRange"); }
     }
     public static DateOnly LocalDate(DateTimeOffset instant, string zoneId) => DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(instant, Zone(zoneId)).DateTime);
     public static DateTimeOffset Boundary(DateOnly date, string zoneId)
+        => Boundary(date, Zone(zoneId));
+    public static DateTimeOffset Boundary(DateOnly date, TimeZoneInfo zone)
     {
-        var zone = Zone(zoneId); var local = date.ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified);
+        var local = date.ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified);
         // Some zones skip midnight or an entire date. Calendar boundaries advance to
         // the first valid local minute; repeated midnight uses the earlier instant.
         for (int i = 0; zone.IsInvalidTime(local); i++)
         { if (i >= 2880 || local >= DateTime.MaxValue.AddMinutes(-1)) throw new PlannerException("InvalidDateBoundary"); local = local.AddMinutes(1); }
         var offset = zone.IsAmbiguousTime(local) ? zone.GetAmbiguousTimeOffsets(local).Max() : zone.GetUtcOffset(local);
-        return new DateTimeOffset(local, offset).ToUniversalTime();
+        try { return new DateTimeOffset(local, offset).ToUniversalTime(); }
+        catch (ArgumentOutOfRangeException) { throw new PlannerException("DateOutOfRange"); }
     }
     public static TimeInterval Day(DateOnly date, string zoneId)
     {
@@ -44,9 +48,14 @@ public static class PlannerTime
         if (date.DayNumber < back || date.DayNumber - back > DateOnly.MaxValue.DayNumber - 7) throw new PlannerException("DateOutOfRange");
         return new(date.AddDays(-back), firstDay, zoneId);
     }
-    public static TimeInterval WeekRange(WeekKey week) => new(Boundary(week.Start, week.TimeZoneId), Boundary(week.Start.AddDays(7), week.TimeZoneId));
+    public static TimeInterval WeekRange(WeekKey week)
+    {
+        if (week == null || !Enum.IsDefined(week.FirstDay) || week.Start.DayOfWeek != week.FirstDay || week.Start.DayNumber > DateOnly.MaxValue.DayNumber - 7) throw new PlannerException("InvalidWeek");
+        return new(Boundary(week.Start, week.TimeZoneId), Boundary(week.Start.AddDays(7), week.TimeZoneId));
+    }
     public static TimeInterval? Clip(TimeInterval interval, TimeInterval range)
     {
+        if (interval == null || range == null || interval.End <= interval.Start || range.End < range.Start) throw new PlannerException("InvalidInterval");
         var start = interval.Start > range.Start ? interval.Start : range.Start;
         var end = interval.End < range.End ? interval.End : range.End;
         return end > start ? new(start.ToUniversalTime(), end.ToUniversalTime()) : null;

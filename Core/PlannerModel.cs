@@ -94,6 +94,7 @@ public sealed record TodoSeries : Entity
     public DateOnly? SuppressedFrom { get; init; }
     public bool Archived { get; init; }
     public ImmutableArray<OccurrenceKey> Cancelled { get; init; } = [];
+    public ImmutableArray<Guid> RetiredNodeIds { get; init; } = [];
 }
 public sealed record Note
 {
@@ -157,12 +158,23 @@ public sealed record LocalAsset : Entity
     public long Length { get; init; }
     public string Sha256 { get; init; } = "";
 }
+public sealed record DayDecoration : Entity
+{
+    public DateOnly Date { get; init; }
+    public string Color { get; init; } = "#AFC5D8";
+}
+public sealed record TodoOrdering : Entity
+{
+    public Guid? ParentId { get; init; }
+    public DateOnly? Date { get; init; }
+    public TodoSort Mode { get; init; } = TodoSort.PlannedTime;
+}
 public sealed record PlannerOptions
 {
     public DayOfWeek WeekStart { get; init; } = DayOfWeek.Monday;
     public string TimeZoneId { get; init; } = "UTC";
     public string Language { get; init; } = "zh-CN";
-    public TodoSort TodoSort { get; init; }
+    public TodoSort TodoSort { get; init; } = TodoSort.PlannedTime;
 }
 public sealed record PlannerState
 {
@@ -176,5 +188,7 @@ public sealed record PlannerState
     public ImmutableArray<WeekGoal> Goals { get; init; } = [];
     public ImmutableArray<WeeklyReview> Reviews { get; init; } = [];
     public ImmutableArray<LocalAsset> Assets { get; init; } = [];
+    public ImmutableArray<DayDecoration> Decorations { get; init; } = [];
+    public ImmutableArray<TodoOrdering> TodoOrderings { get; init; } = [];
     public static PlannerState Empty(string? zone = null) => new() { Id = Guid.NewGuid(), Options = new() { TimeZoneId = zone ?? TimeZoneInfo.Local.Id } };
 }

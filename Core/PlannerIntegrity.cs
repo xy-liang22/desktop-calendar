@@ -18,8 +18,8 @@ public static partial class PlannerIntegrity
     {
         Require(state != null && state.Id != Guid.Empty && state.Revision >= 0, "InvalidDocument");
         ValidateOptions(state!.Options);
-        Require(!state.Categories.IsDefault && !state.Todos.IsDefault && !state.Series.IsDefault && !state.Activities.IsDefault && !state.Goals.IsDefault && !state.Reviews.IsDefault && !state.Assets.IsDefault, "InvalidCollections");
-        Require(state.Categories.All(x => x != null) && state.Todos.All(x => x != null) && state.Series.All(x => x != null) && state.Activities.All(x => x != null) && state.Goals.All(x => x != null) && state.Reviews.All(x => x != null) && state.Assets.All(x => x != null), "InvalidCollections");
+        Require(!state.Categories.IsDefault && !state.Todos.IsDefault && !state.Series.IsDefault && !state.Activities.IsDefault && !state.Goals.IsDefault && !state.Reviews.IsDefault && !state.Assets.IsDefault && !state.Decorations.IsDefault && !state.TodoOrderings.IsDefault, "InvalidCollections");
+        Require(state.Categories.All(x => x != null) && state.Todos.All(x => x != null) && state.Series.All(x => x != null) && state.Activities.All(x => x != null) && state.Goals.All(x => x != null) && state.Reviews.All(x => x != null) && state.Assets.All(x => x != null) && state.Decorations.All(x => x != null) && state.TodoOrderings.All(x => x != null), "InvalidCollections");
         var ids = new HashSet<Guid> { state.Id };
         void Id(Guid id) => Require(id != Guid.Empty && ids.Add(id), "DuplicateOrEmptyId");
         void Stamp(Entity e) { Id(e.Id); Require(e.CreatedAt != default && e.ModifiedAt >= e.CreatedAt, "InvalidTimestamps"); }
@@ -40,14 +40,14 @@ public static partial class PlannerIntegrity
             Require((t.Status == TodoStatus.Completed) == (t.CompletedAt != null), "InvalidCompletion");
             Require(template == (t.Kind == TodoKind.SeriesTemplate), "InvalidTemplateKind");
             Require((t.Kind == TodoKind.Occurrence) == (t.Origin != null) && (template ? t.SeriesId != null : t.SeriesId == null), "InvalidOccurrenceIdentity");
-            if (t.Origin is OccurrenceKey key) Require(key.StableId() == t.Id && state.Series.Any(s => s.Id == key.SeriesId && s.Versions.Any(v => v.Templates.Any(n => n.Id == key.NodeId))), "InvalidOccurrenceIdentity");
+            if (t.Origin is OccurrenceKey key) Require(key.StableId() == t.Id && state.Series.Any(s => s.Id == key.SeriesId && (s.RetiredNodeIds.Contains(key.NodeId) || s.Versions.Any(v => v.Templates.Any(n => n.Id == key.NodeId)))), "InvalidOccurrenceIdentity");
             bool carry = t.Kind is TodoKind.CarryHistory or TodoKind.CarryLatest;
             Require(carry || t.CarryDate == null && t.FrozenCarryDate == null && t.Moves.Length == 0, "InvalidCarryFields");
             if (carry)
             {
                 Require(t.CarryDate >= t.PlannedDate && (t.Status == TodoStatus.Completed ? t.FrozenCarryDate >= t.PlannedDate : t.FrozenCarryDate == null), "InvalidCarryDates");
                 DateOnly previous = t.PlannedDate;
-                foreach (var move in t.Moves) { Require(move.From == previous && move.To > move.From && move.At != default, "InvalidCarryHistory"); previous = move.To; }
+                foreach (var move in t.Moves) { Require(move != null && move.From == previous && move.To > move.From && move.At != default, "InvalidCarryHistory"); previous = move!.To; }
                 Require(t.CarryDate == previous, "InvalidCarryHistory");
             }
         }
@@ -60,12 +60,16 @@ public static partial class PlannerIntegrity
                 while (parent is Guid p) { Require(map.TryGetValue(p, out var ancestor), "ParentNotFound"); Require(seen.Add(p), "ParentCycle"); Require(seen.Count <= 128, "TaskTreeTooDeep"); parent = ancestor!.ParentId; }
             }
         }
-        foreach (var c in state.Categories) { Stamp(c); Title(c.Name); Color(c.Color); }
+        foreach (var c in state.Categories) { Stamp(c); Title(c.Name); Require(c.Color != null, "InvalidColor"); Color(c.Color); }
+        Require(state.Decorations.Select(d => d.Date).Distinct().Count() == state.Decorations.Length, "DuplicateDateDecoration");
+        foreach (var d in state.Decorations) { Stamp(d); Require(d.Color != null, "InvalidColor"); Color(d.Color); }
+        Require(state.Categories.Where(c => c.BuiltInKey != null).Select(c => c.BuiltInKey).Distinct().Count() == state.Categories.Count(c => c.BuiltInKey != null), "DuplicateBuiltInCategory");
         var nodeOwners = new Dictionary<Guid, Guid>();
         foreach (var s in state.Series)
         {
-            Stamp(s); Require(!s.Versions.IsDefaultOrEmpty && !s.Cancelled.IsDefault && s.Cancelled.Distinct().Count() == s.Cancelled.Length, "InvalidSeries");
+            Stamp(s); Require(!s.Versions.IsDefaultOrEmpty && !s.Cancelled.IsDefault && !s.RetiredNodeIds.IsDefault && s.RetiredNodeIds.Distinct().Count() == s.RetiredNodeIds.Length && s.Cancelled.Distinct().Count() == s.Cancelled.Length, "InvalidSeries");
             Require(s.Versions.All(v => v != null) && s.Cancelled.All(k => k != null), "InvalidSeries");
+            foreach (var retired in s.RetiredNodeIds) { Id(retired); nodeOwners.Add(retired, s.Id); }
             DateOnly? previousEnd = null; bool first = true;
             foreach (var v in s.Versions.OrderBy(v => v.EffectiveFrom))
             {
@@ -87,6 +91,11 @@ public static partial class PlannerIntegrity
         }
         foreach (var t in state.Todos) { Stamp(t); Task(t, false); }
         Forest(state.Todos);
+        Require(state.TodoOrderings.Select(o => (o.ParentId, o.Date)).Distinct().Count() == state.TodoOrderings.Length, "DuplicateOrderingGroup");
+        foreach (var o in state.TodoOrderings)
+        {
+            Stamp(o); Require(Enum.IsDefined(o.Mode) && (o.ParentId == null) != (o.Date == null) && (o.ParentId == null || state.Todos.Any(t => t.Id == o.ParentId)), "InvalidOrderingGroup");
+        }
         foreach (var a in state.Assets)
         {
             Stamp(a);
