@@ -134,19 +134,21 @@ internal sealed class PlannerController
     internal async Task StopAsync() { Stopping = true; todayTimer.Stop(); await Pending; }
     internal void Dispose() { Stopping = true; todayTimer.Stop(); }
     internal void SetTextMode(CalendarTextMode mode) { if (!Enum.IsDefined(mode) || TextMode == mode) return; TextMode = mode; Changed?.Invoke(); PreferencesChanged?.Invoke(); }
+    internal Todo? FindTodo(Guid id) => State?.Todos.FirstOrDefault(t => t.Id == id) ?? On(SelectedDate).FirstOrDefault(t => t.Id == id) ?? On(Today).FirstOrDefault(t => t.Id == id);
     internal Todo NewTodo(string title, Guid? parent = null)
     {
-        var ancestor = parent == null ? null : State?.Todos.FirstOrDefault(t => t.Id == parent) ?? On(SelectedDate).FirstOrDefault(t => t.Id == parent);
+        var ancestor = parent == null ? null : FindTodo(parent.Value);
         return new() { Id = Guid.NewGuid(), Title = title.Trim(), PlannedDate = SelectedDate, ParentId = parent, CategoryId = ancestor?.CategoryId, Color = ancestor?.Color,
-            SortKey = (State?.Todos.Where(t => t.ParentId == parent && (parent != null || t.PlannedDate == SelectedDate)).Select(t => t.SortKey).DefaultIfEmpty(-1024).Max() ?? -1024) + 1024 };
+            SortKey = (ancestor != null && State != null ? PlannerQueries.Children(State, ancestor).Select(t => t.SortKey).DefaultIfEmpty(-1024).Max() : State?.Todos.Where(t => t.ParentId == parent && t.PlannedDate == SelectedDate).Select(t => t.SortKey).DefaultIfEmpty(-1024).Max() ?? -1024) + 1024 };
     }
     internal static bool QuickInput(string value, out string title, out TimeOnly? time)
         => TodoDraftRules.Quick(value, out title, out time);
-    internal async void BeginInline(Todo todo)
+    internal async void BeginInline(Todo todo, DateOnly? displayedDate = null)
     {
-        if (!Writable || todo.Kind != TodoKind.Once || Inline?.Id == todo.Id) return;
+        var date = displayedDate ?? todo.PlannedDate;
+        if (!Writable || todo.Status == TodoStatus.Cancelled || todo.Kind == TodoKind.SeriesTemplate || Inline?.Id == todo.Id && Inline.DisplayDate == date) return;
         if (Inline != null && !await CommitInlineAsync()) return;
-        Inline = new(todo.Id, todo.Title); Changed?.Invoke();
+        Inline = new(TodoRef.Of(todo), todo.Title, date); Changed?.Invoke();
     }
     internal void CancelInline() { Inline = null; Changed?.Invoke(); }
     internal async Task<bool> CommitInlineAsync()
@@ -157,7 +159,7 @@ internal sealed class PlannerController
         draft.Saving = true;
         try
         {
-            bool ok = await ExecuteAsync(new RenameTodo(new(draft.Id), draft.Text.Trim(), draft.Original));
+            bool ok = await ExecuteAsync(new RenameTodo(draft.Reference, draft.Text.Trim(), draft.Original));
             if (ok) { if (Inline == draft) Inline = null; Changed?.Invoke(); }
             else { draft.Error = MainWindow.Text(NoticeKey); draft.Notify(); }
             return ok;
@@ -165,9 +167,11 @@ internal sealed class PlannerController
         finally { draft.Saving = false; }
     }
 }
-internal sealed class InlineTitleDraft(Guid id, string original)
+internal sealed class InlineTitleDraft(TodoRef reference, string original, DateOnly displayedDate)
 {
-    internal Guid Id { get; } = id;
+    internal TodoRef Reference { get; } = reference;
+    internal Guid Id => Reference.Id;
+    internal DateOnly DisplayDate { get; } = displayedDate;
     internal string Original { get; } = original;
     internal string Text { get; set; } = original;
     internal string Error { get; set; } = "";

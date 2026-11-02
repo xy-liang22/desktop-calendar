@@ -54,6 +54,7 @@
    <Style.Triggers><Trigger Property="Orientation" Value="Horizontal"><Setter Property="Width" Value="Auto"/><Setter Property="Height" Value="10"/></Trigger></Style.Triggers>
   </Style>
   <Style TargetType="ToolTip"><Setter Property="Background" Value="#26323D"/><Setter Property="Foreground" Value="#EDF2F5"/></Style>
+  <Style TargetType="Expander"><Setter Property="Foreground" Value="#EDF2F5"/><Setter Property="HorizontalContentAlignment" Value="Stretch"/></Style>
   <Style TargetType="TextBox"><Setter Property="Foreground" Value="#EDF2F5"/><Setter Property="Background" Value="#17232F"/><Setter Property="BorderBrush" Value="#526474"/><Setter Property="CaretBrush" Value="#A3D9C4"/><Setter Property="SelectionBrush" Value="#507967"/></Style>
   <Style TargetType="ListBox"><Setter Property="Background" Value="#17232F"/><Setter Property="Foreground" Value="#EDF2F5"/><Setter Property="BorderBrush" Value="#526474"/></Style>
   <Style TargetType="ComboBox">

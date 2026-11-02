@@ -139,12 +139,12 @@ internal sealed class PlannerView : Grid
             {
                 if (node.ContextOnly) { foreach (var child in node.Children) AddCalendar(child, depth); return; }
                 var t = node.Value;
-                entries.Add(new(t.Title, Prefix(t), t.Status == TodoStatus.Completed, Controller.Color(t), t.Important || t.Urgent,
+                entries.Add(new(t.Title, KindMark(t) + Prefix(t), t.Status == TodoStatus.Completed, Controller.Color(t), t.Important || t.Urgent,
                     async () => { if (Controller.Writable) await Controller.ExecuteAsync(new SetTodoCompleted(TodoRef.Of(t), t.Status != TodoStatus.Completed)); },
                     t.Id, t.ParentId, depth, node.Children.Length > 0, calendarExpanded.Contains(t.Id),
                     () => { if (!calendarExpanded.Add(t.Id)) calendarExpanded.Remove(t.Id); renderedMonth = default; Refresh(); },
-                    t.Kind == TodoKind.Once ? () => Controller.BeginInline(t) : null,
-                    Controller.Inline?.Id == t.Id ? Controller.Inline : null, Controller, Controller.Writable));
+                    t.Status != TodoStatus.Cancelled ? () => Controller.BeginInline(t, date) : null,
+                    Controller.Inline?.Id == t.Id && Controller.Inline.DisplayDate == date ? Controller.Inline : null, Controller, Controller.Writable));
                 if (calendarExpanded.Contains(t.Id)) foreach (var child in node.Children) AddCalendar(child, depth + 1);
             }
             foreach (var node in Controller.Tree(date)) AddCalendar(node, 0);
@@ -160,6 +160,7 @@ internal sealed class PlannerView : Grid
         calendarHost.Children.Add(grid);
     }
     internal static string Prefix(Todo t) => t.PlannedTime is TimeOnly time ? time.ToString("HH:mm", CultureInfo.InvariantCulture) + " " : "";
+    internal static string KindMark(Todo t) => t.Kind switch { TodoKind.Occurrence => "↻ ", TodoKind.CarryHistory or TodoKind.CarryLatest => "↪ ", _ => "" };
     static bool InputOrigin(DependencyObject? origin, DependencyObject stop)
     {
         for (var input = origin; input != null && input != stop; input = input is FrameworkContentElement content ? content.Parent : VisualTreeHelper.GetParent(input)) if (input is ButtonBase or TextBoxBase or ComboBox || input is FrameworkElement element && element.Tag is CalendarTodoEntry) return true;
@@ -175,7 +176,7 @@ internal sealed class PlannerView : Grid
         check.Click += async (_, e) => { e.Handled = true; bool complete = check.IsChecked == true; check.IsChecked = task.Status == TodoStatus.Completed; await Controller.ExecuteAsync(new SetTodoCompleted(TodoRef.Of(task), complete)); }; At(row, check, 0, 1);
         var content = new StackPanel(); var line = new TextBlock { TextWrapping = TextWrapping.Wrap, TextDecorations = task.Status == TodoStatus.Completed ? TextDecorations.Strikethrough : null, Opacity = task.Status == TodoStatus.Completed ? .55 : 1 };
         line.Inlines.Add(new System.Windows.Documents.Run(Prefix(task)) { FontWeight = FontWeights.SemiBold, Foreground = PrototypeViews.Brush("#A3D9C4") }); line.Inlines.Add(new System.Windows.Documents.Run(task.Title) { FontWeight = task.Important || task.Urgent ? FontWeights.SemiBold : FontWeights.Normal }); content.Children.Add(line);
-        string meta = string.Join(" · ", new[] { Controller.State?.Categories.FirstOrDefault(c => c.Id == task.CategoryId)?.Name, task.Important ? T("PlannerImportant") : null, task.Urgent ? T("PlannerUrgent") : null, task.Kind != TodoKind.Once ? T("PlannerAdvancedTask") : null }.Where(s => !string.IsNullOrWhiteSpace(s)));
+        string meta = string.Join(" · ", new[] { Controller.State?.Categories.FirstOrDefault(c => c.Id == task.CategoryId)?.Name, task.Important ? T("PlannerImportant") : null, task.Urgent ? T("PlannerUrgent") : null, task.Kind switch { TodoKind.Occurrence => T("RepeatPeriodicMark"), TodoKind.CarryHistory => T("RepeatHistoryMark"), TodoKind.CarryLatest => T("RepeatLatestMark"), _ => null } }.Where(s => !string.IsNullOrWhiteSpace(s)));
         if (task.CompletionIntent == CompletionIntent.ManualIncomplete && node.Children.Length > 0) meta += (meta.Length > 0 ? " · " : "") + T("ParentPendingOverride");
         if (task.CompletionSnapshotInvalidated) meta += (meta.Length > 0 ? " · " : "") + T("ParentSnapshotInvalidated");
         if (meta.Length > 0) content.Children.Add(Text(meta, 10, "#A2AFBC"));
@@ -184,19 +185,22 @@ internal sealed class PlannerView : Grid
         At(row, content, 0, 2);
         var menu = new ContextMenu();
         void Action(string key, Action handler, bool enabled = true) { var item = new MenuItem { Header = T(key), IsEnabled = enabled && Controller.Writable }; item.Click += (_, _) => handler(); menu.Items.Add(item); }
-        Action("PlannerEdit", () => Edit(task), task.Kind == TodoKind.Once);
-        Action("PlannerAddChild", () => Edit(null, task.Id), task.Kind == TodoKind.Once);
-        Action("PlannerCopy", () => PlannerDialogs.Copy(owner, Controller, task), task.Kind == TodoKind.Once);
-        Action("PlannerDelete", () => PlannerDialogs.Delete(owner, Controller, task), task.Kind == TodoKind.Once);
+        bool active = task.Status != TodoStatus.Cancelled;
+        Action("PlannerEdit", () => Edit(task), active);
+        Action("PlannerAddChild", () => Edit(null, task.Id), active && !node.ContextOnly);
+        Action("PlannerCopy", () => PlannerDialogs.Copy(owner, Controller, task), active);
+        Action(task.Origin != null ? "RepeatCancel" : "PlannerDelete", () => PlannerDialogs.Delete(owner, Controller, task), active);
+        if (task.Origin is OccurrenceKey key) Action("RepeatRule", () => PlannerDialogs.EditRule(owner, Controller, task), PlannerDialogs.CanEditSeries(Controller.State!, key));
+        if (task.Kind is TodoKind.CarryHistory or TodoKind.CarryLatest) Action("RepeatMove", () => PlannerDialogs.MoveCarry(owner, Controller, task), task.Status == TodoStatus.Pending);
         Action("PlannerTimeOrder", async () => await Controller.ExecuteAsync(new SetTodoOrderMode(task.ParentId, task.ParentId == null ? Controller.SelectedDate : null, TodoSort.PlannedTime)));
         if (node.Children.Length > 0) Action(collapsed.Contains(task.Id) ? "PlannerExpandChildren" : "PlannerCollapseChildren", () => { if (!collapsed.Add(task.Id)) collapsed.Remove(task.Id); Refresh(); });
         var options = Button("⋯", () => { menu.PlacementTarget = outer; menu.IsOpen = true; }, T("PlannerTaskActions")); options.Padding = new Thickness(4, 2, 4, 2); options.VerticalAlignment = VerticalAlignment.Top; At(row, options, 0, 3); outer.ContextMenu = menu;
         outer.Child = row; parent.Children.Add(outer);
-        content.MouseLeftButtonDown += (_, e) => { if (e.ClickCount == 2 && task.Kind == TodoKind.Once) { e.Handled = true; Edit(task); } };
+        content.MouseLeftButtonDown += (_, e) => { if (e.ClickCount == 2 && active) { e.Handled = true; Edit(task); } };
         outer.PreviewMouseLeftButtonDown += (_, e) => { dragStart = e.GetPosition(outer); dragTodo = task; };
         outer.PreviewMouseMove += (_, e) =>
         {
-            if (e.LeftButton != MouseButtonState.Pressed || dragTodo?.Id != task.Id || !Controller.Writable || node.ContextOnly || task.Kind != TodoKind.Once) return;
+            if (e.LeftButton != MouseButtonState.Pressed || dragTodo?.Id != task.Id || !Controller.Writable || node.ContextOnly || !active) return;
             if (InputOrigin(e.OriginalSource as DependencyObject, outer)) return;
             var p = e.GetPosition(outer); if (Math.Abs(p.X - dragStart.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(p.Y - dragStart.Y) < SystemParameters.MinimumVerticalDragDistance) return;
             dragTodo = null; try { DragDrop.DoDragDrop(outer, new DataObject("DesktopCalendar.Todo", task.Id.ToString("D")), DragDropEffects.Move); }
@@ -210,8 +214,9 @@ internal sealed class PlannerView : Grid
     static void ResetDrop(Border row) { row.BorderThickness = new Thickness(1); row.BorderBrush = ThemeColors.Brush("#304352"); }
     bool CanDrop(DragEventArgs e, Todo target, out Todo? source)
     {
-        source = DragId(e.Data) is Guid id ? Controller.State?.Todos.FirstOrDefault(t => t.Id == id) : null;
-        return !dropping && Controller.Writable && source != null && source.Id != target.Id && source.Kind == TodoKind.Once && target.Kind == TodoKind.Once && source.ParentId == target.ParentId && source.Status == target.Status && (source.ParentId != null || source.PlannedDate == target.PlannedDate && source.PlannedDate == Controller.SelectedDate);
+        source = DragId(e.Data) is Guid id ? Controller.FindTodo(id) : null;
+        var visible = Controller.On(Controller.SelectedDate).Select(t => t.Id).ToHashSet();
+        return !dropping && Controller.Writable && source != null && source.Id != target.Id && source.Status != TodoStatus.Cancelled && source.ParentId == target.ParentId && source.Status == target.Status && visible.Contains(source.Id) && visible.Contains(target.Id);
     }
     internal static Guid? DragId(IDataObject data)
     {
@@ -222,13 +227,12 @@ internal sealed class PlannerView : Grid
     }
     internal async Task<bool> DropAsync(Todo source, Todo target, bool after)
     {
-        var actualSource = Controller.State?.Todos.SingleOrDefault(t => t.Id == source.Id); var actualTarget = Controller.State?.Todos.SingleOrDefault(t => t.Id == target.Id);
+        var actualSource = Controller.FindTodo(source.Id); var actualTarget = Controller.FindTodo(target.Id);
         if (actualSource == null || actualTarget == null) return false; source = actualSource; target = actualTarget;
-        if (dropping || !Controller.Writable || source.ParentId != target.ParentId || source.Status != target.Status || source.Kind != TodoKind.Once || target.Kind != TodoKind.Once) return false;
-        var siblings = source.ParentId is Guid parent ? PlannerQueries.Children(Controller.State!, Controller.State!.Todos.Single(t => t.Id == parent)).ToList() : Controller.On(Controller.SelectedDate).Where(t => t.ParentId == null).ToList();
-        if (siblings.Any(t => t.Kind != TodoKind.Once)) return false;
+        if (dropping || !Controller.Writable || source.ParentId != target.ParentId || source.Status != target.Status || source.Status == TodoStatus.Cancelled) return false;
+        var siblings = source.ParentId is Guid parent ? PlannerQueries.Children(Controller.State!, Controller.FindTodo(parent)!).Where(t => t.Status != TodoStatus.Cancelled).ToList() : Controller.On(Controller.SelectedDate).Where(t => t.ParentId == null).ToList();
         siblings.RemoveAll(t => t.Id == source.Id); int index = siblings.FindIndex(t => t.Id == target.Id); if (index < 0) return false; siblings.Insert(index + (after ? 1 : 0), source);
-        dropping = true; try { return await Controller.ExecuteAsync(new ReorderTodos([.. siblings.Select(TodoRef.Of)], Controller.SelectedDate)); } finally { dropping = false; }
+        dropping = true; try { return await Controller.ExecuteAsync(new ReorderTodos([.. siblings.Select(TodoRef.Of)], Controller.SelectedDate, Controller.Today)); } finally { dropping = false; }
     }
     internal void Detach() => Controller.Changed -= Refresh;
 }

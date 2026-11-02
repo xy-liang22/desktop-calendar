@@ -14,6 +14,7 @@ internal sealed class ImeInput
         TextCompositionManager.AddPreviewTextInputStartHandler(target, (_, _) => Composing = true);
         TextCompositionManager.AddPreviewTextInputUpdateHandler(target, (_, _) => Composing = true);
         TextCompositionManager.AddPreviewTextInputHandler(target, (_, _) => { Composing = false; Completed?.Invoke(); });
+        target.LostKeyboardFocus += (_, _) => { if (Composing) { Composing = false; Completed?.Invoke(); } };
     }
     internal bool Consumes(KeyEventArgs e) => Composing || e.Key is Key.ImeProcessed or Key.DeadCharProcessed;
 }

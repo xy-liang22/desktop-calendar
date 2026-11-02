@@ -1,5 +1,57 @@
 # 阶段验证记录
 
+## 2026-11-02：P3.2 + P4 最终验证
+
+状态：P3.2/P4开发完成，已执行的自动、真实Window生命周期与控件渲染范围内通过；**不将物理键鼠/桌面像素标记通过，不进入P5**。P3.2单独提交74822bf，P4在其后dev/p4增量开发；应用/Core0.4.0、业务schema3、窗口schema2，无新依赖、owner源码不变。
+
+### 最终执行与证据
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Test-Planner.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Test-P3.ps1 -Configuration P4
+powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -Configuration P4Regression -Test
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Publish-DesktopCalendar.ps1 -Configuration P4
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-UserInstall.ps1
+```
+
+均Windows原生/离线；owner检查在正常用户桌面会话运行，无管理员、系统设置或Explorer重启。应用测试由自有进程实际显示Window/进入Dispatcher布局、控制草稿和路由事件、提交JSON、关闭并在新进程读取；所有数据仅项目artifacts，不访问真实个人文件，也未替换真实开始菜单旧版或结束用户旧实例。
+
+| 范围 | 最终结果 | 证据 |
+|---|---|---|
+| Core数据/业务/存储 | **227 PASS / 0 FAIL / 1 NOT VERIFIED** | artifacts/p2-checks/checks.txt；新P4混合图isolated-p4-477b904c473540adadf63869a952b7a6 |
+| P3/P3.1/P3.2/P4控件/编辑/重启/损坏保护 | **160 PASS / 0 FAIL** | artifacts/p3-checks/run-c0e0d96bf6b848a998a1353f819603c0，含main/restart/corrupt/newer独立进程 |
+| 原窗口/owner/偏好/布局/进程回归 | **374 PASS / 0 FAIL** | artifacts/p1-checks.txt；P4Regression构建 |
+| P4五文件发布包/隔离安装更新卸载启动 | **15 PASS / 0 FAIL** | artifacts/install-checks.txt，install-checks/cc3ff13878b74c47bdcf5a5c4c4dcbbd |
+| 旧Core0.3.1读取P4 schema3 | **PASS** | 引用现有bin/P31的Core DLL，Decode后Encode与最新P4夹具逐字节一致；测试工具仅放忽略的tests/PlannerChecks/obj/compat-* |
+| Release型构建/发布 | **PASS：0警告/0错误** | bin/P4/net10.0-windows；artifacts/package版本0.4.0 |
+
+### 覆盖的行为
+
+- **PASS / 数据**：每日间隔、每周指定星期/N周、月末/闰年/跨年/COUNT/UNTIL/最远日期跳转，不无限生成；原始实例键在移动日期后不变。单次字段/完成/取消独立，全部未完成包含更早待办，FromDate含原发生日且保留更早移动例外。规则独改不清单次标题/颜色/进度/排序，完成历史/部分完成子树及必要上下文保留；新增模板子项不污染完成历史，单次子项不进入未来模板。
+- **PASS / 数据**：取消及规则排除兼容旧普通/周期混合子树，无孤立ParentId；周期/持续复制成普通子树、混排、完成分组、快照、Undo/Redo、完整图重新加载及JSON字节稳定。持续共享ID/历史每一天/仅最新、完成冻结/取消恢复、显式未来移动与asOf防未来幻影兄弟。Todo浮动计划钟在现代DST回拨日仍只有一次发生，Activity绝对区间旧测试保留。
+- **PASS / Window与控件自动驱动**：从完整编辑器建周期、错误规则保留草稿、周/月控件/可选结束日、单次编辑及内联、单次/未来/全部取消、系列子项和本次子项、规则分割与历史保护、复制及虚拟兄弟拖排事件；持续类型两种新建/切换/顺延、历史同ID仅一处内联框、折叠完成同步/重启冻结。普通父任务在完整编辑中勾选/取消后快照还原，防新保存流程回归。新进程核对系列归档、已物化月实例和持续Moves。
+- **PASS / P3.2回归**：五默认分类及旧分类不替换、继承不持续覆盖；外部失活保存/无效草稿保留、附属Popup/上下文菜单保护、模态确认不自动关闭、组合事件Enter/Esc保护、三种实测换行及0–96DIP容量/+N/深度优先。旧颜色、内联Esc取消、读写失败/损坏/新版阻断均继续执行。
+- **PASS / 控件图像观察**：人工查看本轮RenderTargetBitmap输出p4-create-recurring.png、p4-leap-month.png及P3.2换行图；紫/灰深色、标题与输入可读，规则Expander标题改用白色、可选结束日改显式启用避免英文空日期水印。日期格不因内容撑高。图像是实际WPF控件渲染，**不是屏幕截图**；错误规则测试截图故意保留校验提示，不将提示掩盖。
+
+### 定位失败及修复（保留事实）
+
+1. 首轮P4驱动未等Expander完成布局即访问日期输入，产生一次测试失败；加Dispatcher空闲/布局等待后通过，未删除断言。
+2. 后续2项失败暴露真实保存缺陷：Sheet保存时整窗禁用，读取完成CheckBox.IsEnabled会连带变false，导致本次子项及普通父完成意图被忽略。改用任务类型/选中作用域判断，再通过子项与普通父快照自动驱动，最终160/0。非仅更改测试预期。
+3. 源码复核发现规则独改会重置单次字段、范围新增子项会改变已完成父历史、旧普通子节点可能孤立；已分别用差量字段补丁、有限历史排除及混合树保护修复，并添加实际持久化/撤销/重载断言，最终Core227/0。
+
+### FAIL / NOT VERIFIED 与最小人工观察
+
+- 当前无未解决的已执行FAIL。Core唯一NOT VERIFIED仍为Windows时区资料的Samoa2011整日跳跃；现代DST及可控午夜边界通过，未安装时区库。
+- 本轮computer-use按技能初始化list_windows，重置后再试仍native pipe不存在（os error2），两次后停止；未使用其他权限/输入注入绕过。**物理鼠标、真实中文候选窗、外部应用点击及桌面像素 NOT VERIFIED**，自动WPF合成/激活与离屏图不能替代。没有429审批重试或为测试改显示/Snap设置。
+- Windows10、混合DPI硬件、Explorer真实重启、休眠及物理断电/满盘未实测，沿用既有边界；偶发轻微缩放抖动为用户接受的限制。owner模块未改，不要求重复已确认Win+D/任务栏/Alt+Tab行为。
+
+只保留两组界面手感检查，先从旧实例托盘退出，再启动bin/P4/net10.0-windows/DesktopCalendar.exe：
+
+1. 编辑一个测试待办，切换分类/颜色/日期附属Popup并用中文候选输入，点外部应只提交一次；无效标题不关闭。完整编辑Esc保存，月历内联Esc取消；取消按钮放弃。此项核对物理事件边界，不要求重新测整套持久化。
+2. 用长标题父子项切换三种换行/展开，核对小窗口文字和+N；从“更多选项”建短周期与持续任务，查看↻/↪及范围菜单是否清晰易用。范围/历史/重启数据矩阵已自动通过，无需再逐项手工勾选。
+
+其余数据与常规回归无需用户重复操作。最终交付不等于所有兼容性人工验收通过，P5等待批准。
+
 ## 2026-11-02：P3.2 体验修订（P4继续授权中）
 
 Core **197 PASS / 0 FAIL / 1 NOT VERIFIED**（原历史时区资料）；窗口基线 **374/0**。P3/P3.1/P3.2控件 **130 PASS / 0 FAIL**，构建0警告/错误。证据目录artifacts/p3-checks/run-b6581f0db4aa481188638bcbbea0ec10/。复现`Test-Planner.ps1`、`Test-P3.ps1 -Configuration P32`、`build.ps1 -Configuration P32Regression -Test`，均Windows原生、离线构建、项目artifacts隔离数据，不读写真实用户文件。

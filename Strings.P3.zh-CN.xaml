@@ -3,7 +3,7 @@
  <s:String x:Key="PlannerExitDraft">快速输入中还有未提交的文字。确认退出并放弃这段草稿？已成功保存的待办不会丢失。</s:String>
  <s:String x:Key="TimelineTip">示例时间块 · 实际日程编辑将在 P5 接入</s:String>
  <s:String x:Key="WeekTitle">示例周 · 10 月 26 日 — 11 月 1 日</s:String><s:String x:Key="WeekSubtitle">布局示例 · 真实周计划与总结将在 P6 接入</s:String>
- <s:String x:Key="Prototype">P3.2 · 真实待办 · 日程与周总结仍为示例</s:String>
+ <s:String x:Key="Prototype">P4 · 真实待办 · 日程与周总结仍为示例</s:String>
  <s:String x:Key="DemoNotice">待办即时保存到本机 · 日程仍为示例</s:String>
  <s:String x:Key="CompactDemoNotice">与月历共享真实待办 · 修改即时保存</s:String>
  <s:String x:Key="SettingsNotice">窗口偏好与待办分别保存在本机。日程仍为示例；设置和托盘均可退出。</s:String>
@@ -41,4 +41,10 @@
  <s:String x:Key="LegacyCategory">历史分类</s:String><s:String x:Key="QuickMore">更多选项：日期、优先级和详细说明</s:String><s:String x:Key="CalendarExpand">展开 / 收起子任务</s:String><s:String x:Key="CalendarInlineHint">双击文字修改标题；其他属性请打开完整编辑器</s:String><s:String x:Key="CalendarInlineTitle">编辑待办标题：Enter 保存，Esc 取消</s:String><s:String x:Key="ParentPendingOverride">手动保持未完成</s:String><s:String x:Key="ParentSnapshotInvalidated">子任务已独立修改，不再恢复旧完成快照</s:String><s:String x:Key="SaveClose">保存并关闭；放弃修改请点取消</s:String>
  <s:String x:Key="ParentCompletionHint">子任务全完成时父任务自然完成。手动完成父任务会完成整个子树；取消时仅在子树未独立改动的情况下恢复原状态。取消自然完成不会取消子任务，父任务会保持未完成直到下次子任务状态或结构改动。</s:String>
  <s:String x:Key="CalendarWrapping">月历文字显示</s:String><s:String x:Key="CalendarSingle">单行省略</s:String><s:String x:Key="CalendarTwo">最多两行（默认）</s:String><s:String x:Key="CalendarFull">尽量完整换行</s:String>
+ <s:String x:Key="RepeatType">待办类型 / 持续显示方式</s:String><s:String x:Key="RepeatOnce">一次性</s:String><s:String x:Key="RepeatCarryHistory">持续：保留历史日期</s:String><s:String x:Key="RepeatCarryLatest">持续：仅最新日期</s:String><s:String x:Key="RepeatPeriodic">周期性</s:String>
+ <s:String x:Key="RepeatRule">重复规则</s:String><s:String x:Key="RepeatFrequency">频率</s:String><s:String x:Key="RepeatDaily">每天 / 间隔天数</s:String><s:String x:Key="RepeatWeekly">每周 / 间隔周数</s:String><s:String x:Key="RepeatMonthly">每月指定日期</s:String><s:String x:Key="RepeatInterval">间隔（天 / 周 / 月，1–10000）</s:String><s:String x:Key="RepeatStart">规则开始日期</s:String><s:String x:Key="RepeatUntil">结束日期（可选，包含该日）</s:String><s:String x:Key="RepeatCount">重复次数（从规则开始日计，可空）</s:String><s:String x:Key="RepeatMonthDays">每月日期，例如 1,15,31</s:String><s:String x:Key="RepeatMonthHint">不存在的月日会跳过，不改成月末；可用中文或英文逗号。</s:String>
+ <s:String x:Key="RepeatScope">作用范围</s:String><s:String x:Key="RepeatSingle">仅本次发生</s:String><s:String x:Key="RepeatFrom">从本次原发生日开始（含）</s:String><s:String x:Key="RepeatAll">全部未完成发生（含较早日期）</s:String><s:String x:Key="RepeatApplyConfirm">将当前设置应用到所选范围？已完成历史保留，修改可撤销；不会批量生成无限实例。</s:String><s:String x:Key="RepeatInstanceContext">周期实例 · 原发生日：</s:String><s:String x:Key="RepeatRuleContext">正在修改整个系列的重复规则；请确认作用范围。</s:String>
+ <s:String x:Key="RepeatInvalid">规则无效或范围内没有发生：检查间隔、星期、月日、结束日期及次数。</s:String><s:String x:Key="RepeatCancel">取消 / 停止重复待办</s:String><s:String x:Key="RepeatCancelApply">确认取消所选范围</s:String><s:String x:Key="RepeatCancelHint">未完成事项按范围取消；已完成历史及其必要祖先保留。可撤销。子任务范围操作仅影响该分支。</s:String><s:String x:Key="RepeatCompletedProtected">已完成历史受保护；若需取消本次，请先取消完成。</s:String>
+ <s:String x:Key="RepeatMove">顺延到日期</s:String><s:String x:Key="RepeatCarryHint">持续待办使用同一ID和完成状态；未完成时自动延续到今天。顺延到未来日会保留记录，完成后冻结原显示范围。</s:String><s:String x:Key="RepeatMoveInvalid">请选择晚于最后一次显式顺延日的有效日期。</s:String><s:String x:Key="RepeatHistoryMark">持续 · 保留历史</s:String><s:String x:Key="RepeatLatestMark">持续 · 仅最新</s:String><s:String x:Key="RepeatPeriodicMark">周期实例</s:String><s:String x:Key="RepeatCopyHint">复制为独立的一次性待办及子树，不复制重复规则或持续性；原任务不变。</s:String>
+ <s:String x:Key="RepeatUseUntil">启用</s:String>
 </ResourceDictionary>

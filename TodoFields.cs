@@ -14,6 +14,13 @@ using DesktopCalendar.Core;
 namespace DesktopCalendar;
 internal static class TodoDraftRules
 {
+    internal static bool Date(DatePicker picker, bool required, out DateOnly? value)
+    {
+        value = null; var input = picker.Template?.FindName("PART_TextBox", picker) as System.Windows.Controls.Primitives.DatePickerTextBox;
+        string raw = (input?.Text ?? picker.Text).Trim(); if (raw.Length == 0) return !required;
+        if (!DateTime.TryParse(raw, CultureInfo.GetCultureInfo(MainWindow.Text("PlannerUiLanguage")), DateTimeStyles.AllowWhiteSpaces, out var date)) return false;
+        picker.SelectedDate = date.Date; value = DateOnly.FromDateTime(date); return true;
+    }
     internal static bool Title(string text) => !string.IsNullOrWhiteSpace(text) && text.Trim().Length <= 10000;
     internal static bool Color(string? text) => text == null || Regex.IsMatch(text, "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$");
     internal static bool Time(string text, out TimeOnly? value)

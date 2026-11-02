@@ -22,6 +22,48 @@ public static class Recurrence
         if (rule.Count == null) return true;
         return Ordinal(rule, date) <= rule.Count;
     }
+    // Find one date without pre-generating a series, jumping by recurrence periods.
+    public static DateOnly? Next(RecurrenceRule rule, DateOnly from)
+    {
+        Validate(rule); if (from < rule.Start) from = rule.Start;
+        DateOnly? extra = rule.IncludedDates.Where(d => d >= from && Matches(rule, d)).Order().Cast<DateOnly?>().FirstOrDefault();
+        int last = (rule.Until ?? DateOnly.MaxValue).DayNumber;
+        IEnumerable<DateOnly> Candidates()
+        {
+            if (rule.Frequency == Frequency.Daily)
+            {
+                long first = rule.Start.DayNumber + ((long)from.DayNumber - rule.Start.DayNumber + rule.Interval - 1) / rule.Interval * rule.Interval;
+                for (long n = first; n <= last; n += rule.Interval) yield return DateOnly.FromDayNumber((int)n);
+            }
+            else if (rule.Frequency == Frequency.Weekly)
+            {
+                long anchor = rule.Start.DayNumber - ((int)rule.Start.DayOfWeek - (int)rule.WeekStart + 7) % 7;
+                long period = rule.Interval * 7L, first = anchor + ((from.DayNumber - anchor) / period) * period;
+                var offsets = rule.Weekdays.Select(d => ((int)d - (int)rule.WeekStart + 7) % 7).Order().ToArray();
+                for (long week = first; week <= last; week += period)
+                    foreach (int offset in offsets) { long n = week + offset; if (n >= from.DayNumber && n >= 0 && n <= last) yield return DateOnly.FromDayNumber((int)n); }
+            }
+            else
+            {
+                int anchor = (rule.Start.Year - 1) * 12 + rule.Start.Month - 1, target = (from.Year - 1) * 12 + from.Month - 1;
+                int first = anchor + (target - anchor) / rule.Interval * rule.Interval;
+                for (int month = first; month < 9999 * 12; month += rule.Interval)
+                {
+                    int year = month / 12 + 1, m = month % 12 + 1;
+                    if (new DateOnly(year, m, 1).DayNumber > last) yield break;
+                    foreach (int d in rule.MonthDays.Order()) if (d <= DateTime.DaysInMonth(year, m))
+                    { var date = new DateOnly(year, m, d); if (date >= from && date.DayNumber <= last) yield return date; }
+                }
+            }
+        }
+        foreach (var date in Candidates())
+        {
+            if (extra is DateOnly included && included < date) return included;
+            if (rule.Count is int count && Ordinal(rule, date) > count) break;
+            if (Matches(rule, date)) return date;
+        }
+        return extra;
+    }
     static bool Nominal(RecurrenceRule r, DateOnly d)
     {
         int days = d.DayNumber - r.Start.DayNumber;

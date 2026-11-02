@@ -1,6 +1,6 @@
-# 数据与服务接口：P2基础、P3接入与P3.1完成语义
+# 数据与服务接口：P2基础、P3编辑与P4周期/持续
 
-状态：应用与Core为0.3.1，P3已接入真实普通待办，P3.1修订完成来源/快照及编辑体验。纯C# Core使用.NET10标准库，无WPF/数据库/联网/第三方依赖。重复/持续、Activity、周目标等完整管理UI仍留后续阶段。
+状态：应用与Core为0.4.0，P3已接入真实普通待办，P3.1修订完成来源/快照，P3.2/P4接入换行及周期/持续管理。纯C# Core使用.NET10标准库，无WPF/数据库/联网/第三方依赖。Activity、周目标等完整管理UI仍留后续阶段；业务schema3不变。
 
 ## 实体和身份
 
@@ -40,7 +40,7 @@ if (workspace.Storage.CanWrite) {
 
 `SaveTodo/SetTodoCompleted/MoveCarryTodo/ReorderTodos/SetTodoOrderMode/DeleteTodo`、`CreateSeries/EditSeries/CancelSeries`、`SaveActivity/DeleteActivity`、`SaveGoal/DeleteGoal`、`SaveReview/AppendStatistics/DeleteReview`、分类初始化/归档、资产和日期底色命令均经过整图校验、可靠保存，再发布新快照。`BatchCommand`将多个合法步骤一次提交/撤销（最多1000项、嵌套16层）；任一步失败不发布部分状态。UI 应调用命令，不直接修改集合。查询入口为 `PlannerQueries` 和 `PlannerTime`；`TodosOn`仅实际当日项，`TodoTreeOn`额外标记祖先上下文，避免已完成子任务因父取消而无法导航。创建模板树须事先分配节点 GUID 以表达父子关系。
 
-`CopyTodo(TodoRef, TargetDate)`仅复制普通子树：新GUID/CopiedFromId，保留属性、相对日期和子组排序；重置完成时间、来源、快照、失效标识和手动进度，不复制Activity或周目标链接，单事务可撤销。P3.1新增`RenameTodo(TodoRef, Title, ExpectedTitle)`，只改标题，空值/陈旧标题拒绝，避免内联覆盖高级字段。
+`CopyTodo(TodoRef, TargetDate)`复制活动普通、持续或某次周期子树为独立普通子树：新GUID/CopiedFromId，保留属性、相对日期和子组排序；重置系列/Origin/完成时间、来源、快照、失效标识、顺延字段和手动进度，不复制Activity或周目标链接，单事务可撤销。取消节点不复制，其活动后代提升到最近被复制祖先下。P3.1新增`RenameTodo(TodoRef, Title, ExpectedTitle)`，只改标题，空值/陈旧标题拒绝，避免内联覆盖高级字段；P4内联草稿使用TodoRef（含原始发生键）和展示日期，持续同ID不会在多格同时出现输入框。
 
 ## P3.1 完成事务与迁移
 
@@ -48,17 +48,30 @@ if (workspace.Storage.CanWrite) {
 
 `SetTodoCompleted(true)`物化所需实例及祖先，保存`CompletionSnapshot(Id, CapturedAt, Guard, Entries)`后级联活动后代。Entries保存原状态/来源/完成时间/持续冻结日。Guard为按ID排序的子树身份/父子关系/完成/进度字段SHA256，不含文字/颜色/排序/ModifiedAt。取消时校验Guard，仅恢复完成字段，保留元数据；独立子树变化使快照失效，不盲目恢复，标记CompletionSnapshotInvalidated。嵌套快照暂存；结构删除/提升释放孤立Cascade来源。所有归一、排序分组、快照与Undo/Redo在同一保存事务内完成；无UI状态循环。
 
-schema3严格校验来源、快照作用域、Guard与关联。v2先验旧校验和，再将旧完成项映射ManualComplete（无虚构快照）、旧未完成映射Automatic；旧Manual/0进度改Default，非零Manual和Children保留。按新规则归一旧父状态，稳定ID/Revision/其他实体不变。读取迁移不写磁盘，下一成功修改才保存3并备份原字节；旧程序必须拒绝3而非降级。新默认分类仅日常/工作/生活；历史重要/紧急分类不删除、不转优先级。只在UI新建选择中过滤标准历史默认分类，改名/自定义不变。
+schema3严格校验来源、快照作用域、Guard与关联。v2先验旧校验和，再将旧完成项映射ManualComplete（无虚构快照）、旧未完成映射Automatic；旧Manual/0进度改Default，非零Manual和Children保留。按新规则归一旧父状态，稳定ID/Revision/其他实体不变。读取迁移不写磁盘，下一成功修改才保存3并备份原字节；仅认识v2的旧程序必须拒绝3而非降级。P3.2新默认五分类见上文；历史重要/紧急分类不删除、不转优先级。只在UI新建选择中过滤标准历史默认分类，改名/自定义不变。
 
 ## P3界面边界
 
 `DesktopSession`持有一个`PlannerController`，重建HWND也复用；月历、中栏和今日折叠只读取此工作区快照。编辑器使用独立草稿，旧记录发生变化则拒绝覆盖。保存按钮以BatchCommand提交字段与完成操作，保存成功才刷新记录；失败旧快照/草稿保留，状态在完整/折叠均可见。加载未知/损坏版本只读，不初始化空业务数据；新文件只初始化分类，不填DemoTodo。
 
-同级拖放仅同父/同状态组；完成不改基础键。月历默认根、显式展开子项，容量先根/父再子，+N不含折叠项。`QuickDraft`和`InlineTitleDraft`仅UI未提交草稿，业务仍单一Workspace。完整编辑×/Esc验证保存，明确取消放弃；无修改不写入，失败保留草稿。内联Enter/有效失焦保存、Esc取消，使用期望旧标题命令。正常退出先处理编辑器/内联，再确认放弃快速草稿并等待提交；强制终止未提交文字不保证恢复。
+同级拖放仅同父/同状态组；完成不改基础键。月历默认根、显式展开子项，P3.2改为深度优先紧随父项，测量文字及有限空间，+N不含折叠项。`QuickDraft`和`InlineTitleDraft`仅UI未提交草稿，业务仍单一Workspace。完整编辑外部点击/×/Esc验证保存，明确取消放弃；无修改不写入，失败保留草稿。内联Enter/有效失焦保存、Esc取消，使用期望旧标题命令。正常退出先处理编辑器/内联，再确认放弃快速草稿并等待提交；强制终止未提交文字不保证恢复。
 
-日期/月/分类文字或底色偏好仅新增到原window-preferences schema2，未把UI状态写入业务文件。根项目排除Core/tests的递归Compile仍保留，避免把独立库重复编译；旧371项显式fixture回归才用DemoTodo，普通运行不使用它。P4/P5/P6后续也应沿用同一controller/workspace，不另造JSON仓库。
+日期/月/分类文字或底色偏好仅新增到原window-preferences schema2，未把UI状态写入业务文件。根项目排除Core/tests的递归Compile仍保留，避免把独立库重复编译；窗口显式fixture回归才用DemoTodo，普通运行不使用它。P4已沿用同一controller/workspace；P5/P6后续也应如此，不另造JSON仓库。
 
 单次周期修改不改规则，可用 MoveTo 改日期；FromDate/FutureUnfinished 都以命令From为界分割未来规则版本，整系列更新各版本；各范围均保护已物化完成记录。取消本次记录取消键，未来用 SuppressedFrom，整系列归档；CancelSeries的可选NodeId限定子树。已完成记录及所需祖先保留，不能因范围取消删除已完成历史。已保存实例保留自己的树/移动日期例外，尚未生成的未来实例使用新模板。撤销/重做保存最多100个会话内事务快照，每次仍提交新 Revision；实体历史字段按事务快照恢复；重载清空历史，不做跨进程永久撤销日志。
+
+## P4 服务增量与UI调用约定
+
+- `CreateSeries(Rule, Templates, SeriesId = null)`可预分配系列GUID，空GUID拒绝。`Recurrence.Next(rule, from)`按日/周/月周期跳转寻找单个有效日，支持COUNT/UNTIL/排除与追加日，不无限预生成。每月不存在的日跳过；实例的TimeOnly仍为当地计划墙钟，DST重复小时不会生成两个Todo，Activity绝对区间语义不变。
+- `EditOccurrence(Value, Scope)`：Single走SaveTodo，只改变对应发生；FromDate/EntireSeries映射选中节点的可编辑字段至版本模板，禁止把单次移动日期当系列移动。范围按Origin.Date而非PlannedDate；UI默认Single，FromDate含原发生日，EntireSeries应用所有未完成而保留已完成。
+- `EditSeries`只将模板前后实际变化的字段应用于未完成已保存实例；Rule-only保留所有单次元数据、原始键和日期。已保存树关系保留，未生成实例使用新树。新增模板在已完成历史分支用现有Cancelled键作有限排除，避免补入新的未完成子项。已完成子树的必要祖先保留为取消上下文；旧合法普通子项也参与保护/清理，无孤立ParentId。
+- `AddSeriesTodo(Value, Parent, Scope)`：Single等价`AddOccurrenceTodo`；其他范围将新节点加入父模板。`AddOccurrenceTodo`的Value.Id作为一次性节点身份，真正实体ID是系列+该节点ID+父的原发生日哈希；节点注册到既有RetiredNodeIds（非活动模板身份注册表），不出现在未来模板，后续只支持单次作用域。无新增DTO字段，严格校验、完成快照、Undo/Redo仍走原事务路径。
+- `CancelSeries`复用Single/FromDate/EntireSeries，保留完成节点/祖先与关联安全处理。UI拒绝单次取消仍完成的目标，提示先取消完成；范围取消保留完成历史并停止相应未来，不将历史抹除。取消后的上下文只读。
+- `SetCarryMode(TodoRef, KeepHistory)`仅切换两种持续展示类型，不换ID、不抹Moves/冻结日。`MoveCarryTodo`显式前移到更晚日，自动延续仍通过TodosOn的asOf参数而非每天写文件；完成冻结原有显示、取消再延续。
+- `ReorderTodos(Siblings, DisplayDate = null, AsOf = null)`调用方应传实际Today；查询未来视图时不能把DisplayDate误用为asOf，造成未显示的持续兄弟进入排序集合。保留时间/手动模式及完成分组；虚拟实例仅在需要持久修改时物化。
+- UI `RecurrenceFields`共用验证/字段，`PlannerRecurrenceDialogs`提供规则/取消/顺延，重要确认仍模态。普通编辑Window用受控外部保存；编辑器提交期间禁用整窗，完成意图按类型/Scope判断，不依赖暂时的IsEnabled。
+
+P4继续编码schema3，无读写迁移。测试中实际引用旧`bin/P31/.../DesktopCalendar.Core.dll`（0.3.1）解码P4混合图，再Encode与原字节一致；这证明格式/既有校验器兼容，不表示旧GUI具有P4管理入口。尚不提供普通与系列之间的原地类型转换；复制生成普通树，新增时明确选类型。界面支持单次/系列不同作用域，不能从UI直接改底层数组。
 
 ## JSON 与恢复
 
@@ -74,4 +87,4 @@ schema3严格校验来源、快照作用域、Guard与关联。v2先验旧校验
 
 ## 验证
 
-Windows PowerShell：`powershell -NoProfile -ExecutionPolicy Bypass -File .\Test-Planner.ps1`，194 PASS/0 FAIL/1 NOT VERIFIED；`Test-P3.ps1 -Configuration P31`验证P3.1控件、快照和进程重启。只用忽略的artifacts，不使用个人文件。测试包含真实Windows占用/只读、两个写入器、六写入阶段直接进程退出、复制子树排序状态及P3不覆盖其他实体。历史时区以Windows资料为准；Samoa2011整日跳跃本机未重现，不能保证所有历史政令资料完整。未安装时区库；物理断电、满盘、Win10实机及真实输入设备未冒称通过，详见TESTING。
+Windows PowerShell：`powershell -NoProfile -ExecutionPolicy Bypass -File .\Test-Planner.ps1`，227 PASS/0 FAIL/1 NOT VERIFIED；`Test-P3.ps1 -Configuration P4`验证160项P3–P4控件、事务和独立进程重启。只用忽略的artifacts，不使用个人文件。测试包含真实Windows占用/只读、两个写入器、六写入阶段直接进程退出、复制子树排序、范围历史保护与旧图兼容。历史时区以Windows资料为准；Samoa2011整日跳跃本机未重现，不能保证所有历史政令资料完整。未安装时区库；物理断电、满盘、Win10实机及真实输入设备未冒称通过，详见TESTING。
