@@ -7,6 +7,8 @@ using Forms = System.Windows.Forms;
 
 namespace DesktopCalendar;
 
+internal enum CalendarTextMode { SingleLine, TwoLines, Full }
+
 // Window preferences only. No Todo/Activity data, text, screenshots or account information.
 internal sealed record WindowPreferences
 {
@@ -24,6 +26,7 @@ internal sealed record WindowPreferences
     public DateOnly? PlannerDate { get; set; }
     public DateOnly? PlannerMonth { get; set; }
     public bool CalendarColorBackground { get; set; }
+    public CalendarTextMode CalendarTextMode { get; set; } = CalendarTextMode.TwoLines;
     public bool Pinned { get; set; }
     public bool EdgeAutoHide { get; set; }
     public double BackgroundOpacity { get; set; } = .96;
@@ -33,7 +36,7 @@ internal sealed record WindowPreferences
     public double[] WeekColumns { get; set; } = Array.Empty<double>();
     internal Rect Bounds => new(X, Y, Width, Height);
     internal void SetBounds(Rect r) { HasBounds = true; X = r.X; Y = r.Y; Width = r.Width; Height = r.Height; }
-    internal bool Valid() => Id == "desktop-calendar-window" &&
+    internal bool Valid() => Id == "desktop-calendar-window" && Enum.IsDefined(CalendarTextMode) &&
         new[] { X, Y, Width, Height, BackgroundOpacity, DayHourHeight, WeekHourHeight }.All(double.IsFinite) &&
         DayHourHeight is >= TimelineView.MinimumHour and <= TimelineView.MaximumHour && WeekHourHeight is >= TimelineView.MinimumHour and <= TimelineView.MaximumHour &&
         Math.Abs(X) < 100000 && Math.Abs(Y) < 100000 && Width is >= 200 and <= 20000 && Height is >= 200 and <= 20000 &&

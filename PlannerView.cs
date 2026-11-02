@@ -32,6 +32,7 @@ internal sealed class PlannerView : Grid
     PlannerState? rendered;
     DateOnly renderedMonth;
     bool renderedColors;
+    CalendarTextMode renderedTextMode;
     DateOnly renderedToday;
     Point dragStart;
     Todo? dragTodo;
@@ -51,6 +52,7 @@ internal sealed class PlannerView : Grid
     {
         this.owner = owner; Controller = controller;
         Quick.Text = controller.QuickDraft; Quick.TextChanged += (_, _) => controller.QuickDraft = Quick.Text;
+        var quickIme = new ImeInput(Quick);
         foreach (var pair in new[] { (5.2, 340d), (0d, 0d), (2.7, 200d), (0d, 0d), (2.9, 220d) }) ColumnDefinitions.Add(new() { Width = pair.Item1 == 0 ? new GridLength(8) : new GridLength(pair.Item1, GridUnitType.Star), MinWidth = pair.Item2 });
         var calendar = RowGrid(GridLength.Auto, new GridLength(28), new GridLength(1, GridUnitType.Star), GridLength.Auto);
         var nav = new DockPanel { Margin = new Thickness(0, 0, 0, 10) };
@@ -71,7 +73,7 @@ internal sealed class PlannerView : Grid
         empty = Text(T("PlannerEmpty"), 12, "#A2AFBC"); empty.TextWrapping = TextWrapping.Wrap;
         var list = new StackPanel(); list.Children.Add(empty); list.Children.Add(Items); At(todo, new ScrollViewer { Content = list, VerticalScrollBarVisibility = ScrollBarVisibility.Auto }, 1);
         var quick = new DockPanel { Margin = new Thickness(0, 8, 0, 0) }; quickAdd = Button("＋", async () => await AddQuickAsync(), T("PlannerQuickAdd")); DockPanel.SetDock(quickAdd, Dock.Right); quick.Children.Add(quickAdd); quick.Children.Add(Quick); AutomationProperties.SetName(Quick, T("PlannerQuickInput")); Quick.ToolTip = T("PlannerQuickHint");
-        Quick.KeyDown += async (_, e) => { if (e.Key == Key.Enter) { e.Handled = true; await AddQuickAsync(); } };
+        Quick.KeyDown += async (_, e) => { if (!quickIme.Consumes(e) && e.Key == Key.Enter) { e.Handled = true; await AddQuickAsync(); } };
         var quickArea = new StackPanel();
         var options = new DockPanel(); var moreOptions = Button("⋯", MoreOptions, T("QuickMore")); DockPanel.SetDock(moreOptions, Dock.Right); options.Children.Add(moreOptions);
         QuickAppearance = new TodoAppearance(controller, controller.QuickCategory, controller.QuickColor, true); QuickAppearance.Changed += () => { controller.QuickCategory = QuickAppearance.CategoryId; controller.QuickColor = QuickAppearance.Color.Value; }; options.Children.Add(QuickAppearance);
@@ -110,8 +112,8 @@ internal sealed class PlannerView : Grid
         if (Controller.State != null && renderedCategories != Controller.State.Categories) { QuickAppearance.Refresh(); renderedCategories = Controller.State.Categories; }
         undo.IsEnabled = Controller.CanUndo; redo.IsEnabled = Controller.CanRedo;
         reload.IsEnabled = !Controller.Busy; recover.IsEnabled = !Controller.Busy && Controller.Storage?.Status != StoreStatus.NewerSchema && Controller.Storage?.Candidates.Length > 0;
-        if (rendered != Controller.State || renderedMonth != Controller.Month || renderedColors != Controller.ColorBackground || renderedToday != Controller.Today || renderedInline != Controller.Inline)
-        { BuildCalendar(); rendered = Controller.State; renderedMonth = Controller.Month; renderedColors = Controller.ColorBackground; renderedToday = Controller.Today; renderedInline = Controller.Inline; }
+        if (rendered != Controller.State || renderedMonth != Controller.Month || renderedColors != Controller.ColorBackground || renderedToday != Controller.Today || renderedInline != Controller.Inline || renderedTextMode != Controller.TextMode)
+        { BuildCalendar(); rendered = Controller.State; renderedMonth = Controller.Month; renderedColors = Controller.ColorBackground; renderedToday = Controller.Today; renderedInline = Controller.Inline; renderedTextMode = Controller.TextMode; }
         foreach (var day in days) day.Value.BorderBrush = PrototypeViews.Brush(day.Key == Controller.SelectedDate ? "#A3D9C4" : day.Key == Controller.Today ? "#607C9DB0" : "#00FFFFFF");
         Items.Children.Clear(); var rows = Controller.Tree(Controller.SelectedDate); empty.Visibility = rows.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         empty.Text = Controller.Storage?.CanWrite == true ? T("PlannerEmpty") : T(Controller.NoticeKey);
@@ -146,7 +148,7 @@ internal sealed class PlannerView : Grid
                 if (calendarExpanded.Contains(t.Id)) foreach (var child in node.Children) AddCalendar(child, depth + 1);
             }
             foreach (var node in Controller.Tree(date)) AddCalendar(node, 0);
-            var cell = new CalendarPreviewCell(date, entries.ToArray(), date.Month == Controller.Month.Month, Controller.ColorBackground, () => FocusDate(date));
+            var cell = new CalendarPreviewCell(date, entries.ToArray(), date.Month == Controller.Month.Month, Controller.ColorBackground, () => FocusDate(date), Controller.TextMode);
             string? decoration = Controller.State?.Decorations.FirstOrDefault(d => d.Date == date)?.Color;
             var button = new Button { Content = cell, Tag = date, Padding = new Thickness(0), Margin = new Thickness(2), BorderThickness = new Thickness(1), Background = PrototypeViews.Brush(decoration == null ? date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday ? "#162A3D48" : "#0BFFFFFF" : "#38" + decoration.TrimStart('#')[^6..]), HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Stretch, ClipToBounds = true, ToolTip = date.ToString("yyyy-MM-dd") + "\n" + string.Join("\n", tasks.Select(t => Prefix(t) + t.Title)) };
             // Preserve the button through selection changes, so the second click can be recognized.

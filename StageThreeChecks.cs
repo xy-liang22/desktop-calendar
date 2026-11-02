@@ -66,6 +66,7 @@ internal static partial class StageThreeChecks
                 Check("fresh WPF process restores collapsed view with real today items", window.Mode == DisplayMode.Compact && window.CompactRealList.Children.OfType<CheckBox>().Any());
                 Check("startup has no visible default full layout", !window.VisibleBeforePrepared && window.StartupVisible.All(v => v.Mode == DisplayMode.Compact));
                 Check("manual sibling mode survives actual app restart", controller.State!.TodoOrderings.Any(o => o.Mode == TodoSort.Manual));
+                Check("calendar wrapping preference survives independent app restart", controller.TextMode == CalendarTextMode.Full);
                 var savedRoot = Guid.Parse(File.ReadAllText(Path.Combine(DirectoryPath, "p31-snapshot-id.txt")));
                 var snapshot = controller.State!.Todos.Single(x => x.Id == savedRoot).CompletionSnapshot;
                 Check("fresh process retains manual cascade source and child snapshot", snapshot?.Entries.Length == 2 && controller.State.Todos.Single(x => x.Id == savedRoot).CompletionIntent == CompletionIntent.ManualComplete);
@@ -93,7 +94,7 @@ internal static partial class StageThreeChecks
             }
             else
             {
-                Check("real GUI starts empty with built-in categories and no demo todos", controller.State?.Todos.Length == 0 && controller.State.Categories.Length == 3 && window.PlannerView!.Items.Children.Count == 0 && window.CompactItems.Items.Count == 0);
+                Check("real GUI starts empty with built-in categories and no demo todos", controller.State?.Todos.Length == 0 && controller.State.Categories.Length == 5 && window.PlannerView!.Items.Children.Count == 0 && window.CompactItems.Items.Count == 0);
                 controller.Select(controller.Today, true); var view = window.PlannerView!;
                 view.Quick.Text = "09:30 GUI alpha";
                 view.Quick.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(view.Quick), 0, Key.Enter) { RoutedEvent = Keyboard.KeyDownEvent }); await controller.Pending; await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
@@ -184,6 +185,7 @@ internal static partial class StageThreeChecks
                 Check("real adaptive panels expose more rows when taller", Children<CalendarTaskPanel>(view).Select(p => p.VisibleRows).Sum() > smallCounts.Sum());
                 window.SetPinned(true); window.SetPinned(false); Check("real data UI retains owner/topmost roundtrip", window.DesktopMode.Layer == WindowLayer.Desktop && !window.IsPinned);
                 await RunP31Checks(window);
+                await RunP32Checks(window);
                 view.Quick.Text = "recovery draft"; session.TestWindowLoss(); await Task.Delay(150); window = session.Window;
                 window.Show();
                 for (int i = 0; i < 100 && !window.Ready; i++) await Task.Delay(50);

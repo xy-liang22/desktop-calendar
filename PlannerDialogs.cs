@@ -8,6 +8,7 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using DesktopCalendar.Core;
 
 namespace DesktopCalendar;
@@ -20,6 +21,9 @@ internal static class PlannerDialogs
         bool saving;
         bool allowClose;
         Func<Task<bool>>? saveAction;
+        readonly ImeInput ime;
+        bool editorModeless, outsidePending;
+        internal bool? Result { get; private set; }
         internal bool AutoSaveClose { get; private set; }
         internal bool CloseWithoutChanges { get; private set; }
         readonly Button closeButton;
@@ -35,8 +39,12 @@ internal static class PlannerDialogs
             var scroll = new ScrollViewer { Content = Body, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, MaxHeight = 540 }; Grid.SetRow(scroll, 1); root.Children.Add(scroll);
             var footer = new StackPanel { Margin = new Thickness(0, 10, 0, 0) }; Error.TextWrapping = TextWrapping.Wrap; footer.Children.Add(Error); footer.Children.Add(Actions); Grid.SetRow(footer, 2); root.Children.Add(footer);
             Content = new Border { Background = PrototypeViews.Brush("#FF202E3B"), BorderBrush = PrototypeViews.Brush("#526474"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(12), Padding = new Thickness(18), Child = root };
+            ime = new ImeInput(this); ime.Completed += () => { if (outsidePending) QueueOutsideClose(); };
+            Deactivated += (_, _) => { if (editorModeless) QueueOutsideClose(); };
+            Closed += (_, _) => { if (editorModeless) InputManager.Current.PreProcessInput -= OutsideInput; };
             PreviewKeyDown += async (_, e) =>
             {
+                if (ime.Consumes(e)) return;
                 if (e.Key != Key.Escape) return;
                 if (Keyboard.FocusedElement is DependencyObject focus && PresentationSource.FromDependencyObject(focus) != PresentationSource.FromVisual(this)) return;
                 if (FindCombos(this).Any(c => c.IsDropDownOpen)) return;
@@ -50,11 +58,48 @@ internal static class PlannerDialogs
         }
         static System.Collections.Generic.IEnumerable<ComboBox> FindCombos(DependencyObject obj)
         { for (int i = 0; i < VisualTreeHelper.GetChildrenCount(obj); i++) { var child = VisualTreeHelper.GetChild(obj, i); if (child is ComboBox combo) yield return combo; foreach (var nested in FindCombos(child)) yield return nested; } }
+        static System.Collections.Generic.IEnumerable<T> Find<T>(DependencyObject obj) where T : DependencyObject
+        { for (int i = 0; i < VisualTreeHelper.GetChildrenCount(obj); i++) { var child = VisualTreeHelper.GetChild(obj, i); if (child is T value) yield return value; foreach (var nested in Find<T>(child)) yield return nested; } }
+        internal bool HasAuxiliary => FindCombos(this).Any(c => c.IsDropDownOpen) || Find<DatePicker>(this).Any(p => p.IsDropDownOpen) || Find<ColorField>(this).Any(c => c.Popup.IsOpen) || Application.Current.Windows.OfType<Sheet>().Any(w => w != this && w.IsVisible);
+        internal bool ContainsInput(DependencyObject? target)
+        {
+            for (var node = target; node != null; node = node is FrameworkContentElement text ? text.Parent : node is Visual ? VisualTreeHelper.GetParent(node) : LogicalTreeHelper.GetParent(node))
+                if (node == this || node is ContextMenu menu && menu.PlacementTarget != null && Window.GetWindow(menu.PlacementTarget) == this) return true;
+            return target != null && Window.GetWindow(target) == this;
+        }
+        void OutsideInput(object sender, PreProcessInputEventArgs e)
+        {
+            if (!editorModeless || saving || !IsVisible || HasAuxiliary) return;
+            if (e.StagingItem.Input is not MouseButtonEventArgs mouse || mouse.ButtonState != MouseButtonState.Pressed || mouse.RoutedEvent != Mouse.PreviewMouseDownEvent) return;
+            var target = mouse.OriginalSource as DependencyObject ?? Mouse.DirectlyOver as DependencyObject;
+            if (target == null || ContainsInput(target)) return;
+            // Consume the dismissal click so it cannot also add/delete/reorder another task.
+            e.Cancel(); QueueOutsideClose();
+        }
+        void QueueOutsideClose()
+        {
+            if (!editorModeless || !IsVisible || HasAuxiliary) return;
+            outsidePending = true;
+            _ = Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(async () =>
+            {
+                if (!outsidePending || !IsVisible || HasAuxiliary || ime.Composing || saving) return;
+                outsidePending = false; await SaveAndCloseAsync(true);
+            }));
+        }
+        internal async Task<bool> OutsideCloseAsync() => !HasAuxiliary && !ime.Composing && await SaveAndCloseAsync(true);
+        internal bool? ShowEditor()
+        {
+            editorModeless = true;
+            var frame = new DispatcherFrame(); Closed += (_, _) => frame.Continue = false;
+            InputManager.Current.PreProcessInput += OutsideInput;
+            try { Show(); if (IsVisible) Dispatcher.PushFrame(frame); return Result; }
+            finally { InputManager.Current.PreProcessInput -= OutsideInput; }
+        }
         internal async Task<bool> SaveAndCloseAsync(bool closing)
         {
             if (saving || saveAction == null) return false;
             saving = true; CloseWithoutChanges = closing; IsEnabled = false;
-            try { bool ok = await saveAction(); if (ok && IsVisible) { allowClose = true; saving = false; DialogResult = true; } return ok; }
+            try { bool ok = await saveAction(); if (ok && IsVisible) { allowClose = true; saving = false; Result = true; if (editorModeless) Close(); else DialogResult = true; } return ok; }
             finally { saving = false; IsEnabled = true; }
         }
         internal Button Save(Func<Task<bool>> save, bool saveOnClose = false)
@@ -70,7 +115,7 @@ internal static class PlannerDialogs
         sheet.Owner = owner; sheet.Topmost = owner.IsPinned; sheet.WindowStartupLocation = WindowStartupLocation.CenterOwner;
         sheet.MaxHeight = Math.Max(240, NativeWindow.WorkArea(owner.Handle).Height / owner.Scale - 32);
         owner.PlannerDialogDepth++;
-        try { return sheet.ShowDialog(); } finally { owner.PlannerDialogDepth--; }
+        try { return sheet.AutoSaveClose ? sheet.ShowEditor() : sheet.ShowDialog(); } finally { owner.PlannerDialogDepth--; }
     }
     static TextBox Input(string value = "") => new() { Text = value, MinHeight = 28, Padding = new Thickness(6, 4, 6, 4) };
     internal static bool Confirm(MainWindow owner, string title, string message)

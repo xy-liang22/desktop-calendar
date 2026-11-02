@@ -3,7 +3,7 @@
  <s:String x:Key="PlannerExitDraft">快速输入中还有未提交的文字。确认退出并放弃这段草稿？已成功保存的待办不会丢失。</s:String>
  <s:String x:Key="TimelineTip">示例时间块 · 实际日程编辑将在 P5 接入</s:String>
  <s:String x:Key="WeekTitle">示例周 · 10 月 26 日 — 11 月 1 日</s:String><s:String x:Key="WeekSubtitle">布局示例 · 真实周计划与总结将在 P6 接入</s:String>
- <s:String x:Key="Prototype">P3.1 · 真实待办 · 日程与周总结仍为示例</s:String>
+ <s:String x:Key="Prototype">P3.2 · 真实待办 · 日程与周总结仍为示例</s:String>
  <s:String x:Key="DemoNotice">待办即时保存到本机 · 日程仍为示例</s:String>
  <s:String x:Key="CompactDemoNotice">与月历共享真实待办 · 修改即时保存</s:String>
  <s:String x:Key="SettingsNotice">窗口偏好与待办分别保存在本机。日程仍为示例；设置和托盘均可退出。</s:String>
@@ -40,4 +40,5 @@
  <s:String x:Key="ColorPlane">颜色饱和度和明度</s:String><s:String x:Key="ColorHue">色相</s:String><s:String x:Key="ColorChoose">选择颜色</s:String><s:String x:Key="ColorHex">高级：HEX 色值</s:String><s:String x:Key="ColorInherit">继承分类颜色</s:String><s:String x:Key="ColorDone">完成选色</s:String><s:String x:Key="ColorContrastHint">原色在深色背景上对比度偏低；文字和标记会自动提亮，大面积背景会柔化。</s:String>
  <s:String x:Key="LegacyCategory">历史分类</s:String><s:String x:Key="QuickMore">更多选项：日期、优先级和详细说明</s:String><s:String x:Key="CalendarExpand">展开 / 收起子任务</s:String><s:String x:Key="CalendarInlineHint">双击文字修改标题；其他属性请打开完整编辑器</s:String><s:String x:Key="CalendarInlineTitle">编辑待办标题：Enter 保存，Esc 取消</s:String><s:String x:Key="ParentPendingOverride">手动保持未完成</s:String><s:String x:Key="ParentSnapshotInvalidated">子任务已独立修改，不再恢复旧完成快照</s:String><s:String x:Key="SaveClose">保存并关闭；放弃修改请点取消</s:String>
  <s:String x:Key="ParentCompletionHint">子任务全完成时父任务自然完成。手动完成父任务会完成整个子树；取消时仅在子树未独立改动的情况下恢复原状态。取消自然完成不会取消子任务，父任务会保持未完成直到下次子任务状态或结构改动。</s:String>
+ <s:String x:Key="CalendarWrapping">月历文字显示</s:String><s:String x:Key="CalendarSingle">单行省略</s:String><s:String x:Key="CalendarTwo">最多两行（默认）</s:String><s:String x:Key="CalendarFull">尽量完整换行</s:String>
 </ResourceDictionary>

@@ -127,7 +127,7 @@ internal static partial class StageThreeChecks
         {
             adaptive.Measure(new Size(120, h)); adaptive.Arrange(new Rect(0, 0, 120, h));
             var visible = adaptive.Children.OfType<DockPanel>().Where(x => x.Clip == null).Select(x => (CalendarTodoEntry)x.Tag).ToArray();
-            Check("hierarchical calendar capacity and +N boundary " + h, visible.Length == CalendarTaskPanel.Capacity(h, 4) && adaptive.Remaining == 4 - visible.Length && visible.All(x => x.Depth == 0 || visible.Any(p => p.Id == x.ParentId)) && (visible.Length < 2 || visible.Count(x => x.Depth == 0) == 2));
+            Check("hierarchical calendar depth-first capacity and +N boundary " + h, visible.Length == CalendarTaskPanel.Capacity(h, 4) && adaptive.Remaining == 4 - visible.Length && visible.SequenceEqual(entries.Take(visible.Length)) && visible.All(x => x.Depth == 0 || visible.Any(p => p.Id == x.ParentId)));
         }
         Image(window.Surface, "p31-hierarchy-cards.png");
         c.BeginInline(c.State!.Todos.Single(x => x.Id == root.Id)); window.UpdateLayout(); await Idle();

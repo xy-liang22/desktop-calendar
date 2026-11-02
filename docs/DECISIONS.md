@@ -1,5 +1,14 @@
 # 开发决定与授权记录
 
+## 2026-11-02：P3.2 体验修订，随后连续P4
+
+- 用户批准dev/p4上连续完成两阶段并分别提交；main/188eb21基线保留，不开始P5。P3.2应用/Core0.3.2，业务schema3不变，窗口schema2新增可选CalendarTextMode，旧文件默认TwoLines。
+- 保留Sheet独立透明Window及原字段。仅待办编辑使用受控非模态显示/DispatcherFrame以保留调用流程；应用InputManager仅在编辑器存活时观察本进程外部鼠标输入，消费关闭用点击，避免同时误新增/删除；Deactivated处理跨应用离开。无全局鼠标钩子/轮询/抢焦点，失败不关闭。附属Popup及ContextMenu归属、嵌套Sheet保护，确认/恢复仍原生ShowDialog。失活（包括切到别的应用）也保存，失败不强制激活。
+- ImeInput仅跟踪当前上下文的TextComposition开始/更新/结束，不改变系统IME；组合中的Enter/Esc留给IME，未完成组合的外部提交延后到结束。快速框和内联共享保护，内联Esc取消语义不变。
+- CalendarTaskPanel逐行测量实际宽度/换行高度，DesiredHeight仍0；Arrange不改控件属性/重建树，日期格保持统一。深度优先显示，展开父必要时让出一个子行，行末箭头始终有宽度。+N预留一行、极小时放日期头；全部候选已显示则返还计数空间。超长内容只能尽量显示，提示与完整日列表保留访问。
+- 默认五类仅用于新文档；InitializeCategories本来按BuiltInKey补缺，不按名称替换，保持已有工作分类的ID/改名/颜色，旧日常/生活也保留。未自动调用该命令迁移已有文件。新子项仅捕获父当前分类/覆盖色，不建立持续属性绑定。
+- P3.2测试与工具限制见TESTING；本轮computer-use重连/重置仍native pipe os error2，不把WPF事件/渲染当物理鼠标/IME验收。P4在该提交后继续，不另请求批准。
+
 ## 2026-11-02：P3.1 编辑体验与父子完成
 
 - 用户允许在aa4ed0c上一次完成集中修订，使用dev/p3.1；不改owner、不安装依赖、不开始P4。核心P3已人工确认正常，不重复旧Win+D/任务切换验收。

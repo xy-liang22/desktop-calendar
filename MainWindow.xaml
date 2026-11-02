@@ -78,6 +78,10 @@
     <Button Content="{DynamicResource SafeLocate}" Click="SafeLocateClick" Margin="0,18,0,8"/>
     <Button x:Name="GuiNextMonitorButton" Content="{DynamicResource GuiNextMonitor}" Click="GuiNextMonitorClick" Visibility="Collapsed" Margin="0,0,0,8"/>
     <Button x:Name="CategorySettingsButton" Content="{DynamicResource PlannerManageCategories}" Click="CategorySettingsClick" Margin="0,0,0,8"/>
+    <TextBlock Text="{DynamicResource CalendarWrapping}" Margin="0,0,0,6"/>
+    <ComboBox x:Name="CalendarWrapping" SelectionChanged="CalendarWrappingChanged" Margin="0,0,0,10">
+     <ComboBoxItem Content="{DynamicResource CalendarSingle}"/><ComboBoxItem Content="{DynamicResource CalendarTwo}"/><ComboBoxItem Content="{DynamicResource CalendarFull}"/>
+    </ComboBox>
     <Button Content="{DynamicResource Exit}" Click="ExitClick"/>
    </StackPanel></ScrollViewer>
   </Border>

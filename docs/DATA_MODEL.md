@@ -4,6 +4,8 @@
 
 ## 实体和身份
 
+P3.2：新用户五分类工作/家务/个人/家庭/健康，旧分类不自动迁移或重分类；仅用户明确初始化补齐缺失内置键。NewTodo子草稿捕获父分类/覆盖色，此后独立；不是Core每次Save自动继承。UI换行模式在独立窗口偏好，业务schema仍3。
+
 - `PlannerState` 是不可变快照，文档 ID、递增 Revision 和实体数组；`Entity` 含 GUID 与 UTC 创建/修改时间。分类共享，归档保留历史引用。排序键 decimal，完成状态仅决定分组，不改基础键。
 - `TodoOrdering` 记录根组的日期或子组的父ID，以及Manual/PlannedTime模式；默认时间优先，手动混排模式和键同时存JSON，重启不悄悄切回时间排序。`SetTodoOrderMode`恢复时间排序时仍保留原手动键。`DayDecoration`记录每天手选底色，单日期唯一；真实历法/假日参考数据仍待后续阶段。
 - `Todo`：一次性、持续或物化周期实例；计划日期DateOnly、可选TimeOnly、优先级/描述/分类/颜色、父节点、进度、完成时间。`ProgressMode.Default`递归平均直接子分支，叶用ManualProgress；显式Manual不派生进度。完成来源规则如下，不依据“进度100%”直接决定完成。

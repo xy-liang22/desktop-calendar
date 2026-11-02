@@ -63,7 +63,7 @@ public partial class MainWindow : Window
         DailyTimeline = new TimelineView(false, 3, preferences.DayHourHeight);
         WeeklyTimeline = new TimelineView(true, 0, preferences.WeekHourHeight);
         DailyTimeline.ScaleChanged += Remember; WeeklyTimeline.ScaleChanged += Remember;
-        if (session.Planner == null) { monthPage = PrototypeViews.Month(DailyTimeline); CategorySettingsButton.Visibility = Visibility.Collapsed; }
+        if (session.Planner == null) { monthPage = PrototypeViews.Month(DailyTimeline); CategorySettingsButton.Visibility = CalendarWrapping.Visibility = Visibility.Collapsed; }
         else { PlannerView = new PlannerView(this, session.Planner, DailyTimeline); monthPage = PlannerView; }
         weekPage = PrototypeViews.Week(WeeklyTimeline);
         PageHost.Children.Add(monthPage);
@@ -115,9 +115,11 @@ public partial class MainWindow : Window
         if (e.Key == Key.Y) { e.Handled = true; await Session.Planner.RedoAsync(); }
     }
     void CategorySettingsClick(object sender, RoutedEventArgs e) { if (Session.Planner?.Writable == true) PlannerDialogs.ManageCategories(this, Session.Planner); }
+    void CalendarWrappingChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e) { if (CalendarWrapping.SelectedIndex >= 0) Session.Planner?.SetTextMode((CalendarTextMode)CalendarWrapping.SelectedIndex); }
     void RefreshPlanner()
     {
         var planner = Session.Planner!;
+        CalendarWrapping.SelectedIndex = (int)planner.TextMode;
         PlannerFooter.Text = CompactNotice.Text = Text(planner.NoticeKey);
         PlannerFooter.ToolTip = planner.Diagnostic.Length == 0 ? Text(planner.NoticeKey) : planner.Diagnostic;
         var noticeBrush = PrototypeViews.Brush(planner.NoticeKey is "PlannerLocal" or "PlannerLoading" or "PlannerSaving" ? "#A3D9C4" : "#E3BF89");
@@ -216,7 +218,8 @@ public partial class MainWindow : Window
             FullPlacement = fullPlacement, CompactPlacement = compactPlacement,
             DayHourHeight = DailyTimeline.HourHeight, WeekHourHeight = WeeklyTimeline.HourHeight,
             PlannerDate = Session.Planner?.SelectedDate ?? Session.Preferences.PlannerDate, PlannerMonth = Session.Planner?.Month ?? Session.Preferences.PlannerMonth,
-            CalendarColorBackground = Session.Planner?.ColorBackground ?? Session.Preferences.CalendarColorBackground };
+            CalendarColorBackground = Session.Planner?.ColorBackground ?? Session.Preferences.CalendarColorBackground,
+            CalendarTextMode = Session.Planner?.TextMode ?? Session.Preferences.CalendarTextMode };
         p.SetBounds(fullPlacement?.Bounds ?? SavedBounds);
         if (monthPage.IsVisible) p.MonthColumns = ColumnWidths(monthPage);
         if (weekPage.IsVisible) p.WeekColumns = ColumnWidths(weekPage);

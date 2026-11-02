@@ -29,6 +29,7 @@ internal sealed class PlannerController
     internal DateOnly SelectedDate { get; private set; }
     internal DateOnly Month { get; private set; }
     internal bool ColorBackground { get; private set; }
+    internal CalendarTextMode TextMode { get; private set; }
     internal string QuickDraft { get; set; } = ""; // Unsubmitted UI text; never treated as saved planner data.
     internal Guid? QuickCategory { get; set; }
     internal string? QuickColor { get; set; }
@@ -43,7 +44,7 @@ internal sealed class PlannerController
         store = new(path, options); lastToday = Today;
         SelectedDate = preferences.PlannerDate ?? Today;
         Month = preferences.PlannerMonth ?? new(SelectedDate.Year, SelectedDate.Month, 1);
-        Month = new(Month.Year, Month.Month, 1); ColorBackground = preferences.CalendarColorBackground;
+        Month = new(Month.Year, Month.Month, 1); ColorBackground = preferences.CalendarColorBackground; TextMode = preferences.CalendarTextMode;
         todayTimer.Tick += (_, _) => { if (lastToday != Today) { lastToday = Today; Changed?.Invoke(); } };
     }
     internal Task InitializeAsync() => Pending = InitializeCore();
@@ -132,11 +133,13 @@ internal sealed class PlannerController
     }
     internal async Task StopAsync() { Stopping = true; todayTimer.Stop(); await Pending; }
     internal void Dispose() { Stopping = true; todayTimer.Stop(); }
-    internal Todo NewTodo(string title, Guid? parent = null) => new()
+    internal void SetTextMode(CalendarTextMode mode) { if (!Enum.IsDefined(mode) || TextMode == mode) return; TextMode = mode; Changed?.Invoke(); PreferencesChanged?.Invoke(); }
+    internal Todo NewTodo(string title, Guid? parent = null)
     {
-        Id = Guid.NewGuid(), Title = title.Trim(), PlannedDate = SelectedDate, ParentId = parent,
-        SortKey = (State?.Todos.Where(t => t.ParentId == parent && (parent != null || t.PlannedDate == SelectedDate)).Select(t => t.SortKey).DefaultIfEmpty(-1024).Max() ?? -1024) + 1024
-    };
+        var ancestor = parent == null ? null : State?.Todos.FirstOrDefault(t => t.Id == parent) ?? On(SelectedDate).FirstOrDefault(t => t.Id == parent);
+        return new() { Id = Guid.NewGuid(), Title = title.Trim(), PlannedDate = SelectedDate, ParentId = parent, CategoryId = ancestor?.CategoryId, Color = ancestor?.Color,
+            SortKey = (State?.Todos.Where(t => t.ParentId == parent && (parent != null || t.PlannedDate == SelectedDate)).Select(t => t.SortKey).DefaultIfEmpty(-1024).Max() ?? -1024) + 1024 };
+    }
     internal static bool QuickInput(string value, out string title, out TimeOnly? time)
         => TodoDraftRules.Quick(value, out title, out time);
     internal async void BeginInline(Todo todo)
