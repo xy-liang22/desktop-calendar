@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -45,8 +46,16 @@ internal sealed class ImageViewer : Window
     internal static void Open(FrameworkElement origin, BitmapSource bitmap)
     {
         if (Window.GetWindow(origin) is not Window parent) return;
+        var positions = Scrolls(parent).Select(s => (View: s, X: s.HorizontalOffset, Y: s.VerticalOffset)).ToArray();
         using var hold = (parent as PlannerDialogs.Sheet)?.HoldOpen();
         var main = parent as MainWindow; if (main != null) main.PlannerDialogDepth++;
-        try { new ImageViewer(bitmap, parent).ShowDialog(); } finally { if (main != null) main.PlannerDialogDepth--; }
+        try { new ImageViewer(bitmap, parent).ShowDialog(); }
+        finally
+        {
+            if (main != null) main.PlannerDialogDepth--;
+            if (parent.IsVisible) parent.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, new Action(() => { foreach (var p in positions) if (p.View.IsLoaded) { p.View.ScrollToHorizontalOffset(p.X); p.View.ScrollToVerticalOffset(p.Y); } }));
+        }
     }
+    static System.Collections.Generic.IEnumerable<ScrollViewer> Scrolls(DependencyObject node)
+    { if (node is ScrollViewer scroll) yield return scroll; for (int i = 0; i < VisualTreeHelper.GetChildrenCount(node); i++) foreach (var child in Scrolls(VisualTreeHelper.GetChild(node, i))) yield return child; }
 }

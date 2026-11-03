@@ -30,6 +30,19 @@ internal sealed class PlannerController
     internal DateOnly Month { get; private set; }
     internal bool ColorBackground { get; private set; }
     internal CalendarTextMode TextMode { get; private set; }
+    internal DayOfWeek WeekStart { get; private set; }
+    internal WeekPlanLayout WeekLayout { get; private set; }
+    PlannerOptions Options => new() { TimeZoneId = TimeZoneInfo.Local.Id, WeekStart = WeekStart };
+    internal WeekKey Week(DateOnly? date = null) => PlannerTime.Week(date ?? SelectedDate, WeekStart, State?.Options.TimeZoneId ?? TimeZoneInfo.Local.Id);
+    internal void SetWeekLayout(WeekPlanLayout layout) { if (!Enum.IsDefined(layout) || WeekLayout == layout) return; WeekLayout = layout; Changed?.Invoke(); PreferencesChanged?.Invoke(); }
+    internal Task SetWeekStartAsync(DayOfWeek day)
+    { if (!Enum.IsDefined(day) || day == WeekStart || Busy) return Task.CompletedTask; return Pending = ChangeWeekStart(day); }
+    async Task ChangeWeekStart(DayOfWeek day)
+    {
+        Busy = true; Changed?.Invoke();
+        try { if (workspace != null) await workspace.ConfigureAsync(Options with { WeekStart = day }); WeekStart = day; }
+        finally { Busy = false; Changed?.Invoke(); PreferencesChanged?.Invoke(); }
+    }
     internal string QuickDraft { get; set; } = ""; // Unsubmitted UI text; never treated as saved planner data.
     internal Guid? QuickCategory { get; set; }
     internal string? QuickColor { get; set; }
@@ -42,7 +55,7 @@ internal sealed class PlannerController
     internal event Action? PreferencesChanged;
     internal PlannerController(string path, WindowPreferences preferences, StoreOptions? options = null)
     {
-        store = new(path, options); lastToday = Today;
+        store = new(path, options); lastToday = Today; WeekStart = preferences.WeekStart; WeekLayout = preferences.WeekPlanLayout;
         SelectedDate = preferences.PlannerDate ?? Today;
         Month = preferences.PlannerMonth ?? new(SelectedDate.Year, SelectedDate.Month, 1);
         Month = new(Month.Year, Month.Month, 1); ColorBackground = preferences.CalendarColorBackground; TextMode = preferences.CalendarTextMode;
@@ -53,7 +66,7 @@ internal sealed class PlannerController
     {
         try
         {
-            workspace = await PlannerWorkspace.OpenAsync(store, new() { TimeZoneId = TimeZoneInfo.Local.Id });
+            workspace = await PlannerWorkspace.OpenAsync(store, Options);
             if (workspace.Storage.Status == StoreStatus.Missing)
             {
                 var result = await workspace.ExecuteAsync(new InitializeCategories());
@@ -116,8 +129,8 @@ internal sealed class PlannerController
         Busy = true; Changed?.Invoke();
         try
         {
-            if (workspace == null) { workspace = await PlannerWorkspace.OpenAsync(store); }
-            else await workspace.ReloadAsync();
+            if (workspace == null) { workspace = await PlannerWorkspace.OpenAsync(store, Options); }
+            else await workspace.ReloadAsync(Options);
             SetStorageNotice();
         }
         finally { Busy = false; Changed?.Invoke(); }
@@ -130,7 +143,7 @@ internal sealed class PlannerController
     async Task<bool> RecoverCore(RecoveryCandidate candidate)
     {
         Busy = true; Changed?.Invoke();
-        try { var result = await workspace!.RecoverAsync(candidate, true); SetStorageNotice(); if (!result.CanWrite) { NoticeKey = "PlannerReadFailed"; Diagnostic = result.Diagnostic; } return result.CanWrite; }
+        try { var result = await workspace!.RecoverAsync(candidate, true); if (result.CanWrite) await workspace.ConfigureAsync(Options); SetStorageNotice(); if (!result.CanWrite) { NoticeKey = "PlannerReadFailed"; Diagnostic = result.Diagnostic; } return result.CanWrite; }
         finally { Busy = false; Changed?.Invoke(); }
     }
     internal async Task StopAsync() { Stopping = true; todayTimer.Stop(); await Pending; }

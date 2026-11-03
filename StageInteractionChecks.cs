@@ -15,9 +15,9 @@ internal static partial class StageThreeChecks
         var c = window.Session.Planner!; var todo = c.State!.Todos.First(t => t.ParentId == null && t.Kind == Core.TodoKind.Once);
         await DriveAsync(() => window.PlannerView!.Edit(todo), async s =>
         {
-            var hwnd = new WindowInteropHelper(s).Handle; var original = NativeWindow.Bounds(hwnd); var work = NativeWindow.WorkArea(hwnd);
+            var hwnd = new WindowInteropHelper(s).Handle; var original = NativeWindow.Bounds(hwnd); var work = NativeWindow.WorkArea(hwnd); var parentBounds = NativeWindow.Bounds(window.Handle);
             NativeWindow.Place(hwnd, new Rect(work.X - original.Width - 100, work.Y - original.Height - 100, original.Width, original.Height)); WindowGestures.Fit(s);
-            await Idle(); Check("editor dragged off-screen can be fitted back without changing root preferences", NativeWindow.WorkArea(hwnd).Contains(NativeWindow.Bounds(hwnd).TopLeft) && !s.ShowInTaskbar && s.Owner == window);
+            await Idle(); Check("editor dragged off-screen can be fitted back without changing root preferences", NativeWindow.WorkArea(hwnd).Contains(NativeWindow.Bounds(hwnd).TopLeft) && !s.ShowInTaskbar && s.Owner == window && NativeWindow.Bounds(window.Handle) == parentBounds);
             var title = Children<TextBox>(s).First(t => System.Windows.Automation.AutomationProperties.GetName(t) == MainWindow.Text("PlannerTitle")); title.Text = "retain when opening image";
             var bytes = new byte[800 * 600 * 4]; for (int i = 3; i < bytes.Length; i += 4) bytes[i] = 255;
             var bitmap = BitmapSource.Create(800, 600, 96, 96, PixelFormats.Bgra32, null, bytes, 800 * 4); bitmap.Freeze();

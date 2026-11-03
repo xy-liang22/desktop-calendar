@@ -1,5 +1,17 @@
 # 开发决定与授权记录
 
+## 2026-11-03：P6周计划、统计与总结
+
+- 在P5.1提交332b73e后增量实现，应用/Core0.6.0/dev/p6，无新依赖、不改已验收owner或schema3、不进入P7。WeekGoalDialogs/GoalLinks复用原SaveGoal与Batch；待办/日程共享选择和嵌套创建入口。新目标独立保存，父草稿取消不删目标，UI提前说明。新系列关联稳定首发生实例，范围编辑的目标关联只作用当前实例，不扩展模板。
+- 目标三类型与单来源沿用P2；时长用小时输入/秒保存，Todo来源禁止时长；自动勾选保持P2“至少一个匹配”规则，界面说明；类型/来源变更确认且保留导航关联。手动覆盖与自动值分离，恢复自动清空覆盖；跨周Todo保留并警告，不改P2已确认数量语义。
+- WeekSummaryView按原CategoryStatistics合并同类重叠，类别独立，另列全局区间并集。分母显示实际自然周167/168/169h，不将计划时间计入。目标菜单收起编辑/删除，弱化进度条，不用高饱和大块；Render检查修正DarkToggle硬编码Padding，其他下拉保留原默认6,4。
+- MonthWeekPlan的窄栏/摘要条使用同一目标/进度；不足430DIP暂用摘要条保护日期，条展开内容浮动、不挤高某周；低高度按剩余空间调整条/日期留白，不重建控件，仅宽度模式切换重建。周首日同时驱动月历日期列、周轴和目标上下文。
+- WindowPreferences schema2兼容增加WeekStart/WeekPlanLayout。Core ConfigureAsync只改运行Options，不改Revision/磁盘或清Undo；重载显式传本地时区及用户首日，修正原ReloadAsync默认选项可能回UTC的问题。历史WeekKey不迁移、不合并；改首日后切回原设置查看旧记录。
+- WeeklyReviewDialog以原SaveReview/AppendStatistics批事务保存正文、小节、图片登记、同周目标ReviewId及新快照。自动摘要插入独立只读快照区，不把生成文字覆盖进自由正文；取消不提交，保存失败留输入，后续统计变化不改旧快照。新目标会关联同周已有总结。
+- P6回归补修跨天详情锚点：除了Activity/Period ID，还携带被点裁片的Date/Offset，避免周轴定位到同段第一天；查看大图前后恢复父滚动位置。P5.1旧内联迟到回调保护持续执行，多轮回归通过。首轮编辑预览空图是未等220ms合并输入，改等实际刷新并断言正文后截图，不将空图当通过。
+- 正常桌面GUI测试保持串行。一次审批审查超时未执行，按工具允许重试一次成功，非功能失败；无429反复请求。computer-use两次os error2，真实拖动/看图手感保留NOT VERIFIED，不以自动数量代替物理验收。
+- 连续新建窗口还暴露初始激活失活竞态：Sheet在首次稳定激活后才接受Deactivated自动提交，真实外部鼠标输入不受影响。保留×/Esc/取消与外部验证，驱动先激活/布局后输入。总结引用资产同时扫描正文、小节和统计快照，避免保存自由文字时漏掉历史引用。
+
 ## 2026-11-03：P5.1编辑交互
 
 - dev/p6从eae0cc4开始，先完成P5.1独立提交后直接继续已授权P6，不修改main、owner或schema3。Sheet原DragMove只接受Source==heading，点到标题TextBlock时被排除；共用WindowGestures排除交互控件后处理标题预览鼠标，HoldOpen防止拖动失活保存，结束按所在屏工作区Fit，仍为原有owned tool式WPF窗口。

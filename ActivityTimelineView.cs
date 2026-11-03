@@ -58,7 +58,7 @@ internal sealed partial class TimelineView
             if (CurrentGesture != null) { if (changed) { if (PointerDate(e.GetPosition(Track)) is DateTime time) PreviewGesture(time, (Keyboard.Modifiers & ModifierKeys.Shift) != 0 ? 1 : 5); await CommitGestureAsync(); } else CancelGesture(); }
             if (!changed && target != null) { clicked = target; singleClick.Stop(); singleClick.Start(); } e.Handled = target != null || changed;
         };
-        singleClick.Tick += (_, _) => { singleClick.Stop(); if (clicked != null && !dragged && owner.PlannerDialogDepth == 0) ActivityDialogs.Detail(owner, planner, clicked.ActivityId, clicked.PeriodId); };
+        singleClick.Tick += (_, _) => { singleClick.Stop(); if (clicked != null && !dragged && owner.PlannerDialogDepth == 0) ActivityDialogs.Detail(owner, planner, clicked.ActivityId, clicked.PeriodId, clicked); };
         PreviewMouseRightButtonDown += (_, e) => { if (CurrentGesture != null) { CancelGesture(); e.Handled = true; } };
         PreviewKeyDown += async (_, e) => { if (e.Key == Key.Escape && CurrentGesture != null) { CancelGesture(); e.Handled = true; } else if (e.Key == Key.Enter && FailedGesture) { e.Handled = true; await CommitGestureAsync(); } };
         LostMouseCapture += (_, _) => { if (CurrentGesture != null) CancelGesture(); };

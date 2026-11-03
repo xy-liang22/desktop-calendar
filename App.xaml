@@ -1,6 +1,6 @@
 <Application x:Class="DesktopCalendar.App" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" ShutdownMode="OnExplicitShutdown">
  <Application.Resources><ResourceDictionary>
-  <ResourceDictionary.MergedDictionaries><ResourceDictionary Source="Strings.zh-CN.xaml" /><ResourceDictionary Source="Strings.P3.zh-CN.xaml" /><ResourceDictionary Source="Strings.P5.zh-CN.xaml" /><ResourceDictionary Source="DarkPopups.xaml" /></ResourceDictionary.MergedDictionaries>
+  <ResourceDictionary.MergedDictionaries><ResourceDictionary Source="Strings.zh-CN.xaml" /><ResourceDictionary Source="Strings.P3.zh-CN.xaml" /><ResourceDictionary Source="Strings.P5.zh-CN.xaml" /><ResourceDictionary Source="Strings.P6.zh-CN.xaml" /><ResourceDictionary Source="DarkPopups.xaml" /></ResourceDictionary.MergedDictionaries>
   <SolidColorBrush x:Key="Ink" Color="#EDF2F5"/><SolidColorBrush x:Key="Muted" Color="#A2AFBC"/>
   <SolidColorBrush x:Key="Accent" Color="#A3D9C4"/>
   <DataTemplate x:Key="TodoLineTemplate">

@@ -82,6 +82,8 @@
     <ComboBox x:Name="CalendarWrapping" SelectionChanged="CalendarWrappingChanged" Margin="0,0,0,10">
      <ComboBoxItem Content="{DynamicResource CalendarSingle}"/><ComboBoxItem Content="{DynamicResource CalendarTwo}"/><ComboBoxItem Content="{DynamicResource CalendarFull}"/>
     </ComboBox>
+    <TextBlock Text="{DynamicResource WeekStartSetting}" Margin="0,0,0,6"/><ComboBox x:Name="WeekStartChoice" SelectionChanged="WeekStartChanged" Margin="0,0,0,10"/>
+    <TextBlock Text="{DynamicResource WeekLayoutSetting}" Margin="0,0,0,6"/><ComboBox x:Name="WeekLayoutChoice" SelectionChanged="WeekLayoutChanged" Margin="0,0,0,10"><ComboBoxItem Content="{DynamicResource WeekSide}"/><ComboBoxItem Content="{DynamicResource WeekStrip}"/></ComboBox>
     <Button Content="{DynamicResource Exit}" Click="ExitClick"/>
    </StackPanel></ScrollViewer>
   </Border>

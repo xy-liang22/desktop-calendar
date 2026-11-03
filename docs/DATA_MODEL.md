@@ -1,6 +1,6 @@
-# 数据与服务接口：P2基础、P3/P4待办与P5实际日程
+# 数据与服务接口：P2基础与P3–P6真实界面
 
-状态：应用与Core为0.5.0，P3/P4真实待办和P5 Activity管理已接入；周目标/总结完整UI留P6。纯C# Core使用.NET10标准库，无WPF/数据库/联网/第三方依赖，业务schema3不变。P5本地图片/备注呈现位于WPF层，实体/JSON仍不含WPF对象。
+状态：应用与Core为0.6.0，真实待办、周期、Activity与P6周目标/统计/总结界面已接入。纯C# Core使用.NET10标准库，无WPF/数据库/联网/第三方依赖，业务schema3不变。图片/备注呈现及偏好位于WPF层，实体/JSON仍不含WPF对象；P7另行批准。
 
 ## 实体和身份
 
@@ -86,6 +86,15 @@ P4继续编码schema3，无读写迁移。测试中实际引用旧`bin/P31/.../D
 
 新增界面文字集中在Strings.P5.zh-CN.xaml；emoji/reaction可自定义，标准ComboBox可编辑模板补齐，非编辑分类选择不变。Core/存储DTO没有增加字段，旧schema3格式无需迁移；图片资源能力的增加不意味着旧GUI具备Markdown或图片管理。
 
+## P6目标、总结与运行偏好
+
+- `WeekGoalDialogs`编辑原WeekGoal三类型/来源/目标/手动值。UI时长输入小时，保存乘3600，勾选Target=1且Override仅null/0/1；类型/来源变更以`SaveGoal(...,ConfirmTypeChange:true)`明确确认。`GoalLinks`从原`Todos/Activities`读取关联，按父事项保存批事务增删引用，不另建映射表。新目标可独立先保存，父事项取消后目标仍在；周期引用是TodoRef.For(OccurrenceKey)，从新系列首有效发生建立，不关联模板。
+- `WeekSummaryView`统一调用`PlannerQueries.Goal/CategoryStatistics`；目标时长对关联区间做并集，分类各自并集并裁WeekRange，类别之间可重叠；全局并集另列。百分比基准为真实周秒数，DST不假定168h。跨周显式Todo返回OutsideWeekTodos，UI警告，P2原计数规则不变。自动勾选是来源至少一项满足；无来源用Checked，覆盖值有优先级。
+- `WeeklyReviewDialog`独立草稿，SaveReview继续禁止覆盖Statistics。用户插入摘要时暂存生成Markdown，保存以Batch(SaveReview, SaveGoal补ReviewId, AppendStatistics...)一次提交/撤销，取消无写；旧快照不随统计刷新。正文、ReviewSection和StatisticsSnapshot分别保存，图片复用同目录/资产登记。已有同周总结被新目标引用，首次总结为同周目标补空ReviewId。
+- `PlannerWorkspace.ConfigureAsync(options)`校验后仅更新运行Snapshot.Options，保持Fingerprint/Revision、业务字节及Undo/Redo；Commit仍保持当前Options。WindowPreferences兼容新增WeekStart（默认Monday）、WeekPlanLayout（默认SideColumn），不进业务JSON；初始化/重载/恢复均传当前时区/首日。历史WeekKey从不随设置变化搬迁。
+- 月历MonthDates可传任意首日，日期与七天轴/周侧栏共用Controller.Week。MonthWeekPlan按原WeekKey查询，窄栏/摘要条仅布局偏好，空间不足可响应式退到摘要条；浮动展开不撑高日期行。所有UI仍一个Controller/Workspace。
+- P5.1详情改为根Surface上的唯一Canvas卡片，无独立详情窗口；定位键包含Activity/Period/裁片日期与偏移。Markdown图片自适应容器，ImageViewer只接收LocalImages验证后的Bitmap；Owned Window/HoldOpen与父滚动还原保护草稿，不触发额外保存或网络读取。
+
 ## JSON 与恢复
 
 默认 `%LOCALAPPDATA%\DesktopCalendar\planner-data.json`；窗口偏好仍是独立 `window-preferences.json`，兼容旧schema2。`PlannerOptions`作为调用上下文传入，不写入业务JSON。P3正常启动读取真实业务文件；只有主/备份/残留都不存在才允许首次初始化，现有P2其他实体与关联保留。
@@ -100,4 +109,4 @@ P4继续编码schema3，无读写迁移。测试中实际引用旧`bin/P31/.../D
 
 ## 验证
 
-Windows PowerShell：`powershell -NoProfile -ExecutionPolicy Bypass -File .\Test-Planner.ps1`，240 PASS/0 FAIL/1 NOT VERIFIED；`Test-P3.ps1 -Configuration P5`验证195项P3–P5控件、事务和独立进程重启。只用忽略的artifacts，不使用个人文件。测试包含真实Windows占用/只读、两个写入器、六写入阶段直接进程退出、周期范围保护、DST显示片、实际日程/关联/备注/图片/撤销和跨进程恢复。历史时区以Windows资料为准；Samoa2011整日跳跃本机未重现，不能保证所有历史政令资料完整。未安装时区库；物理断电、满盘、Win10实机及真实输入设备未冒称通过，详见TESTING。
+Windows PowerShell：`powershell -NoProfile -ExecutionPolicy Bypass -File .\Test-Planner.ps1`，253 PASS/0 FAIL/1 NOT VERIFIED；`Test-P3.ps1 -Configuration P6`验证234项P3–P6控件、事务和独立进程重启。只用忽略的artifacts，不使用个人文件。测试包括原子写入故障/并发、周期保护、DST片、日程/图片以及目标来源/覆盖/类型、区间统计、运行选项不改磁盘、总结快照与文字分离及重启。Samoa2011整日跳跃本机资料未重现，物理断电/满盘、Win10及真实输入设备仍未冒称通过，详见TESTING。

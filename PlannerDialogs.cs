@@ -23,6 +23,7 @@ internal static partial class PlannerDialogs
         Func<Task<bool>>? saveAction;
         readonly ImeInput ime;
         bool editorModeless, outsidePending, outsideByPointer;
+        bool outsideReady;
         int auxiliaryDepth;
         internal IDisposable HoldOpen() { auxiliaryDepth++; return new Auxiliary(() => auxiliaryDepth--); }
         sealed class Auxiliary(Action release) : IDisposable { Action? pending = release; public void Dispose() { pending?.Invoke(); pending = null; } }
@@ -43,7 +44,8 @@ internal static partial class PlannerDialogs
             var footer = new StackPanel { Margin = new Thickness(0, 10, 0, 0) }; Error.TextWrapping = TextWrapping.Wrap; footer.Children.Add(Error); footer.Children.Add(Actions); Grid.SetRow(footer, 2); root.Children.Add(footer);
             Content = new Border { Background = PrototypeViews.Brush("#F5202E3B"), BorderBrush = PrototypeViews.Brush("#526474"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(12), Padding = new Thickness(18), Child = root };
             ime = new ImeInput(this); ime.Completed += () => { if (outsidePending) QueueOutsideClose(); };
-            Deactivated += (_, _) => { if (editorModeless) QueueOutsideClose(); };
+            Activated += (_, _) => Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(() => { if (editorModeless && IsVisible && IsActive) outsideReady = true; }));
+            Deactivated += (_, _) => { if (editorModeless && outsideReady) QueueOutsideClose(); };
             Closed += (_, _) => { if (editorModeless) InputManager.Current.PreProcessInput -= OutsideInput; };
             SizeChanged += (_, _) => _ = Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
             {
@@ -186,7 +188,8 @@ internal static partial class PlannerDialogs
         if (type != null) type.SelectionChanged += (_, _) => KindChanged(); if (scope != null) scope.SelectionChanged += (_, _) => KindChanged(); KindChanged();
         if (hasChildren) { var hint = PlannerView.Text(T("ParentCompletionHint"), 10, "#A2AFBC"); hint.TextWrapping = TextWrapping.Wrap; sheet.Body.Children.Add(hint); }
         if (draft.ParentId is Guid p) { var parentText = PlannerView.Text(T("PlannerParent") + " " + controller.FindTodo(p)?.Title, 10, "#A2AFBC"); sheet.Body.Children.Add(parentText); }
-        string Signature() => JsonSerializer.Serialize(new { title.Text, Description = description.Text, Date = date.SelectedDate, Time = time.Text, appearance.CategoryId, Color = appearance.Color.Value, Important = important.IsChecked, Urgent = urgent.IsChecked, Progress = progress.Text, Auto = automatic.IsChecked, Complete = completed.IsChecked, Type = type?.SelectedIndex, Repeat = newRoot && type?.SelectedIndex == 3 ? repeat?.DraftSignature : null });
+        var goals = new GoalLinks(owner, controller, TodoRef.Of(draft)); sheet.Body.Children.Add(new Expander { Header = T("ActivityGoal"), Content = goals });
+        string Signature() => JsonSerializer.Serialize(new { title.Text, Description = description.Text, Date = date.SelectedDate, Time = time.Text, appearance.CategoryId, Color = appearance.Color.Value, Important = important.IsChecked, Urgent = urgent.IsChecked, Progress = progress.Text, Auto = automatic.IsChecked, Complete = completed.IsChecked, Type = type?.SelectedIndex, Repeat = newRoot && type?.SelectedIndex == 3 ? repeat?.DraftSignature : null, Goals = goals.Signature });
         string initial = Signature();
         sheet.Save(async () =>
         {
@@ -213,7 +216,7 @@ internal static partial class PlannerDialogs
             if (newRoot && type?.SelectedIndex == 3)
             {
                 if (!repeat!.Read(out var rule)) { sheet.Error.Text = T("RepeatInvalid"); return false; }
-                commands.Add(new CreateSeries(rule, [value], Guid.NewGuid())); showDate = Recurrence.Next(rule, rule.Start)!.Value;
+                var seriesId = Guid.NewGuid(); commands.Add(new CreateSeries(rule, [value], seriesId)); showDate = Recurrence.Next(rule, rule.Start)!.Value; completionRef = TodoRef.For(new(seriesId, value.Id, showDate));
             }
             else if (original?.Origin != null) commands.Add(new EditOccurrence(value, selectedScope));
             else if (parentTodo?.Origin is OccurrenceKey parentOccurrence)
@@ -230,6 +233,7 @@ internal static partial class PlannerDialogs
             if (selectedScope != EditScope.Single && !Confirm(owner, T("RepeatScope"), T("RepeatApplyConfirm") + "\n" + (scope?.SelectedItem as ScopeChoice)?.Name)) return false;
             bool allowCompletion = selectedScope == EditScope.Single && !(newRoot && type?.SelectedIndex == 3);
             if (allowCompletion && completed.IsChecked != (draft.Status == TodoStatus.Completed)) commands.Add(new SetTodoCompleted(completionRef, completed.IsChecked == true));
+            commands.AddRange(goals.Commands(todo: completionRef));
             bool ok = await controller.ExecuteAsync(new BatchCommand([.. commands]));
             if (ok)
             {

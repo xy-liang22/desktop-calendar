@@ -22,7 +22,7 @@ internal sealed class ActivityWeekView : Grid
         var header = new Grid { Margin = new Thickness(40, 0, 17, 0) }; for (int i = 0; i < 7; i++) { header.ColumnDefinitions.Add(new()); dates[i] = PlannerView.Text("", 10, "#A2AFBC"); dates[i].HorizontalAlignment = HorizontalAlignment.Center; SetColumn(dates[i], i); header.Children.Add(dates[i]); } SetRow(header, 1); main.Children.Add(header); SetRow(timeline, 2); main.Children.Add(timeline);
         Border Panel(UIElement child) => new() { Background = ThemeColors.Brush("#35101A24"), CornerRadius = new CornerRadius(12), Padding = new Thickness(14), Child = child };
         Children.Add(Panel(main)); var splitter = new GridSplitter { Width = 8, HorizontalAlignment = HorizontalAlignment.Stretch, Background = System.Windows.Media.Brushes.Transparent, ResizeDirection = GridResizeDirection.Columns, ResizeBehavior = GridResizeBehavior.PreviousAndNext }; SetColumn(splitter, 1); Children.Add(splitter);
-        var side = new StackPanel(); side.Children.Add(PlannerView.Text(MainWindow.Text("WeekPlan"), 18)); var note = PlannerView.Text(MainWindow.Text("ActivityWeekPlanned"), 12, "#A2AFBC"); note.TextWrapping = TextWrapping.Wrap; note.Margin = new Thickness(0, 10, 0, 0); side.Children.Add(note); var panel = Panel(side); SetColumn(panel, 2); Children.Add(panel);
+        var side = new ScrollViewer { Content = new WeekSummaryView(owner, c), VerticalScrollBarVisibility = ScrollBarVisibility.Auto }; var panel = Panel(side); SetColumn(panel, 2); Children.Add(panel);
         c.Changed += Refresh; owner.Closed += (_, _) => c.Changed -= Refresh; Refresh();
     }
     void Refresh()

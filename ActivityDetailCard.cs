@@ -18,6 +18,7 @@ internal sealed class ActivityDetailCard
     internal Border Card { get; } = new() { Background = ThemeColors.Brush("#F5202E3B"), BorderBrush = ThemeColors.Brush("#526474"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(12), Padding = new Thickness(12), Visibility = Visibility.Collapsed };
     internal Guid ActivityId { get; private set; }
     Guid periodId;
+    ActivitySegment? preferred;
     string contentToken = "";
     Point? drag;
     Vector offset;
@@ -33,8 +34,8 @@ internal sealed class ActivityDetailCard
     static bool Within(DependencyObject? source, DependencyObject target)
     { for (var n = source; n != null; n = n is Visual ? VisualTreeHelper.GetParent(n) : n is FrameworkContentElement f ? f.Parent : LogicalTreeHelper.GetParent(n)) if (n == target) return true; return false; }
     void Outside(object sender, MouseButtonEventArgs e) { if (IsOpen && !Within(e.OriginalSource as DependencyObject, Card)) Hide(); }
-    internal void Show(Guid id, Guid period)
-    { ActivityId = id; periodId = period; offset = new(); contentToken = ""; Card.Visibility = Visibility.Visible; Refresh(); Position(); }
+    internal void Show(Guid id, Guid period, ActivitySegment? anchor = null)
+    { ActivityId = id; periodId = period; preferred = anchor; offset = new(); contentToken = ""; Card.Visibility = Visibility.Visible; Refresh(); Position(); }
     internal void Hide() { Card.Visibility = Visibility.Collapsed; drag = null; if (Mouse.Captured is DependencyObject captured && Within(captured, Card)) Mouse.Capture(null); }
     void Refresh()
     {
@@ -59,7 +60,7 @@ internal sealed class ActivityDetailCard
     {
         if (!IsOpen || owner.Mode != DisplayMode.Normal) { if (IsOpen) Hide(); return; }
         var timeline = owner.IsWeek ? owner.WeeklyTimeline : owner.DailyTimeline;
-        var target = timeline.Cards.FirstOrDefault(x => x.Slot.Segment?.ActivityId == ActivityId && x.Slot.Segment.PeriodId == periodId).Card;
+        var target = timeline.Cards.FirstOrDefault(x => x.Slot.Segment?.ActivityId == ActivityId && x.Slot.Segment.PeriodId == periodId && (preferred == null || x.Slot.Segment.Date == preferred.Date && x.Slot.Segment.Offset == preferred.Offset)).Card;
         if (target == null || !target.IsVisible) { Hide(); return; }
         try
         {

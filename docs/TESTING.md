@@ -1,5 +1,55 @@
 # 阶段验证记录
 
+## 2026-11-03：P5.1 + P6最终交付
+
+P5.1已独立提交/推送332b73e；P6为其后增量。应用/Core0.6.0，业务schema3不变；窗口偏好schema2兼容新增周首日/周计划布局。**已执行范围内通过，不把实际键鼠或未测兼容性称为通过；不进入P7。**
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Test-Planner.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Test-P3.ps1 -Configuration P6
+powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -Configuration P6Regression -Test
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Publish-DesktopCalendar.ps1 -Configuration P6
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-UserInstall.ps1
+```
+
+| 范围 | 最终结果 | 证据与限度 |
+|---|---|---|
+| 数据/存储/业务 | **253 PASS / 0 FAIL / 1 NOT VERIFIED** | artifacts/p2-checks/checks.txt，历史Samoa2011资料不完整仍保留NOT VERIFIED |
+| P3–P6真实Window/控件/事务/新进程 | **234 PASS / 0 FAIL** | artifacts/p3-checks/run-523ecb2f3e9d44d4a303f03c0d8e0563；main/restart/corrupt/newer独立进程 |
+| 桌面owner/窗口/偏好/缩放基线 | **374 PASS / 0 FAIL** | artifacts/p1-checks.txt，P6Regression，正常用户桌面会话 |
+| 发布包/隔离安装更新卸载启动 | **15 PASS / 0 FAIL** | artifacts/install-checks.txt，只写项目artifacts，不替换真实安装入口 |
+| 编译/框架依赖发布 | **PASS：0警告/0错误** | bin/P6/net10.0-windows与artifacts/package 0.6.0 |
+
+执行在Windows原生、现有SDK、离线源下进行；无新包、管理员安装、系统/Explorer/显示配置变更。所有业务JSON、合成图片、只读测试、控件图均在忽略的artifacts；不访问真实个人planner-data.json或私有截图。GUI测试串行，纯Core测试可独立执行。
+
+### 实际覆盖
+
+- **PASS / 目标**：GUI新增数量、切换时长并确认来源变化、勾选完成、多个Todo/Activity关联、手动覆盖与恢复自动、删除确认/Undo；禁止Todo当实际时长，类型变更保留原导航关联。已有与当场新建目标从待办/日程编辑均可关联，父事项保存后才写引用；新系列关联稳定首发生实例。数据层额外覆盖来源单选、同目标区间并集、类型变更必须确认、跨类别百分比和大于100%。
+- **PASS / 总结**：真实Sheet编辑Markdown、实时预览、增删小节、插入独立统计快照；非法空小节/真实只读文件失败均保留草稿，取消快照不增加Revision。保存正文不抹旧快照，重算/修改日程不覆盖人写文字，Undo/Redo整事务恢复。总结与同周目标ReviewId建立关联，新进程保留正文/小节/快照/目标引用。
+- **PASS / 周与设置**：Sunday首日同时影响月历首列、七天轴和目标上下文；前后周按钮与SelectedDate同步。周首日、两种布局在偏好保存并经独立进程恢复；历史WeekKey不变。Core Configure不写JSON/Revision、不清Undo，后续Undo保留当前Options；Reload保留本地时区与首日。原先默认Reload可能回UTC的路径已修正。
+- **PASS / 布局与图片**：窄栏和每周摘要条真实生成；最小880×520、六周日期头至少21DIP，低高度仅调整留白/条高，不循环重建日历。条内容浮动展开不撑高某周；目标状态/进度可见。P5.1大图100%物理像素计算、适应、缩放、父稿不保存、编辑器移位夹屏；跨天同段详情新增Date/Offset锚点断言，定位到被点的第二天，不误找第一天。
+- **PASS / 渲染检查**：查看p6-goal-editor、p6-review-editor、p6-month-side、p6-month-strips、p6-minimum、p6-week-plan-stats、p6-week-review-view及p6-crossday-anchor图。源为实际WPF布局后的RenderTargetBitmap，**不是桌面像素截图**。已核对源码/预览双列、摘要文字、目标菜单/统计/小窗口日期；不以控件属性代替图像观察。
+
+### 失败与修复记录
+
+1. 最初编译调用了不存在的CategoryTimes，按真实API改为CategoryStatistics，最终无警告/错误；没有复制第二套统计算法。
+2. 旧内联焦点异常在P5.1再次触发，保护迟到Loaded及重建失焦回调后多轮通过；保留原断言与P5.1报告。找回测试最初查原屏工作区，改查移动后的当前屏并等待布局。
+3. P6图像显示摘要条文字裁剪，根因DarkToggle模板把Padding硬编码为6,4；改为默认值+TemplateBinding，让紧凑条Padding生效，非编辑下拉仍同样外观。删除按钮移入目标⋯菜单，空进度/分类条去掉默认白边。
+4. 周总结第一张预览图空白是自动驱动未等220ms合并刷新；后续等待实际定时刷新、断言预览含正文再截图。只读失败检查后先显式Reload恢复状态再拍最终布局，避免把故意的保存错误提示误当正常状态。
+5. 一次正常桌面测试审批审查超时未执行，按工具允许重试一次成功，无权限绕过或429循环。P6最终批次234/0、253/0，无未解决FAIL。
+6. 增加小节删除/Undo检查时，连续打开新系列编辑器出现一次No modal（run-67074b343cc848bf92ad8e37dabba4a2）。初始激活还未稳定即触发失活保存；仅首次稳定激活后接受Deactivated提交，实际外部鼠标请求仍立即处理。驱动也明确激活并等布局后输入，保留原外部保存/取消断言，最终234/0；不简单重试或跳过失败步骤。
+
+### NOT VERIFIED / 最少人工观察
+
+computer-use技能已按要求读取并两次list_windows，均native pipe不存在（os error2）；无法获得可选窗口、物理输入或屏幕像素。实际标题拖动、块间单击切换、图片滚轮/平移手感仍**NOT VERIFIED**；WPF路由/方法、Native边界、控件图是各自独立证据。Win10、混合DPI硬件、Explorer重启、休眠、物理断电/满盘及长期资源消耗保留旧验证边界；偶发轻微主窗缩放抖动仍是用户已接受限制。
+
+退出旧实例，从bin/P6/net10.0-windows/DesktopCalendar.exe启动，仅需两组：
+
+1. 拖动待办/日程编辑器标题，单击另一日程切换锚定详情、滚动时间轴后看卡片是否跟随/关闭；点备注图试滚轮/平移/Esc返回，确认原输入与滚动保留。此组只验物理手感，不重复已通过的保存矩阵。
+2. 在设置切月历周计划两布局、放大/缩小窗口，查看周侧栏目标/统计/总结及窄窗口摘要是否清楚可读。数据计数、去重、类型切换、周切换与重启已自动通过，无需再次逐项点击。
+
+不要求重复旧Win+D/任务栏/Alt+Tab验收，不让用户重测Core数据边界。完整ZIP、孤儿图片清理和P7历法/完整双语尚未实现。P6结束停止，等待下一阶段授权。
+
 ## 2026-11-03：P5.1编辑窗口与图片交互
 
 独立于随后P6提交；0.5.1/dev/p6，`Test-P3.ps1 -Configuration P51`最终 **202 PASS / 0 FAIL**，0警告/错误。报告artifacts/p3-checks/run-066e36b3b2454818ab798e156eccd245。旧P3–P5全部检查仍执行，新增真实owned Window移位/Fit、图片Viewer物理像素100%/适应/缩放、父草稿/Revision不变、详情上下/侧边避让与拖动夹入断言。已查看p5-local-image-preview、p5-detail及p51-image-viewer控件图；图片实际适应预览宽度，卡片在主窗口内，不是独立详情Window。

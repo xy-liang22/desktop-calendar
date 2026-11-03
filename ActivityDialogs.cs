@@ -83,11 +83,9 @@ internal static class ActivityDialogs
         var choices = new[] { new TodoChoice(null, T("ActivityNoLink")) }.Concat(todos.Select(t => new TodoChoice(TodoRef.Of(t), t.PlannedDate.ToString("yyyy-MM-dd") + " · " + t.Title))).ToArray();
         var linked = new ComboBox { ItemsSource = choices, DisplayMemberPath = nameof(TodoChoice.Name), SelectedItem = choices.FirstOrDefault(x => x.Reference == value.Todo) ?? choices[0], MinHeight = 28 }; sheet.Field("ActivityTodo", linked);
         linked.SelectionChanged += (_, _) => { if ((linked.SelectedItem as TodoChoice)?.Reference is TodoRef r) { try { var t = PlannerQueries.Resolve(c.State!, r); if (appearance.CategoryId == null) appearance.Refresh(t.CategoryId); } catch (PlannerException) { } } };
-        var goals = new Dictionary<Guid, CheckBox>(); var initialGoals = c.State.Goals.Where(g => g.Activities.Contains(value.Id)).Select(g => g.Id).ToHashSet();
-        var goalArea = new StackPanel(); foreach (var g in c.State.Goals.OrderBy(g => g.Week.Start)) { var box = new CheckBox { Content = g.Week.Start.ToString("yyyy-MM-dd") + " · " + g.Title, IsChecked = initialGoals.Contains(g.Id), Margin = new Thickness(0, 3, 0, 3) }; goals[g.Id] = box; goalArea.Children.Add(box); }
-        var goalSection = new Expander { Header = T("ActivityGoal"), Content = goalArea }; sheet.Body.Children.Add(goalSection);
+        var goals = new GoalLinks(owner, c, activity: value.Id); sheet.Body.Children.Add(new Expander { Header = T("ActivityGoal"), Content = goals });
         var notes = new NoteEditor(c, value.Notes, sheet); sheet.Field("ActivityNotes", notes);
-        string Signature() => JsonSerializer.Serialize(new { Title = title.Text, Summary = summary.Text, Emoji = emoji.Text, Reaction = reaction.Text, Zone = zone.Text, appearance.CategoryId, Color = appearance.Color.Value, Periods = rows.Select(r => new { r.Id, Start = r.Start.Text, End = r.End.Text, A = r.StartOffset.Text, B = r.EndOffset.Text }), Todo = (linked.SelectedItem as TodoChoice)?.Reference, Goals = goals.Where(x => x.Value.IsChecked == true).Select(x => x.Key).ToArray(), Text = notes.Source.Text, Format = notes.Format.SelectedIndex });
+        string Signature() => JsonSerializer.Serialize(new { Title = title.Text, Summary = summary.Text, Emoji = emoji.Text, Reaction = reaction.Text, Zone = zone.Text, appearance.CategoryId, Color = appearance.Color.Value, Periods = rows.Select(r => new { r.Id, Start = r.Start.Text, End = r.End.Text, A = r.StartOffset.Text, B = r.EndOffset.Text }), Todo = (linked.SelectedItem as TodoChoice)?.Reference, Goals = goals.Signature, Text = notes.Source.Text, Format = notes.Format.SelectedIndex });
         string initial = Signature();
         sheet.Save(async () =>
         {
@@ -102,10 +100,10 @@ internal static class ActivityDialogs
             var commands = new List<PlannerCommand>();
             foreach (var asset in notes.Images.Pending.Where(a => saved.Notes.AssetIds.Contains(a.Id) && !c.State!.Assets.Any(x => x.Id == a.Id))) { if (notes.Images.Read(asset.RelativePath) == null) { sheet.Error.Text = T("ActivityImageError"); return false; } commands.Add(new SaveAsset(asset)); }
             commands.Add(new SaveActivity(saved, false));
-            foreach (var g in c.State!.Goals) { bool chosen = goals.TryGetValue(g.Id, out var box) && box.IsChecked == true; if (chosen != g.Activities.Contains(saved.Id)) commands.Add(new SaveGoal(g with { Activities = chosen ? g.Activities.Add(saved.Id) : g.Activities.Remove(saved.Id) })); }
+            commands.AddRange(goals.Commands(activity: saved.Id));
             bool ok = await c.ExecuteAsync(new BatchCommand([.. commands])); if (!ok) sheet.Error.Text = T(c.NoticeKey); return ok;
         }, true);
         sheet.Loaded += (_, _) => title.Focus(); return PlannerDialogs.Show(owner, sheet) == true;
     }
-    internal static void Detail(MainWindow owner, PlannerController c, Guid id, Guid periodId) => owner.ActivityDetails?.Show(id, periodId);
+    internal static void Detail(MainWindow owner, PlannerController c, Guid id, Guid periodId, ActivitySegment? anchor = null) => owner.ActivityDetails?.Show(id, periodId, anchor);
 }

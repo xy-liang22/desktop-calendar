@@ -21,7 +21,7 @@ internal static partial class StageThreeChecks
         _ = Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(async () =>
         {
             var dialog = Application.Current.Windows.OfType<PlannerDialogs.Sheet>().LastOrDefault();
-            try { if (dialog == null) throw new Exception("No modal"); await action(dialog); }
+            try { if (dialog == null) throw new Exception("No modal"); dialog.Activate(); await Idle(); await action(dialog); }
             catch (Exception ex) { results.Add("FAIL P3.1 modal " + ex); }
             finally { if (dialog?.IsVisible == true) Click(dialog.Actions.Children.OfType<Button>().First()); done.SetResult(); }
         }));

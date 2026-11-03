@@ -60,6 +60,7 @@ public partial class MainWindow : Window
         fullPlacement = preferences.FullPlacement ?? (preferences.HasBounds ? WindowPlacement.Legacy(preferences.Bounds) : null);
         compactPlacement = preferences.CompactPlacement;
         InitializeComponent();
+        WeekStartChoice.ItemsSource = System.Globalization.CultureInfo.GetCultureInfo("zh-CN").DateTimeFormat.DayNames;
         GuiNextMonitorButton.Visibility = session.VisualChecks ? Visibility.Visible : Visibility.Collapsed;
         DailyTimeline = new TimelineView(false, 3, preferences.DayHourHeight);
         WeeklyTimeline = new TimelineView(true, 0, preferences.WeekHourHeight);
@@ -119,10 +120,13 @@ public partial class MainWindow : Window
     }
     void CategorySettingsClick(object sender, RoutedEventArgs e) { if (Session.Planner?.Writable == true) PlannerDialogs.ManageCategories(this, Session.Planner); }
     void CalendarWrappingChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e) { if (CalendarWrapping.SelectedIndex >= 0) Session.Planner?.SetTextMode((CalendarTextMode)CalendarWrapping.SelectedIndex); }
+    async void WeekStartChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e) { if (WeekStartChoice.SelectedIndex >= 0 && Session.Planner != null) await Session.Planner.SetWeekStartAsync((DayOfWeek)WeekStartChoice.SelectedIndex); }
+    void WeekLayoutChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e) { if (WeekLayoutChoice.SelectedIndex >= 0) Session.Planner?.SetWeekLayout((WeekPlanLayout)WeekLayoutChoice.SelectedIndex); }
     void RefreshPlanner()
     {
         var planner = Session.Planner!;
         CalendarWrapping.SelectedIndex = (int)planner.TextMode;
+        WeekStartChoice.SelectedIndex = (int)planner.WeekStart; WeekLayoutChoice.SelectedIndex = (int)planner.WeekLayout;
         PlannerFooter.Text = CompactNotice.Text = Text(planner.NoticeKey);
         PlannerFooter.ToolTip = planner.Diagnostic.Length == 0 ? Text(planner.NoticeKey) : planner.Diagnostic;
         var noticeBrush = PrototypeViews.Brush(planner.NoticeKey is "PlannerLocal" or "PlannerLoading" or "PlannerSaving" ? "#A3D9C4" : "#E3BF89");
@@ -222,7 +226,8 @@ public partial class MainWindow : Window
             DayHourHeight = DailyTimeline.HourHeight, WeekHourHeight = WeeklyTimeline.HourHeight,
             PlannerDate = Session.Planner?.SelectedDate ?? Session.Preferences.PlannerDate, PlannerMonth = Session.Planner?.Month ?? Session.Preferences.PlannerMonth,
             CalendarColorBackground = Session.Planner?.ColorBackground ?? Session.Preferences.CalendarColorBackground,
-            CalendarTextMode = Session.Planner?.TextMode ?? Session.Preferences.CalendarTextMode };
+            CalendarTextMode = Session.Planner?.TextMode ?? Session.Preferences.CalendarTextMode,
+            WeekStart = Session.Planner?.WeekStart ?? Session.Preferences.WeekStart, WeekPlanLayout = Session.Planner?.WeekLayout ?? Session.Preferences.WeekPlanLayout };
         p.SetBounds(fullPlacement?.Bounds ?? SavedBounds);
         if (monthPage.IsVisible) p.MonthColumns = ColumnWidths(monthPage);
         if (weekPage.IsVisible) p.WeekColumns = ColumnWidths(weekPage);

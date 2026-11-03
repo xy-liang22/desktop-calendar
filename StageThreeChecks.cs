@@ -72,6 +72,7 @@ internal static partial class StageThreeChecks
                 var activityId = Guid.Parse(File.ReadAllText(Path.Combine(DirectoryPath, "p5-activity-id.txt"))); var activity = controller.State!.Activities.Single(a => a.Id == activityId); var assets = new LocalImages(controller.DataDirectory, () => controller.State);
                 Check("independent restart restores actual periods notes emoji links and verified relative image", activity.Intervals.Length == 2 && activity.Notes.Text.Contains("assets/images/") && activity.Emoji == "😴" && activity.Todo != null && activity.Notes.AssetIds.All(id => assets.Read(controller.State.Assets.Single(a => a.Id == id).RelativePath) != null));
                 var savedRoot = Guid.Parse(File.ReadAllText(Path.Combine(DirectoryPath, "p31-snapshot-id.txt")));
+                var p6 = File.ReadAllLines(Path.Combine(DirectoryPath, "p6-ids.txt")).Select(Guid.Parse).ToArray(); var review = controller.State.Reviews.Single(r => r.Id == p6[1]); Check("fresh process restores goals and independent review text", controller.State.Goals.Single(g => g.Id == p6[0]).ReviewId == review.Id && review.Markdown.Contains("Edited later") && review.Sections.Length == 1 && review.Statistics.Length == 1 && controller.WeekLayout == WeekPlanLayout.SummaryStrip && controller.WeekStart == DayOfWeek.Sunday);
                 var snapshot = controller.State!.Todos.Single(x => x.Id == savedRoot).CompletionSnapshot;
                 Check("fresh process retains manual cascade source and child snapshot", snapshot?.Entries.Length == 2 && controller.State.Todos.Single(x => x.Id == savedRoot).CompletionIntent == CompletionIntent.ManualComplete);
                 await controller.ExecuteAsync(new SetTodoCompleted(new(savedRoot), false));
@@ -193,6 +194,7 @@ internal static partial class StageThreeChecks
                 await RunP4Checks(window);
                 await RunP5Checks(window);
                 await RunP51Checks(window);
+                await RunP6Checks(window);
                 view.Quick.Text = "recovery draft"; session.TestWindowLoss(); await Task.Delay(150); window = session.Window;
                 window.Show();
                 for (int i = 0; i < 100 && !window.Ready; i++) await Task.Delay(50);

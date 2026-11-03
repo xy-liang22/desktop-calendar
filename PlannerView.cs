@@ -22,6 +22,10 @@ internal sealed class PlannerView : Grid
     internal TodoAppearance QuickAppearance { get; }
     readonly TextBlock monthTitle, dateTitle, notice, empty;
     readonly Grid calendarHost = new();
+    readonly Grid weekdayHost = new();
+    bool renderedWeekSide, resizeQueued;
+    DayOfWeek renderedWeekStart;
+    WeekPlanLayout renderedWeekLayout;
     internal StackPanel Items { get; } = new();
     readonly Button add, quickAdd, undo, redo, reload, recover;
     readonly Dictionary<DateOnly, Button> days = [];
@@ -60,9 +64,8 @@ internal sealed class PlannerView : Grid
         navButtons.Children.Add(Button("‹", () => Controller.Navigate(-1), T("PlannerPrevious"))); navButtons.Children.Add(Button(T("PlannerToday"), () => Controller.Select(Controller.Today, true))); navButtons.Children.Add(Button("›", () => Controller.Navigate(1), T("PlannerNext")));
         DockPanel.SetDock(navButtons, Dock.Right); nav.Children.Add(navButtons);
         monthTitle = Text("", 20); nav.Children.Add(monthTitle); At(calendar, nav);
-        var weekdays = new UniformGrid { Columns = 7 };
-        foreach (var day in new[] { "PlannerMon", "PlannerTue", "PlannerWed", "PlannerThu", "PlannerFri", "PlannerSat", "PlannerSun" }) { var label = Text(T(day), 11, "#A2AFBC"); label.HorizontalAlignment = HorizontalAlignment.Center; weekdays.Children.Add(label); }
-        At(calendar, weekdays, 1); At(calendar, calendarHost, 2);
+        At(calendar, weekdayHost, 1); At(calendar, calendarHost, 2);
+        calendarHost.SizeChanged += (_, _) => { UpdateWeekDensity(); if (resizeQueued || renderedWeekSide == (Controller.WeekLayout == WeekPlanLayout.SideColumn && calendarHost.ActualWidth >= 430)) return; resizeQueued = true; Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, new Action(() => { resizeQueued = false; renderedMonth = default; Refresh(); })); };
         var colorMode = new CheckBox { Content = T("PlannerColorBackground"), IsChecked = Controller.ColorBackground, Margin = new Thickness(0, 8, 0, 0), FontSize = 10 };
         colorMode.Click += (_, _) => Controller.SetColors(colorMode.IsChecked == true); At(calendar, colorMode, 3);
         var todo = RowGrid(GridLength.Auto, new GridLength(1, GridUnitType.Star), GridLength.Auto, GridLength.Auto);
@@ -112,8 +115,8 @@ internal sealed class PlannerView : Grid
         if (Controller.State != null && renderedCategories != Controller.State.Categories) { QuickAppearance.Refresh(); renderedCategories = Controller.State.Categories; }
         undo.IsEnabled = Controller.CanUndo; redo.IsEnabled = Controller.CanRedo;
         reload.IsEnabled = !Controller.Busy; recover.IsEnabled = !Controller.Busy && Controller.Storage?.Status != StoreStatus.NewerSchema && Controller.Storage?.Candidates.Length > 0;
-        if (rendered != Controller.State || renderedMonth != Controller.Month || renderedColors != Controller.ColorBackground || renderedToday != Controller.Today || renderedInline != Controller.Inline || renderedTextMode != Controller.TextMode)
-        { BuildCalendar(); rendered = Controller.State; renderedMonth = Controller.Month; renderedColors = Controller.ColorBackground; renderedToday = Controller.Today; renderedInline = Controller.Inline; renderedTextMode = Controller.TextMode; }
+        if (rendered != Controller.State || renderedMonth != Controller.Month || renderedColors != Controller.ColorBackground || renderedToday != Controller.Today || renderedInline != Controller.Inline || renderedTextMode != Controller.TextMode || renderedWeekStart != Controller.WeekStart || renderedWeekLayout != Controller.WeekLayout)
+        { BuildCalendar(); rendered = Controller.State; renderedMonth = Controller.Month; renderedColors = Controller.ColorBackground; renderedToday = Controller.Today; renderedInline = Controller.Inline; renderedTextMode = Controller.TextMode; renderedWeekStart = Controller.WeekStart; renderedWeekLayout = Controller.WeekLayout; }
         foreach (var day in days) day.Value.BorderBrush = PrototypeViews.Brush(day.Key == Controller.SelectedDate ? "#A3D9C4" : day.Key == Controller.Today ? "#607C9DB0" : "#00FFFFFF");
         Items.Children.Clear(); var rows = Controller.Tree(Controller.SelectedDate); empty.Visibility = rows.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         empty.Text = Controller.Storage?.CanWrite == true ? T("PlannerEmpty") : T(Controller.NoticeKey);
@@ -121,18 +124,23 @@ internal sealed class PlannerView : Grid
         // Calendar checkboxes do not optimistically mutate data while a write is pending.
         calendarHost.IsEnabled = !Controller.Busy && !Controller.Stopping;
     }
-    internal static DateOnly?[] MonthDates(DateOnly month)
+    internal static DateOnly?[] MonthDates(DateOnly month, DayOfWeek firstDay = DayOfWeek.Monday)
     {
-        var first = new DateOnly(month.Year, month.Month, 1); int offset = ((int)first.DayOfWeek + 6) % 7;
+        var first = new DateOnly(month.Year, month.Month, 1); int offset = ((int)first.DayOfWeek - (int)firstDay + 7) % 7;
         int count = ((offset + DateTime.DaysInMonth(first.Year, first.Month) + 6) / 7) * 7;
         return Enumerable.Range(0, count).Select(i => first.DayNumber + i - offset).Select(n => n < 0 || n > DateOnly.MaxValue.DayNumber ? (DateOnly?)null : DateOnly.FromDayNumber(n)).ToArray();
     }
     void BuildCalendar()
     {
-        calendarHost.Children.Clear(); days.Clear(); var dates = MonthDates(Controller.Month); var grid = new UniformGrid { Columns = 7, Rows = dates.Length / 7 };
-        foreach (var value in dates)
+        calendarHost.Children.Clear(); days.Clear(); var dates = MonthDates(Controller.Month, Controller.WeekStart); var grid = new Grid(); renderedWeekSide = Controller.WeekLayout == WeekPlanLayout.SideColumn && calendarHost.ActualWidth >= 430;
+        weekdayHost.Children.Clear(); weekdayHost.ColumnDefinitions.Clear();
+        string[] names = ["PlannerSun", "PlannerMon", "PlannerTue", "PlannerWed", "PlannerThu", "PlannerFri", "PlannerSat"];
+        for (int i = 0; i < 7; i++) { grid.ColumnDefinitions.Add(new()); weekdayHost.ColumnDefinitions.Add(new()); var label = Text(T(names[((int)Controller.WeekStart + i) % 7]), 11, "#A2AFBC"); label.HorizontalAlignment = HorizontalAlignment.Center; At(weekdayHost, label, 0, i); }
+        if (renderedWeekSide) { grid.ColumnDefinitions.Add(new() { Width = new GridLength(74) }); weekdayHost.ColumnDefinitions.Add(new() { Width = new GridLength(74) }); At(weekdayHost, Text(T("WeekPlan"), 10, "#A2AFBC"), 0, 7); }
+        for (int row = 0; row < dates.Length / 7; row++) { grid.RowDefinitions.Add(new()); if (!renderedWeekSide) grid.RowDefinitions.Add(new() { Height = new GridLength(22) }); var date = dates.Skip(row * 7).Take(7).OfType<DateOnly>().First(); var key = Controller.Week(date); var plan = MonthWeekPlan.Create(owner, Controller, key, renderedWeekSide); At(grid, plan, renderedWeekSide ? row : row * 2 + 1, renderedWeekSide ? 7 : 0); if (!renderedWeekSide) SetColumnSpan(plan, 7); }
+        for (int index = 0; index < dates.Length; index++)
         {
-            if (value is not DateOnly date) { grid.Children.Add(new Border()); continue; }
+            var value = dates[index]; if (value is not DateOnly date) { At(grid, new Border(), renderedWeekSide ? index / 7 : index / 7 * 2, index % 7); continue; }
             var tasks = Controller.On(date);
             var entries = new List<CalendarTodoEntry>();
             void AddCalendar(TodoDateNode node, int depth)
@@ -155,9 +163,18 @@ internal sealed class PlannerView : Grid
             button.Click += (_, e) => { if (ReferenceEquals(e.Source, button)) Controller.Select(date); };
             button.MouseDoubleClick += (_, e) => { if (!InputOrigin(e.OriginalSource as DependencyObject, button)) { e.Handled = true; FocusDate(date); } };
             var menu = new ContextMenu(); var colorItem = new MenuItem { Header = T("PlannerDateColor") }; colorItem.Click += (_, _) => PlannerDialogs.Decoration(owner, Controller, date); menu.Items.Add(colorItem); button.ContextMenu = menu;
-            AutomationProperties.SetName(button, date.ToString("yyyy-MM-dd")); days.Add(date, button); grid.Children.Add(button);
+            AutomationProperties.SetName(button, date.ToString("yyyy-MM-dd")); days.Add(date, button); At(grid, button, renderedWeekSide ? index / 7 : index / 7 * 2, index % 7);
         }
-        calendarHost.Children.Add(grid);
+        calendarHost.Children.Add(grid); UpdateWeekDensity();
+    }
+    void UpdateWeekDensity()
+    {
+        if (renderedWeekSide || calendarHost.Children.OfType<Grid>().FirstOrDefault() is not Grid grid) return;
+        int weeks = grid.RowDefinitions.Count / 2; if (weeks == 0) return;
+        double strip = Math.Clamp(Math.Floor(calendarHost.ActualHeight / weeks - 26), 14, 22); bool compact = (calendarHost.ActualHeight - strip * weeks) / weeks < 34;
+        for (int i = 1; i < grid.RowDefinitions.Count; i += 2) if (Math.Abs(grid.RowDefinitions[i].Height.Value - strip) > .1) grid.RowDefinitions[i].Height = new GridLength(strip);
+        foreach (var toggle in grid.Children.OfType<ToggleButton>()) { toggle.Height = strip - 2; toggle.FontSize = Math.Min(10, (strip - 4) * .7); }
+        foreach (var button in days.Values) { button.Margin = compact ? new Thickness(1, 0, 1, 0) : new Thickness(2); if (button.Content is CalendarPreviewCell cell) cell.Margin = compact ? new Thickness(2, 0, 2, 0) : new Thickness(4, 4, 2, 2); }
     }
     internal static string Prefix(Todo t) => t.PlannedTime is TimeOnly time ? time.ToString("HH:mm", CultureInfo.InvariantCulture) + " " : "";
     internal static string KindMark(Todo t) => t.Kind switch { TodoKind.Occurrence => "↻", TodoKind.CarryHistory or TodoKind.CarryLatest => "←", _ => "" };

@@ -16,6 +16,13 @@ public sealed class PlannerWorkspace
     volatile StoreLoad loaded;
     public PlannerState? Snapshot => loaded.State;
     public StoreLoad Storage => loaded;
+    public async Task ConfigureAsync(PlannerOptions options, CancellationToken ct = default)
+    {
+        PlannerIntegrity.ValidateOptions(options);
+        await gate.WaitAsync(ct).ConfigureAwait(false);
+        try { if (loaded.State != null) { var next = loaded.State with { Options = options }; PlannerIntegrity.Validate(next); loaded = loaded with { State = next }; } }
+        finally { gate.Release(); }
+    }
     public bool CanUndo => undo.Count > 0 && loaded.CanWrite;
     public bool CanRedo => redo.Count > 0 && loaded.CanWrite;
     PlannerWorkspace(PlannerStore store, StoreLoad loaded, Func<DateTimeOffset>? clock)
