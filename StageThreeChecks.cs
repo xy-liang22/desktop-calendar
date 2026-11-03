@@ -27,7 +27,7 @@ internal static partial class StageThreeChecks
     }
     static readonly List<string> results = [];
     static bool started;
-    static void Check(string name, bool pass) => results.Add((pass ? "PASS " : "FAIL ") + name);
+    static void Check(string name, bool pass) { results.Add((pass ? "PASS " : "FAIL ") + name); File.WriteAllLines(Path.Combine(DirectoryPath, "progress-checks.txt"), results); }
     static IEnumerable<T> Children<T>(DependencyObject obj) where T : DependencyObject
     {
         for (int i = 0; i < VisualTreeHelper.GetChildrenCount(obj); i++)
@@ -63,6 +63,7 @@ internal static partial class StageThreeChecks
             if (phase == "restart")
             {
                 Check("fresh WPF process loads entire prior committed planner graph", Digest(controller.State!) == File.ReadAllText(Path.Combine(DirectoryPath, "expected-hash.txt")));
+                Check("fresh process restores English appearance and fixed row preferences", Localization.English && window.Appearance.UiLanguage == "en" && window.Appearance.BackgroundColor == "#20323A" && window.Appearance.FixedSixRows);
                 Check("fresh WPF process restores collapsed view with real today items", window.Mode == DisplayMode.Compact && window.CompactRealList.Children.OfType<CheckBox>().Any());
                 Check("startup has no visible default full layout", !window.VisibleBeforePrepared && window.StartupVisible.All(v => v.Mode == DisplayMode.Compact));
                 Check("manual sibling mode survives actual app restart", controller.State!.TodoOrderings.Any(o => o.Mode == TodoSort.Manual));
@@ -210,7 +211,7 @@ internal static partial class StageThreeChecks
                 var beforeFailure = controller.State; window.PlannerView.Quick.Text = "failed draft"; File.SetAttributes(controller.FilePath, FileAttributes.ReadOnly);
                 try { Check("failed GUI save retains draft/state and shows compact error", !await window.PlannerView.AddQuickAsync() && window.PlannerView.Quick.Text == "failed draft" && controller.State == beforeFailure && controller.NoticeKey == "PlannerSaveFailed" && window.CompactNotice.Text == MainWindow.Text("PlannerSaveFailed")); }
                 finally { File.SetAttributes(controller.FilePath, FileAttributes.Normal); }
-                window.PlannerView.Quick.Clear(); await RunP7Checks(window);
+                window.PlannerView.Quick.Clear(); await RunP7Checks(window); window = await RunP8Checks(window);
             }
         }
         catch (Exception ex) { results.Add("FAIL unhandled " + ex); }

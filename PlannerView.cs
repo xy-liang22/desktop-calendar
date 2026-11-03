@@ -23,6 +23,7 @@ internal sealed class PlannerView : Grid
     readonly TextBlock monthTitle, dateTitle, notice, empty;
     readonly Grid calendarHost = new();
     readonly Grid weekdayHost = new();
+    readonly StackPanel navButtons = new() { Orientation = Orientation.Horizontal };
     bool renderedWeekSide, resizeQueued;
     DayOfWeek renderedWeekStart;
     WeekPlanLayout renderedWeekLayout;
@@ -48,7 +49,7 @@ internal sealed class PlannerView : Grid
         var b = new Button { Content = text, Padding = new Thickness(7, 5, 7, 5), ToolTip = hint ?? text, Margin = new Thickness(2) };
         AutomationProperties.SetName(b, hint ?? text); b.Click += (_, _) => action(); return b;
     }
-    static Border Panel(UIElement child) => new() { Child = child, Padding = new Thickness(12), CornerRadius = new CornerRadius(12), Background = PrototypeViews.Brush("#35101A24") };
+    static Border Panel(UIElement child) { var panel = new Border { Child = child, Padding = new Thickness(12), CornerRadius = new CornerRadius(12) }; panel.SetResourceReference(Border.BackgroundProperty, "PanelBackground"); return panel; }
     static Grid RowGrid(params GridLength[] heights) { var g = new Grid(); foreach (var h in heights) g.RowDefinitions.Add(new() { Height = h }); return g; }
     static void At(Grid g, UIElement child, int row = 0, int col = 0) { SetRow(child, row); SetColumn(child, col); g.Children.Add(child); }
     static GridSplitter Splitter() => new() { Width = 8, HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Stretch, Background = Brushes.Transparent, ResizeDirection = GridResizeDirection.Columns, ResizeBehavior = GridResizeBehavior.PreviousAndNext, ToolTip = T("SplitTip") };
@@ -60,8 +61,9 @@ internal sealed class PlannerView : Grid
         foreach (var pair in new[] { (5.2, 340d), (0d, 0d), (2.7, 200d), (0d, 0d), (2.9, 220d) }) ColumnDefinitions.Add(new() { Width = pair.Item1 == 0 ? new GridLength(8) : new GridLength(pair.Item1, GridUnitType.Star), MinWidth = pair.Item2 });
         var calendar = RowGrid(GridLength.Auto, new GridLength(28), new GridLength(1, GridUnitType.Star), GridLength.Auto);
         var nav = new DockPanel { Margin = new Thickness(0, 0, 0, 10) };
-        var navButtons = new StackPanel { Orientation = Orientation.Horizontal };
-        navButtons.Children.Add(Button("‹", () => Controller.Navigate(-1), T("PlannerPrevious"))); navButtons.Children.Add(Button(T("PlannerToday"), () => Controller.Select(Controller.Today, true))); navButtons.Children.Add(Button("›", () => Controller.Navigate(1), T("PlannerNext")));
+        navButtons.Children.Add(Button("‹", () => NavigateCalendar(-1), T("CalendarPreviousPage"))); navButtons.Children.Add(Button(T("PlannerToday"), () => { owner.ApplyAppearance(owner.Appearance with { FixedWeekOffset = 0 }); Controller.Select(Controller.Today, true); })); navButtons.Children.Add(Button("›", () => NavigateCalendar(1), T("CalendarNextPage")));
+        navButtons.Children.Add(Button("⌄", () => ApplicationSettings.ChooseMonth(owner), T("CalendarChooseMonth")));
+        var previousRow = Button("↑", () => ShiftWeeks(-1), T("CalendarPreviousRow")); previousRow.Tag = "fixed-row-nav"; var nextRow = Button("↓", () => ShiftWeeks(1), T("CalendarNextRow")); nextRow.Tag = "fixed-row-nav"; navButtons.Children.Add(previousRow); navButtons.Children.Add(nextRow);
         DockPanel.SetDock(navButtons, Dock.Right); nav.Children.Add(navButtons);
         monthTitle = Text("", 20); nav.Children.Add(monthTitle); At(calendar, nav);
         At(calendar, weekdayHost, 1); At(calendar, calendarHost, 2);
@@ -108,7 +110,8 @@ internal sealed class PlannerView : Grid
     internal void FocusDate(DateOnly date) { Controller.Select(date); owner.ShowPlannerMonth(); Quick.Focus(); }
     internal void Refresh()
     {
-        monthTitle.Text = Controller.Month.ToString(T("PlannerMonthFormat"), Localization.Culture);
+        monthTitle.Text = owner.Appearance.FixedSixRows && days.Count > 0 ? days.Keys.Min().ToString("yyyy-MM-dd") + " – " + days.Keys.Max().ToString("MM-dd") : Controller.Month.ToString(T("PlannerMonthFormat"), Localization.Culture); monthTitle.FontSize = owner.Appearance.FixedSixRows ? 14 : 20; monthTitle.ToolTip = monthTitle.Text;
+        foreach (var b in navButtons.Children.OfType<Button>().Where(b => b.Tag as string == "fixed-row-nav")) b.IsEnabled = owner.Appearance.FixedSixRows;
         dateTitle.Text = CalendarPresentation.Detail(owner.Session.Calendar, Controller.SelectedDate); dateTitle.TextWrapping = TextWrapping.Wrap; dateTitle.MaxHeight = 100; dateTitle.ToolTip = dateTitle.Text;
         notice.Text = T(Controller.NoticeKey); notice.ToolTip = Controller.Diagnostic;
         add.IsEnabled = quickAdd.IsEnabled = Quick.IsEnabled = QuickAppearance.IsEnabled = Controller.Writable;
@@ -131,9 +134,16 @@ internal sealed class PlannerView : Grid
         return Enumerable.Range(0, count).Select(i => first.DayNumber + i - offset).Select(n => n < 0 || n > DateOnly.MaxValue.DayNumber ? (DateOnly?)null : DateOnly.FromDayNumber(n)).ToArray();
     }
     internal void InvalidateCalendar() { renderedMonth = default; Refresh(); }
+    internal void ShiftWeeks(int weeks)
+    {
+        var dates = MonthDates(Controller.Month, Controller.WeekStart); int start = dates.First(d => d != null)!.Value.DayNumber - Array.FindIndex(dates, d => d != null); int offset = owner.Appearance.FixedWeekOffset + weeks;
+        long day = start + (long)offset * 7; if (day < 0 || day > DateOnly.MaxValue.DayNumber - 41) return;
+        owner.ApplyAppearance(owner.Appearance with { FixedWeekOffset = offset });
+    }
+    void NavigateCalendar(int direction) { if (owner.Appearance.FixedSixRows) ShiftWeeks(direction * 6); else Controller.Navigate(direction); }
     void BuildCalendar()
     {
-        calendarHost.Children.Clear(); days.Clear(); var dates = MonthDates(Controller.Month, Controller.WeekStart); if (owner.Appearance.FixedSixRows && dates.Length < 42) { int start = dates.First(d => d != null)!.Value.DayNumber; dates = Enumerable.Range(0, 42).Select(i => start + i <= DateOnly.MaxValue.DayNumber ? (DateOnly?)DateOnly.FromDayNumber(start + i) : null).ToArray(); } var grid = new Grid(); renderedWeekSide = Controller.WeekLayout == WeekPlanLayout.SideColumn && calendarHost.ActualWidth >= 430;
+        calendarHost.Children.Clear(); days.Clear(); var dates = MonthDates(Controller.Month, Controller.WeekStart); if (owner.Appearance.FixedSixRows) { int start = dates.First(d => d != null)!.Value.DayNumber - Array.FindIndex(dates, d => d != null) + owner.Appearance.FixedWeekOffset * 7; start = Math.Clamp(start, -6, DateOnly.MaxValue.DayNumber - 35); dates = Enumerable.Range(0, 42).Select(i => start + i >= 0 && start + i <= DateOnly.MaxValue.DayNumber ? (DateOnly?)DateOnly.FromDayNumber(start + i) : null).ToArray(); monthTitle.Text = dates.First(d => d != null)!.Value.ToString("yyyy-MM-dd") + " – " + dates.Last(d => d != null)!.Value.ToString("MM-dd"); } var grid = new Grid(); renderedWeekSide = Controller.WeekLayout == WeekPlanLayout.SideColumn && calendarHost.ActualWidth >= 430;
         weekdayHost.Children.Clear(); weekdayHost.ColumnDefinitions.Clear();
         string[] names = ["PlannerSun", "PlannerMon", "PlannerTue", "PlannerWed", "PlannerThu", "PlannerFri", "PlannerSat"];
         for (int i = 0; i < 7; i++) { grid.ColumnDefinitions.Add(new()); weekdayHost.ColumnDefinitions.Add(new()); var label = Text(T(names[((int)Controller.WeekStart + i) % 7]), 11, "#A2AFBC"); label.HorizontalAlignment = HorizontalAlignment.Center; At(weekdayHost, label, 0, i); }

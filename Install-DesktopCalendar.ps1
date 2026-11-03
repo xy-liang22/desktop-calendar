@@ -19,6 +19,13 @@ if ($TestRoot) {
 }
 $root = Full $root
 $link = Join-Path $programs 'Desktop Calendar.lnk'
+$startup = if ($TestRoot) { Join-Path $TestRoot 'Startup' } else { [Environment]::GetFolderPath('Startup') }
+$startupLink = Join-Path $startup 'Desktop Calendar.lnk'
+function OwnedStartup {
+    if (-not [IO.File]::Exists($startupLink)) { return $false }
+    $item = $shell.CreateShortcut($startupLink)
+    return $item.Description -eq 'Desktop Calendar startup (current user)' -and $item.Arguments -eq '--autostart' -and (Inside $item.TargetPath $root)
+}
 $marker = Join-Path $root '.desktop-calendar-owned'
 $statePath = Join-Path $root 'installation.json'
 function NoReparse($path) {
@@ -81,7 +88,7 @@ $locked = $false
 try {
     try { $locked = $mutex.WaitOne(0) } catch [Threading.AbandonedMutexException] { $locked = $true }
     if (-not $locked) { throw 'Another Desktop Calendar installer is running.' }
-    NoReparseChain $root; NoReparseChain $programs; NoReparse $link; NoReparse $marker; NoReparse $statePath
+    NoReparseChain $root; NoReparseChain $programs; NoReparseChain $startup; NoReparse $startupLink; NoReparse $link; NoReparse $marker; NoReparse $statePath
     if (Test-Path -LiteralPath $root) {
         if ([IO.File]::Exists($marker)) { if ([IO.File]::ReadAllText($marker) -ne $appId) { throw 'Install marker mismatch.' } }
         elseif (@(Get-ChildItem -LiteralPath $root -Force).Count -gt 0) { throw 'Existing folder is not owned by this installer.' }
@@ -100,6 +107,7 @@ try {
             if (-not (OwnedLink)) { throw 'The existing Start Menu shortcut is not managed by this installer.' }
             [IO.File]::Delete($link)
         }
+        if (OwnedStartup) { [IO.File]::Delete($startupLink) }
         $versions = ManagedPath 'versions'
         if ([IO.Directory]::Exists($versions)) {
             foreach ($version in Get-ChildItem -LiteralPath $versions -Directory) {
@@ -154,15 +162,22 @@ try {
     $exe = Join-Path $versionPath 'DesktopCalendar.exe'
     $temporaryLink = ManagedPath ('launcher-' + [Guid]::NewGuid().ToString('N') + '.lnk')
     $oldLink = if ([IO.File]::Exists($link)) { [IO.File]::ReadAllBytes($link) } else { $null }
+    $oldStartup = if (OwnedStartup) { [IO.File]::ReadAllBytes($startupLink) } else { $null }
     try {
         $shortcut = $shell.CreateShortcut($temporaryLink); $shortcut.TargetPath = $exe; $shortcut.IconLocation = $exe + ',0'
         $shortcut.WorkingDirectory = $versionPath; $shortcut.Description = $description; $shortcut.WindowStyle = 1; $shortcut.Save()
         $linkBytes = [IO.File]::ReadAllBytes($temporaryLink)
         AtomicBytes $link $linkBytes
-        try { AtomicBytes $statePath (JsonBytes ([ordered]@{ SchemaVersion = 1; AppId = $appId; Version = $manifest.Version; PackageId = $manifest.PackageId; Current = 'versions\' + $versionName })) }
-        catch { if ($null -ne $oldLink) { AtomicBytes $link $oldLink } else { [IO.File]::Delete($link) }; throw }
+        try {
+            if ($null -ne $oldStartup) {
+                $auto = $shell.CreateShortcut($temporaryLink); $auto.TargetPath = $exe; $auto.Arguments = '--autostart'; $auto.WorkingDirectory = $versionPath; $auto.IconLocation = $exe + ',0'; $auto.Description = 'Desktop Calendar startup (current user)'; $auto.Save()
+                AtomicBytes $startupLink ([IO.File]::ReadAllBytes($temporaryLink))
+            }
+            AtomicBytes $statePath (JsonBytes ([ordered]@{ SchemaVersion = 1; AppId = $appId; Version = $manifest.Version; PackageId = $manifest.PackageId; Current = 'versions\' + $versionName }))
+        }
+        catch { if ($null -ne $oldLink) { AtomicBytes $link $oldLink } else { [IO.File]::Delete($link) }; if ($null -ne $oldStartup) { AtomicBytes $startupLink $oldStartup }; throw }
     } finally { if ([IO.File]::Exists($temporaryLink)) { [IO.File]::Delete($temporaryLink) } }
     Write-Output "Installed: $exe"
     Write-Output "Start Menu: $link"
-    Write-Output 'No auto-start, desktop shortcut, PATH, registry or data-directory changes. Exit older running copies before starting this version.'
+    Write-Output 'No new auto-start entry, desktop shortcut, PATH, registry or data-directory changes. Existing opted-in startup follows updates. Exit older running copies before starting this version.'
 } finally { if ($locked) { $mutex.ReleaseMutex() }; $mutex.Dispose() }

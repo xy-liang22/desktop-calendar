@@ -32,5 +32,13 @@
  <s:String x:Key="RestoreConfirm">此备份包含 {0} 个文件，创建于 {1}。将替换业务 JSON、图片和设置，当前数据会保存完整安全恢复点。确认恢复？</s:String>
  <s:String x:Key="RestoreDone">已恢复并重新读取；窗口偏好在重新打开后完整应用。恢复点：{0}</s:String>
  <s:String x:Key="BackupBusy">请先保存或取消所有编辑与快速输入，再进行备份/恢复。</s:String>
- <s:String x:Key="StartupUninstalled">自启动仅支持稳定的用户安装版本，请先运行安装脚本；不会指向临时构建目录。</s:String>
+ <s:String x:Key="StartupUninstalled">自启动仅支持0.8.0或更新的稳定用户安装版本。请先安装/更新，再开启；不会指向临时构建目录。</s:String>
+ <s:String x:Key="BackupScope">包含业务JSON、全部本地图片、窗口/用户偏好、已更新日历资料及版本清单。不含程序、缓存或日志。恢复前验证并确认；保留当前数据恢复点。ZIP最大512MiB，单文件64MiB；非加密，请自行保管。自启动入口不会因恢复备份自动开启。</s:String>
+ <s:String x:Key="CalendarChooseMonth">选择年份 / 月份</s:String>
+ <s:String x:Key="CalendarYear">年份（1901–2100）</s:String>
+ <s:String x:Key="CalendarMonth">月份</s:String>
+ <s:String x:Key="CalendarPreviousPage">上一月 / 固定模式上一页</s:String>
+ <s:String x:Key="CalendarNextPage">下一月 / 固定模式下一页</s:String>
+ <s:String x:Key="CalendarPreviousRow">固定行数：上一周</s:String>
+ <s:String x:Key="CalendarNextRow">固定行数：下一周</s:String>
 </ResourceDictionary>

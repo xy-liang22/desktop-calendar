@@ -36,6 +36,7 @@ internal sealed record WindowPreferences
     public string SaturdayColor { get; set; } = "#365060";
     public string SundayColor { get; set; } = "#554050";
     public bool FixedSixRows { get; set; }
+    public int FixedWeekOffset { get; set; }
     public bool Pinned { get; set; }
     public bool EdgeAutoHide { get; set; }
     public double BackgroundOpacity { get; set; } = .96;
@@ -46,7 +47,7 @@ internal sealed record WindowPreferences
     internal Rect Bounds => new(X, Y, Width, Height);
     internal void SetBounds(Rect r) { HasBounds = true; X = r.X; Y = r.Y; Width = r.Width; Height = r.Height; }
     internal bool Valid() => Id == "desktop-calendar-window" && UiLanguage is "zh-CN" or "en" && new[] { BackgroundColor, AccentColor, SaturdayColor, SundayColor }.All(s => s != null && System.Text.RegularExpressions.Regex.IsMatch(s, "^#[0-9A-Fa-f]{6}$")) && Enum.IsDefined(CalendarTextMode) && Enum.IsDefined(WeekStart) && Enum.IsDefined(WeekPlanLayout) &&
-        new[] { X, Y, Width, Height, BackgroundOpacity, DayHourHeight, WeekHourHeight }.All(double.IsFinite) &&
+        FixedWeekOffset is >= -520000 and <= 520000 && new[] { X, Y, Width, Height, BackgroundOpacity, DayHourHeight, WeekHourHeight }.All(double.IsFinite) &&
         DayHourHeight is >= TimelineView.MinimumHour and <= TimelineView.MaximumHour && WeekHourHeight is >= TimelineView.MinimumHour and <= TimelineView.MaximumHour &&
         Math.Abs(X) < 100000 && Math.Abs(Y) < 100000 && Width is >= 200 and <= 20000 && Height is >= 200 and <= 20000 &&
         BackgroundOpacity is >= .65 and <= .98 && ValidColumns(MonthColumns, 3) && ValidColumns(WeekColumns, 2) &&

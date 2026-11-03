@@ -84,7 +84,7 @@ public sealed class CalendarKnowledge
     }
     public static void Install(string path, CalendarBundle data)
     {
-        Validate(data); Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!); string temp = path + ".pending-" + Guid.NewGuid().ToString("N");
+        Validate(data); PlannerBackup.SafePath(path); Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!); PlannerBackup.SafePath(path + ".lock"); using var lease = new FileStream(path + ".lock", FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None); string temp = path + ".pending-" + Guid.NewGuid().ToString("N");
         try { using (var s = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None)) { s.Write(JsonSerializer.SerializeToUtf8Bytes(data)); s.Flush(true); } Decode(File.ReadAllText(temp)); if (File.Exists(path)) { Decode(File.ReadAllText(path)); File.Replace(temp, path, path + ".bak"); } else File.Move(temp, path); }
         finally { if (File.Exists(temp)) File.Delete(temp); }
     }

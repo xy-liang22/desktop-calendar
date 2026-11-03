@@ -1,5 +1,58 @@
 # 阶段验证记录
 
+## 2026-11-03：P7 + P8 最终开发验收记录
+
+P6 a865de1由用户验收；本轮dev/p7-p8连续开发，P7独立9137c93，P8为后续增量。应用/Core0.8.0，业务schema3、偏好schema2兼容追加。**开发完成，已执行范围内通过；不等同未测平台/真实输入全部通过，不进入最终综合验收或发布阶段。**
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Test-Planner.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Test-P3.ps1 -Configuration P8
+powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -Configuration P8 -Test
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Publish-DesktopCalendar.ps1 -Configuration P8
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-UserInstall.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Update-CalendarData.ps1 -Action Status -Configuration P8
+```
+
+| 验证范围 | 结果 | 证据边界 |
+|---|---|---|
+| 数据、可靠存储、历法、ZIP恢复 | 330 PASS / 0 FAIL / 1 NOT VERIFIED | artifacts/p2-checks/checks.txt；Samoa2011历史资料原NOT VERIFIED保留 |
+| P3–P8控件/真实Window/独立重启 | 266 PASS / 0 FAIL | artifacts/p3-checks/run-2712f415fc9d47a4b5407c611a6b544a；正式checks-*.txt不包含progress-checks.txt |
+| 原桌面owner/八向缩放/偏好/托盘基线 | 374 PASS / 0 FAIL | artifacts/p1-checks.txt |
+| 最终发布包、隔离安装更新卸载 | 18 PASS / 0 FAIL | artifacts/install-checks.txt；不替换真实开始菜单或安装目录 |
+| 构建与发布 | PASS：0警告/0错误 | bin/P8及artifacts/package，框架依赖，既有.NET10，无新依赖 |
+
+### PASS / 历法与界面
+
+- .NET农历下/上界、2023闰二月、春节/除夕跨年；天文台2020–2030每年24节气逐项与官方实际下载核对；内地2025/26官方连休与补班、HK2025–27每年17具名假期/周日、同日多事件及传统节日区分；未覆盖年份不虚构。黄历未启用。实际手动授权在线更新在artifacts/calendar-live-update成功，离线失败/坏包/未来版本/错误来源/缺项保留；独立脚本Status离线通过。
+- 中英所有资源键齐备，主窗口实际重建/托盘文案更新、默认分类只翻译显示；私人正文/数据字节不变，周首日不被语言覆盖；英语窗口/偏好经独立进程恢复。系统文件选择器遵循Windows自身语言，不修改系统语言。
+- 背景/强调/双休日色、透明度、两种月模式、取消回滚；白色背景输入柔化，最低透明度主文字对白底合成对比至少4.5，文字自身Opacity=1，低透明度内容面板加深。实际壁纸合成尚未目视验证，数学检查不冒充实机。
+- 固定六行42格、逐周/六周分页、年月选择/今天重置；完整月保持原五/六周，动态待办/层级/+N继续原检查。年月选择器明确1901–2100，不等同农历/节气/官方假期覆盖完全相同。
+
+### PASS / ZIP、状态及系统入口
+
+- 真实业务图、实际Markdown相对图片、偏好与可选资料包进入带版本/时间/长度/hash清单的ZIP；图和资产核验，JSON重读；跨目录恢复保留ID与关联。
+- 拒绝路径穿越、绝对路径、反斜杠、设备名、NTFS流、EXE、大小写重复、symlink、缺图、hash错误、空清单路径、未来schema和超大解压。恢复前预览/显式确认、包变化指纹拒绝；恢复当前损坏JSON时原字节保留，不降级新版本当前业务/偏好。
+- 维护gate、store原跨进程lease及资料文件lease隔离保存/更新；失败任务仍将错误传给界面，生命周期等待不会重抛而阻止正常退出，pending恢复不能导出为完整备份；空闲写入不会越过备份事务。完整恢复点、JSON最后替换、各阶段故障回滚；真实测试子进程在恢复中退出91，下次读取journal精确回滚。
+- 图片已经安装后制造真实FileShare.Read占用，阻挡回滚；保留journal及原始点，解除占用后恢复。UI有pending journal则停止业务写入/重载绕过/偏好保存，启动恢复受阻不初始化空文档。
+- 主组件实际恢复后重建并重新读取，英语/背景色/固定行/折叠状态/周偏好与真实图片一致，不继续旧内存；原待办/周期/日程/周目标/备注回归保留。
+- 在隔离安装/Startup目录实际创建COM快捷方式，默认无项、重复启用一个、禁用移除自有项、外来同名拒绝、无稳定安装/低于0.8.0拒绝临时bin或旧安装目标；安装更新跟随已有自有启动入口并连同开始菜单失败回滚，卸载保留个人JSON/图片。真实登录时序未执行。
+
+### 初次失败、诊断及修复
+
+- P7问题与修复见下方独立记录。P8首次两批仍沿用45秒全套GUI上限（run-d8fde4dc3f0e480badf9ab1c708adf8b、run-c95651a34aff4648b73b072eec468fdb），进程超时被自己的驱动停止；增加逐项进度记录及P8阶段记录，整套扩至90秒后全部阶段继续完成。没有跳过断言或延迟UI刷新。
+- 初次进度文件命名checks-progress.txt被汇总脚本重复计数，275不是正式通过数；改为progress-checks.txt，并重新执行各进程，以最终表为准。
+- 回滚受阻测试最初在“首个文件”时注入，但首个文件并非图片，原图尚未被替换，回滚自然成功；旧预期的2 FAIL是测试时机不正确。新增精确BeforePlannerReplace测试切点，图片已替换再占用，验证journal保留和后续恢复；未删除原正常回滚断言。写入也显式尊重ReadOnly。
+- 一次发布误与仍运行的自检同配置并行，出现MSB3026/3027/3021文件占用；未结束正常应用、未绕过锁。待自检正常结束后串行重新发布0警告/错误，最终包及安装再测通过。
+
+### 渲染与 NOT VERIFIED
+
+已检查P7英文月历/编辑器/外观和P8恢复后的英语设置、备份面板、原周视图/总结控件图。图像由真实布局后的RenderTargetBitmap生成，**不是桌面像素截图，也不证明物理鼠标手感**。computer-use完整技能已读，本轮list_windows仍native pipe missing (os error2)，不能取得窗口或键鼠，不重复429审批。
+
+NOT VERIFIED：物理鼠标与IME/系统文件选择器手感、不同壁纸实际合成；真实Win10、混合DPI硬件、Explorer重启、登录启动顺序、休眠、物理断电/满盘/长期性能。所有测试数据/ZIP/图片/恢复点都在忽略的artifacts或测试临时目录，不覆盖真实个人planner-data.json/设置，不修改真实Startup/开始菜单/系统显示配置。
+
+最少人工体验仅一组：退出旧实例，启动bin/P8/net10.0-windows/DesktopCalendar.exe，在设置切中文/English、外观选择颜色/透明度后取消，观察文字与弹窗是否清晰；无需为验证而覆盖真实数据或重测Win+D/既有数据矩阵。Windows真实登录/跨机兼容留最终综合验收，不作为本轮已通过。安装更新命令和故障处理见README/BACKUP。
+
+
 ## 2026-11-03：P7 已执行验证
 
 从 a865de1/dev/p6 建立 dev/p7-p8；P6已由用户验收。P7应用/Core0.7.0，业务schema3、窗口schema2加字段兼容。数据 **279 PASS / 0 FAIL / 1 NOT VERIFIED**（既有Samoa2011资料边界），控件/真实Window/独立进程 **244 PASS / 0 FAIL**，构建0警告错误。GUI报告 artifacts/p3-checks/run-974df7fa5b6e4262afa3809b721c549b。

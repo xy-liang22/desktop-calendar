@@ -17,6 +17,16 @@ internal sealed class DesktopSession : IDisposable
     readonly Forms.ToolStripMenuItem pin;
     readonly DispatcherTimer saveTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
     bool closing, recovered, disposed;
+    int maintenanceDepth;
+    bool recoveryBlocked;
+    internal IDisposable SuspendPreferences() { maintenanceDepth++; saveTimer.Stop(); return new PreferencePause(this); }
+    sealed class PreferencePause(DesktopSession session) : IDisposable { public void Dispose() { session.maintenanceDepth--; } }
+    internal async System.Threading.Tasks.Task ReloadRestoredAsync()
+    {
+        Preferences = store.Load(); Localization.Apply(Preferences.UiLanguage); RefreshLanguage(); ReloadCalendar();
+        if (Planner != null) await Planner.RestorePreferencesAsync(Preferences);
+        var previous = Window; CreateWindow(false); previous.CloseForRecovery();
+    }
     internal MainWindow Window { get; private set; } = null!;
     internal WindowPreferences Preferences { get; private set; }
     internal bool Testing { get; }
@@ -36,11 +46,13 @@ internal sealed class DesktopSession : IDisposable
             : testing ? Path.Combine(Path.GetTempPath(), "DesktopCalendar-Checks-" + Guid.NewGuid().ToString("N"))
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DesktopCalendar");
         DataDirectory = directory;
+        try { if (Directory.Exists(directory)) new PlannerBackup(directory).RecoverInterrupted(); }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or System.Text.Json.JsonException or UnauthorizedAccessException) { recoveryBlocked = true; }
         Calendar = new CalendarKnowledge(Path.Combine(directory, "calendar-knowledge.json"));
         store = new WindowPreferencesStore(Path.Combine(directory, "window-preferences.json"));
         Preferences = store.Load();
         Localization.Apply(Preferences.UiLanguage);
-        if (!testing || plannerCheck) Planner = new PlannerController(Path.Combine(directory, "planner-data.json"), Preferences);
+        if (!testing || plannerCheck) Planner = new PlannerController(Path.Combine(directory, "planner-data.json"), Preferences, maintenanceBlocked: recoveryBlocked);
         var menu = new Forms.ContextMenuStrip();
         menu.Items.Add(MainWindow.Text("Locate"), null, (_, _) => Dispatch(() => Locate()));
         pin = new Forms.ToolStripMenuItem(MainWindow.Text("Topmost"));
@@ -83,6 +95,7 @@ internal sealed class DesktopSession : IDisposable
     }
     internal void Changed()
     {
+        if (maintenanceDepth > 0) return;
         if (closing || !Window.Ready || !Window.LayerInitialized) return;
         Preferences = Window.SnapshotPreferences();
         pin.Checked = Window.IsPinned;
@@ -90,6 +103,7 @@ internal sealed class DesktopSession : IDisposable
     }
     internal void Save()
     {
+        if (maintenanceDepth > 0 || recoveryBlocked || File.Exists(Path.Combine(DataDirectory, "restore-journal.json"))) return;
         if (!Window.Ready) return;
         if (DesktopWindowMode.IsWindow(Window.Handle)) Preferences = Window.SnapshotPreferences();
         if (!store.Save(Preferences)) Window.RefreshLayerStatus();

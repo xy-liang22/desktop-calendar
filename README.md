@@ -4,15 +4,13 @@
 
 Windows 本地桌面日历：第一页是月历、计划待办与实际时间轴，第二页是七天时间轴、周计划和周总结。待办是计划，Activity 是实际发生的时间；两者可以关联，状态独立。
 
-**P7 开发中：离线历法、即时双语和外观设置已接入；P8待本轮继续完成。** 来源与范围见 [CALENDAR_DATA](docs/CALENDAR_DATA.md)。
-
-**P6：周目标、分类统计与 Markdown 周总结已接入（0.6.0），自动与控件渲染验证范围内通过。** 保留全部待办、周期、真实日程及桌面组件基础，新增P5.1拖动编辑器、锚定详情和本地大图。P7离线历法/完整双语仍Planned。实际鼠标手感与桌面像素仍有工具验证边界，见[TESTING](docs/TESTING.md)；接口见[DATA_MODEL](docs/DATA_MODEL.md)。
+**P7 + P8 开发完成（0.8.0），已执行验证范围内通过，等待最终综合验收授权。** P6已由用户验收。已接入离线历法、即时中英、可取消外观预览、完整ZIP和安全恢复、用户级自启动。保留原有桌面owner与业务模型。来源/覆盖范围见 [CALENDAR_DATA](docs/CALENDAR_DATA.md)，操作和恢复故障处理见 [BACKUP](docs/BACKUP.md)，验证边界见 [TESTING](docs/TESTING.md)。
 
 ## 已实现与 Planned
 
 P5.1已独立提交332b73e（dev/p6）：待办/日程标题区可拖动并夹入当前屏；详情为主窗口内的锚定卡片，点击别处关闭，长事件优先避让。备注图按容器宽度显示，可点开大图，适应/100%/滚轮缩放/拖动平移，Esc关闭后保留草稿与滚动。跨天详情按所点击片段的日期/偏移锚定。
 
-P3.2已实现编辑外部离开验证保存、IME上下文保护、行末展开及深度优先子项、三种实际测量换行（设置，默认两行）、子任务默认继承。新文档五类工作/家务/个人/家庭/健康及新色，旧分类/引用/颜色不替换；可主动补齐缺失预置。点击外部用于关闭的第一次点击不同时执行其他待办动作；确认框保持模态。当前可运行`bin/P6/net10.0-windows/DesktopCalendar.exe`，测试数据/报告在artifacts，真实开始菜单版本不自动更新。
+P3.2已实现编辑外部离开验证保存、IME上下文保护、行末展开及深度优先子项、三种实际测量换行（设置，默认两行）、子任务默认继承。新文档五类工作/家务/个人/家庭/健康及新色，旧分类/引用/颜色不替换；可主动补齐缺失预置。点击外部用于关闭的第一次点击不同时执行其他待办动作；确认框保持模态。当前可运行`bin/P8/net10.0-windows/DesktopCalendar.exe`，测试数据/报告在artifacts，真实开始菜单版本不自动更新。
 
 | 能力 | 状态 |
 |---|---|
@@ -32,9 +30,9 @@ P3.2已实现编辑外部离开验证保存、IME上下文保护、行末展开�
 | 月历分类文字/底色切换、日期底色 | **P3 GUI已实现**；低饱和色板与HEX，自定义分类可归档保留历史 |
 | 业务Ctrl+Z/重做、损坏/新版只读与恢复确认 | **P3 GUI已接入**；100个会话事务，关闭后不保留撤销历史 |
 | Markdown/纯文本备注、实时预览、本地图片、emoji/心情 | **P5已实现**；支持图片粘贴/选择/拖入，禁远程自动加载，链接只复制地址 |
-| 完整ZIP备份恢复、孤儿图片清理管理 | **Planned**；不自动删图片，保留撤销与备份引用 |
+| 完整ZIP备份恢复 | **P8已实现**；图/资产/设置/知识资料、清单验证、确认覆盖、恢复点/journal回滚；孤儿清理仍不自动进行 |
 | 农历/节气、内地/HK假日、主动资料更新 | **P7已实现**；范围/来源见CALENDAR_DATA；黄历宜忌暂无合适来源，未启用 |
-| 即时中英切换、背景/强调/周末色、固定六行、外观预览取消 | **P7已实现**；已有分类原文不改，标准内置名称只翻译显示；自启动待P8 |
+| 即时中英切换、背景/强调/周末色、固定六行、外观预览取消 | **P7已实现**；已有分类原文不改，标准内置名称只翻译显示；P8提供用户主动的稳定安装版自启动 |
 
 月历、当日日程、七天时间轴及周计划/总结均为真实数据，无模拟统计。范围以 [PRD](docs/PRD.md) 为准，未删除后续目标。
 
@@ -47,7 +45,7 @@ P3.2已实现编辑外部离开验证保存、IME上下文保护、行末展开�
 
 ## 安装、更新与卸载
 
-[仓库](https://github.com/xy-liang22/desktop-calendar) 当前开发在 `dev/p6`，P5保留于`dev/p5`，暂无公开Release包。不会强行替换旧实例；源码安装：
+[仓库](https://github.com/xy-liang22/desktop-calendar) 当前开发在 `dev/p7-p8`，P5保留于`dev/p5`，暂无公开Release包。不会强行替换旧实例；源码安装：
 
 ```powershell
 cd D:\projects\desktop-calendar
@@ -93,7 +91,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -Test
 powershell -NoProfile -ExecutionPolicy Bypass -File .\Start-Prototype.ps1
 ```
 
-也可运行 `bin\Release\net10.0-windows\DesktopCalendar.exe`。本轮直接启动 `bin\P6\net10.0-windows\DesktopCalendar.exe`，或 `Start-Prototype.ps1 -Configuration P6`。先从托盘退出旧实例；根目录历史名称“Desktop Calendar P1”的快捷方式指向最近构建配置，不代表仍用模拟数据。
+也可运行 `bin\Release\net10.0-windows\DesktopCalendar.exe`。本轮直接启动 `bin\P8\net10.0-windows\DesktopCalendar.exe`，或 `Start-Prototype.ps1 -Configuration P8`。先从托盘退出旧实例；根目录历史名称“Desktop Calendar P1”的快捷方式指向最近构建配置，不代表仍用模拟数据。
 
 ```powershell
 # 先发布，再做项目 artifacts 下的安装/卸载隔离测试
@@ -112,7 +110,7 @@ dotnet build .\Core\DesktopCalendar.Core.csproj -c Release
 测试明细与隔离数据在忽略的 `artifacts/p2-checks/`；P3通过ProjectReference引用Core。新增WPF控件/弹窗/退出重启测试：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\Test-P3.ps1 -Configuration P6
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Test-P3.ps1 -Configuration P8
 ```
 
 P3/P4报告、隔离数据及渲染图在`artifacts/p3-checks/run-<GUID>/`，不写个人数据。发布包含Core DLL，安装器兼容旧四文件包。业务schema3继续保存完成来源/快照及周期版本/例外，不增加第二套存储；兼容v1/v2读取迁移，窗口偏好仍schema2。
@@ -151,7 +149,7 @@ P3/P4报告、隔离数据及渲染图在`artifacts/p3-checks/run-<GUID>/`，不
 3. 单击块打开小型详情卡，双击完整编辑；详情区分删除整条与仅删除所选段，后者最后一段时禁用。复制生成新Activity与新时间段ID。跨日/跨周显示裁片，编辑仍回到原记录；多段与重叠分别可选。
 4. 拖块移动所选段，拖上/下边缘调整该端点，先预览后松开提交；默认5分钟网格，按Shift为1分钟。Esc/右键/捕获丢失或视口外松开取消；Ctrl缩放取消活动预览。保存失败保留预览，Enter重试、Esc取消；可Ctrl+Z撤销成功操作。普通滚轮/两页独立缩放仍保留。
 5. 备注选普通文本或Markdown，左侧源码、右侧实时预览；支持标题、强调、列表、引用、代码块、表格、链接、本地图片。HTML只显示文字，远程图片显示占位，链接点击只复制地址。预览超100000字会明确提示截断，原文保留；不是完整CommonMark或Typora编辑器。
-6. 在源码框Ctrl+V粘贴截图，或选“插入本地图片”、拖入图片文件；验证后规范PNG并插入`assets/images/<hash>.png`相对引用。单图限制20MiB、边长8192、2400万像素；重复内容复用。图片失败不清输入，缺失/损坏/不安全引用显示占位。取消草稿、删备注或删日程不会物理删图，避免损坏其他笔记、撤销及备份；后续提供清理与完整ZIP。
+6. 在源码框Ctrl+V粘贴截图，或选“插入本地图片”、拖入图片文件；验证后规范PNG并插入`assets/images/<hash>.png`相对引用。单图限制20MiB、边长8192、2400万像素；重复内容复用。图片失败不清输入，缺失/损坏/不安全引用显示占位。取消草稿、删备注或删日程不会物理删图，避免损坏其他笔记、撤销及备份；完整ZIP见P8；孤儿清理仍保守不做。
 
 显示时区沿用工作区当地时区，单条记录保留自己的时区供编辑/详情使用。DST重复小时分列并显示UTC偏移，跳时留空；统计按真实绝对秒数计算，不按图形高度猜时长。
 
@@ -177,11 +175,11 @@ P3/P4报告、隔离数据及渲染图在`artifacts/p3-checks/run-<GUID>/`，不
 
 图片现已在同一数据根目录的`assets/images/`，JSON仅登记元数据，不含Base64。整套手动备份请先退出程序，复制整个`%LOCALAPPDATA%\DesktopCalendar`目录；仅JSON不能包含图片。图片路径与资产ID跨备份位置保持稳定，渲染只读取注册且校验通过的本地文件，拒绝任意路径/网络/重解析点。
 
-仍为 **Planned** 的完整备份能力：
+当前数据保护与保留策略：
 
 - 孤儿图片清理管理：当前保守保留，暂不提供自动回收，不能按当前一篇备注的引用直接删图。
-- `backups/`：完整ZIP备份、校验、恢复预览与失败回滚；单独JSON不能包含未来图片。
-- `calendar-data/`：离线历法、假日来源及版本；未来仅主动手动更新时联网，不上传私人记录。当前不能把固定模拟日期当作真实历法资料。
+- P8完整ZIP、清单校验、恢复预览、安全恢复点和失败回滚已实现，见BACKUP；单独JSON不包含图片。
+- 日历知识独立于业务数据：内置公开事实及calendar-knowledge.json主动更新，见CALENDAR_DATA；不上传私人记录。
 
 ## 已知限制、恢复与常见问题
 
@@ -198,7 +196,7 @@ P3/P4报告、隔离数据及渲染图在`artifacts/p3-checks/run-<GUID>/`，不
 | 托盘/搜索新Logo的实际画面 | 元数据、资源与部署启动已验证；P1.1时管道不可用，P2未修改图标/入口且未重复观察搜索收录/托盘表面 |
 | P2日期与历史时区资料 | 使用Windows提供的TimeZoneInfo；现代DST及可控午夜跳跃测试通过，本机Samoa 2011历史资料未给出预期整日跳跃，保留NOT VERIFIED，不自行安装时区库或覆盖系统资料 |
 | P5真实键鼠/屏幕 | computer-use原生管道缺失；WPF事件/渲染非物理输入/桌面截图。仅需两组观察：实际拖拽/单双击，以及系统剪贴板粘图/文件拖入；不重复旧Win+D验收 |
-| 数据恢复与撤销 | 明确确认恢复；Undo/Redo仅当前会话100次事务。ZIP恢复、孤儿图片清理、跨会话撤销仍Planned |
+| 数据恢复与撤销 | 明确确认恢复；Undo/Redo仅当前会话100次事务。ZIP恢复见BACKUP；孤儿自动清理和跨会话撤销仍Planned |
 
 ## 项目结构与验证基线
 
@@ -228,7 +226,7 @@ Core/                       独立net10.0不可变实体、查询/命令、JSON�
 PlannerController.cs        单工作区、加载/保存状态、UI草稿、退出等待
 PlannerView.cs / PlannerDialogs.cs  真实月历/待办、同级拖排与编辑/恢复弹窗
 RecurrenceFields.cs / PlannerRecurrenceDialogs.cs  周期规则与明确范围/顺延
-Strings.P3.zh-CN.xaml        新界面集中资源（完整语言切换P7）
+Strings.P3.zh-CN.xaml        新界面集中资源（完整语言资源Strings.en.xaml与P7字典）
 TodoFields.cs / ColorField.cs / DarkPopups.xaml  共用字段、HSV与派生色、深色弹层
 Core/TodoCompletion.cs       事务完成来源、递归归一与恢复快照
 StageThreeChecks.cs / StageThreeOneChecks.cs / Test-P3.ps1  WPF及重启/保护测试
@@ -239,8 +237,23 @@ AGENTS.md / docs/            长期规范、PRD、决定、测试、研究
 experiments/DesktopHostProbe/     旧实验，未复制失败的子窗口路线
 ```
 
-最新P6综合回归：数据 **253 PASS / 0 FAIL / 1 NOT VERIFIED**（历史Samoa资料），P3–P6控件/编辑/独立进程重启 **234/0**，原窗口 **374/0**，隔离安装 **15/0**；构建0警告/错误。覆盖目标来源/类型/覆盖、周总结分离与重启、真实Activity/多段/DST、图片保护、负坐标/缺屏/DPI数学、最小布局、5/6周、缩放、排序、托盘/置顶、进程恢复及安装边界。核心桌面仍有用户历史验收，新增控件图不冒充桌面截图。初次失败与未验证矩阵见 [TESTING](docs/TESTING.md)。
+本轮 P7 已独立提交9137c93，P8随后独立提交，当前开发分支dev/p7-p8，main保持不变。自动/真实Window控件与资产恢复测试结果见TESTING；computer-use管道缺失，控件渲染图不冒充桌面像素。Win10、实际混合DPI、登录顺序、Explorer重启/休眠和物理断电尚未验证。没有开启真实系统启动项或替换当前安装入口。
 
-已核对目标编辑器、月历两布局、最小窗口、统计图、总结源码/实时预览、锚定详情与大图，非桌面截图。computer-use管道不可用，最终只留两组必要观察：编辑器/详情/大图的实际拖动手感，以及月历周计划/周侧栏的阅读体验；不重复旧Win+D和数据矩阵。发布安装测试隔离执行，未替换真实开始菜单旧版。
+## P7 / P8 使用入口
 
-`main`与历史阶段分支保留，当前`dev/p6`；P5.1与P6分别提交，不强推，不标记未测环境全部通过。P6结束后停止，P7须另行批准。
+- 设置中即时切换中文/English；用户正文、Markdown、改名分类不翻译或改写，标准预置名仅翻译显示。语言不改变周首日。
+- 外观与布局：背景/强调/双休日色、透明度65%–98%、完整月份/固定六行，实时预览，取消恢复。过亮背景柔化，文字保持不透明。原有文本颜色/底色、三种换行、周计划布局、置顶/贴边偏好继续可用。
+- 月历⌄选择1901–2100的年份/月；完整月模式箭头翻月，固定六行模式翻六周页，↑/↓翻一周，今天重置视口。超出知识覆盖范围有明确提示，不猜测节气/调休。
+- 日历资料按钮显示覆盖年份/来源/时间，确认才联网。脚本默认离线Status：`Update-CalendarData.ps1 -Configuration P8`；主动更新加`-Action Update -Online`；内地新年份需经核验离线包或程序更新。
+- 备份数据ZIP面板可备份/确认恢复/打开目录，详细步骤见BACKUP。个人数据仍是`%LOCALAPPDATA%\DesktopCalendar`；仅复制planner-data.json会漏掉本地图片，手动备份须退出后复制整个目录。
+- 登录自启动默认关闭，由用户主动启用；先安装/更新到0.8.0或更新稳定版本，更新跟随已有入口，不创建第二个实例或全局配置。ZIP恢复不替你在新电脑启用自启动。
+- 安装包已准备在忽略的`artifacts/package`，可退出旧实例后执行：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Install-DesktopCalendar.ps1 -Action Update -PackagePath .\artifacts\package
+# 未安装过则使用 -Action Install
+```
+
+之后从开始菜单搜索Desktop Calendar启动。开发版可直接运行`bin/P8/net10.0-windows/DesktopCalendar.exe`。
+
+Planned：最终综合验收与发布（未获批不开始）；黄历宜忌暂无合适授权来源，未启用；无云同步、无自动网络更新，不自动清理私人图片/恢复点。

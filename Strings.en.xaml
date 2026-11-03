@@ -141,7 +141,7 @@
  <s:String x:Key="ImageFit">Fit window</s:String>
  <s:String x:Key="ImageOpen">Click to view full image</s:String>
  <s:String x:Key="ImageViewerTitle">Local image · Wheel to zoom / Drag to pan / Esc to close</s:String>
- <s:String x:Key="LanguageSetting">Language / 界面语言</s:String>
+ <s:String x:Key="LanguageSetting">Language</s:String>
  <s:String x:Key="LegacyCategory">Historical category</s:String>
  <s:String x:Key="Locate">Show / locate component</s:String>
  <s:String x:Key="MonthFixed">Fixed six rows (including adjacent dates)</s:String>
@@ -310,7 +310,7 @@
  <s:String x:Key="SplitTip">Drag to resize columns</s:String>
  <s:String x:Key="StartupFailed">Could not change startup entry. Check permissions or a conflicting shortcut.</s:String>
  <s:String x:Key="StartupSetting">Launch after Windows sign-in (current user only)</s:String>
- <s:String x:Key="StartupUninstalled">Startup requires the stable user-installed version. Run the installer first; temporary build paths are not used.</s:String>
+ <s:String x:Key="StartupUninstalled">Startup requires a stable user installation of 0.8.0 or newer. Install/update first; temporary build paths are not used.</s:String>
  <s:String x:Key="SubtaskProgressFormat">Subtasks {0} / {1}</s:String>
  <s:String x:Key="TimelineTip">Actual activities</s:String>
  <s:String x:Key="TimelineZoomTip">Wheel: scroll · Ctrl + wheel: zoom timeline</s:String>
@@ -337,4 +337,12 @@
  <s:String x:Key="WeekTab">Week review</s:String>
  <s:String x:Key="WeekTitle">26 October — 1 November</s:String>
  <s:String x:Key="WeekUncategorized">Uncategorized</s:String>
+ <s:String x:Key="BackupScope">Includes planner JSON, all local images, preferences, updated calendar knowledge and a versioned manifest. Excludes executables, caches and logs. Restore requires validation and confirmation; original data is preserved. Maximum 512 MiB total, 64 MiB per file. ZIP is not encrypted. Restoring never enables Windows startup automatically.</s:String>
+ <s:String x:Key="CalendarChooseMonth">Choose year / month</s:String>
+ <s:String x:Key="CalendarYear">Year (1901–2100)</s:String>
+ <s:String x:Key="CalendarMonth">Month</s:String>
+ <s:String x:Key="CalendarPreviousPage">Previous month / fixed page</s:String>
+ <s:String x:Key="CalendarNextPage">Next month / fixed page</s:String>
+ <s:String x:Key="CalendarPreviousRow">Fixed rows: previous week</s:String>
+ <s:String x:Key="CalendarNextRow">Fixed rows: next week</s:String>
 </ResourceDictionary>

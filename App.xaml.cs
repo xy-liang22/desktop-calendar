@@ -25,7 +25,7 @@ public partial class App : Application
             if (!ownsInstance)
             {
                 if (lifecycle != null) { LifecycleChecks.Duplicate(); Shutdown(23); }
-                else { MessageBox.Show(DesktopCalendar.MainWindow.Text("AlreadyRunning"), DesktopCalendar.MainWindow.Text("AppName")); Shutdown(); }
+                else { if (Array.IndexOf(e.Args, "--autostart") < 0) { string preferences = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DesktopCalendar", "window-preferences.json"); Localization.Apply(new WindowPreferencesStore(preferences).Load().UiLanguage); MessageBox.Show(DesktopCalendar.MainWindow.Text("AlreadyRunning"), DesktopCalendar.MainWindow.Text("AppName")); } Shutdown(); }
                 return;
             }
         }

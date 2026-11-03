@@ -3,6 +3,7 @@
   <ResourceDictionary.MergedDictionaries><ResourceDictionary Source="Strings.zh-CN.xaml" /><ResourceDictionary Source="Strings.P3.zh-CN.xaml" /><ResourceDictionary Source="Strings.P5.zh-CN.xaml" /><ResourceDictionary Source="Strings.P6.zh-CN.xaml" /><ResourceDictionary Source="Strings.P7.zh-CN.xaml" /><ResourceDictionary Source="DarkPopups.xaml" /></ResourceDictionary.MergedDictionaries>
   <SolidColorBrush x:Key="Ink" Color="#EDF2F5"/><SolidColorBrush x:Key="Muted" Color="#A2AFBC"/>
   <SolidColorBrush x:Key="Accent" Color="#A3D9C4"/>
+  <SolidColorBrush x:Key="PanelBackground" Color="#35101A24"/>
   <DataTemplate x:Key="TodoLineTemplate">
    <TextBlock TextWrapping="Wrap" Margin="4,0,0,0">
     <Run Text="{Binding TimePrefix, Mode=OneWay}" FontWeight="SemiBold" Foreground="{StaticResource Accent}"/><Run Text="{Binding Title, Mode=OneWay}"/>

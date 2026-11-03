@@ -24,6 +24,8 @@ public sealed class PlannerWorkspace
         finally { gate.Release(); }
     }
     public bool CanUndo => undo.Count > 0 && loaded.CanWrite;
+    public async Task<T> MaintenanceAsync<T>(Func<Task<T>> action, CancellationToken ct = default)
+    { await gate.WaitAsync(ct).ConfigureAwait(false); try { return await store.MaintenanceAsync(loaded.Fingerprint, action, ct).ConfigureAwait(false); } finally { gate.Release(); } }
     public bool CanRedo => redo.Count > 0 && loaded.CanWrite;
     PlannerWorkspace(PlannerStore store, StoreLoad loaded, Func<DateTimeOffset>? clock)
     { this.store = store; this.loaded = loaded; this.clock = clock ?? (() => DateTimeOffset.UtcNow); }

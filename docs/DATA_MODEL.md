@@ -1,20 +1,20 @@
-# 数据与服务接口：P2基础与P3–P6真实界面
+# 数据与服务接口：P2基础与P3–P8集成
 
-状态：应用与Core为0.6.0，真实待办、周期、Activity与P6周目标/统计/总结界面已接入。纯C# Core使用.NET10标准库，无WPF/数据库/联网/第三方依赖，业务schema3不变。图片/备注呈现及偏好位于WPF层，实体/JSON仍不含WPF对象；P7另行批准。
+状态：应用与Core为0.8.0，真实待办、周期、Activity与P6周目标/统计/总结界面已接入。纯C# Core使用.NET10标准库，无WPF/数据库/第三方依赖；仅用户主动的历法更新入口可联网，业务schema3不变。图片/备注呈现及偏好位于WPF层，实体/JSON仍不含WPF对象；P7/P8已授权并接入，见末节。
 
 ## 实体和身份
 
 P3.2：新用户五分类工作/家务/个人/家庭/健康，旧分类不自动迁移或重分类；仅用户明确初始化补齐缺失内置键。NewTodo子草稿捕获父分类/覆盖色，此后独立；不是Core每次Save自动继承。UI换行模式在独立窗口偏好，业务schema仍3。
 
 - `PlannerState` 是不可变快照，文档 ID、递增 Revision 和实体数组；`Entity` 含 GUID 与 UTC 创建/修改时间。分类共享，归档保留历史引用。排序键 decimal，完成状态仅决定分组，不改基础键。
-- `TodoOrdering` 记录根组的日期或子组的父ID，以及Manual/PlannedTime模式；默认时间优先，手动混排模式和键同时存JSON，重启不悄悄切回时间排序。`SetTodoOrderMode`恢复时间排序时仍保留原手动键。`DayDecoration`记录每天手选底色，单日期唯一；真实历法/假日参考数据仍待后续阶段。
+- `TodoOrdering` 记录根组的日期或子组的父ID，以及Manual/PlannedTime模式；默认时间优先，手动混排模式和键同时存JSON，重启不悄悄切回时间排序。`SetTodoOrderMode`恢复时间排序时仍保留原手动键。`DayDecoration`记录每天手选底色，单日期唯一；真实历法/假日由独立知识模块提供，不写个人payload。
 - `Todo`：一次性、持续或物化周期实例；计划日期DateOnly、可选TimeOnly、优先级/描述/分类/颜色、父节点、进度、完成时间。`ProgressMode.Default`递归平均直接子分支，叶用ManualProgress；显式Manual不派生进度。完成来源规则如下，不依据“进度100%”直接决定完成。
 - 周期使用 `TodoSeries -> RuleVersion -> Templates`。模板树按版本保存；实例身份是系列 ID＋节点 ID＋**原始出现日期**的稳定 SHA256 派生 GUID，不受系统文化、移动日期或重启影响。不预生成无限任务；查询按日期生成，只有修改/完成/建立关联时物化，并物化祖先。删除节点保留RetiredNodeIds墓碑，保护已完成实例的身份有效性。
 - `RecurrenceRule`：日/周/月间隔、指定星期或月日、周首日、Count/Until、排除和追加日期、时区。每月31日遇短月跳过，不钳为月末；COUNT计算排除前的名义出现次数，追加日另计。规则和有效日期版本分离。
 - `Activity`：真实时间记录，含多个各自有 ID 的 `ActivityPeriod`、emoji/摘要/reaction、文本或 Markdown 备注、可选 TodoRef、分类与图片资产引用。删除 Todo 保留 Activity 并保留旧标题；Activity 不修改 Todo 完成状态。
 - `WeekGoal`：周身份、数量/秒数/勾选目标、单一自动来源、两种导航关联列表、独立手动覆盖。类型/来源变更必须显式确认。跨周关联 Todo 不静默丢弃，数量按显式关联完成项计，查询同时返回 `OutsideWeekTodos`，供后续 UI 警告。
 - `WeeklyReview`：手写 Markdown、自定义小节，与独立自动摘要快照。`SaveReview` 不能覆盖统计；`AppendStatistics` 不能覆盖正文。
-- `LocalAsset`：ID、受限 `assets/images/<文件名>` 路径、MIME、长度、SHA256；`PlannerQueries.AssetReference/ResolveAsset`提供`asset://<GUID>`引用，只解析注册信息，拒绝file/network/路径后缀。P5 LocalImages进一步支持已注册相对路径的校验/导入/读取，Note.AssetIds记录引用。完整ZIP与孤儿清理留后续。
+- `LocalAsset`：ID、受限 `assets/images/<文件名>` 路径、MIME、长度、SHA256；`PlannerQueries.AssetReference/ResolveAsset`提供`asset://<GUID>`引用，只解析注册信息，拒绝file/network/路径后缀。P5 LocalImages进一步支持已注册相对路径的校验/导入/读取，Note.AssetIds记录引用。P8已实现完整ZIP；孤儿自动清理仍不启用。
 
 ## 时间与统计
 
@@ -81,7 +81,7 @@ P4继续编码schema3，无读写迁移。测试中实际引用旧`bin/P31/.../D
 - `ActivityTimelineView`绑定Controller后覆盖所有示例块，跨页使用同一快照/日期，周首日读Options；Slot.Segment仅显示DTO。鼠标预览不保存，成功松开一次SaveActivity即可Undo；创建则打开预填草稿，取消不写。默认5分钟/Shift1分钟；创建取整到完整分钟，不将鼠标小数坐标写入秒数。失去捕获/外部松开/Esc/右键取消；缩放先取消活动手势。保存失败保留待重试预览，陈旧快照拒绝覆盖。
 - `ActivityDialogs`复用Sheet外部关闭语义、IME保护、分类色和原工作区。PeriodFields提供ISO日期时间、时区及每端offset，草稿移除一段与整条删除清楚区分；最后一段保留，整条必须单独确认。`Sheet.HoldOpen`只用于自有文件选择器等附属交互，避免Deactivated自动提交；重要确认仍模态。
 - `LocalImages`以实际业务文件目录为根，剪贴板BitmapSource/本地图片先校验20MiB、8192边、2400万像素，再PNG编码/验证。SHA256文件名，已有同字节文件/资产复用；拒绝危险相对路径/祖先重解析点，读图核对登记长度与哈希。写入同目录唯一pending、Flush(true)、解码验证后Move；JSON提交前文件必须可校验，失败不发布新引用。Notes.AssetIds和新SaveAsset一起事务保存；相对`assets/images/<hash>.png`与既有`asset://ID`都可解析，不自动读取任意file:/远程图片。
-- 文件与JSON不假装跨文件系统事务：图片先落盘，失败或取消可能留下未登记文件；这是安全孤儿，暂不删除。已登记但当前无引用、备份或Undo中仍使用的图片也保留，避免损害恢复。Undo登记后文件仍在，可Redo；多备注引用不因一条删除丢图。未来ZIP须携带整个图片目录，暂没有自动清理/ZIP服务。
+- 文件与JSON不假装跨文件系统事务：图片先落盘，失败或取消可能留下未登记文件；这是安全孤儿，暂不删除。已登记但当前无引用、备份或Undo中仍使用的图片也保留，避免损害恢复。Undo登记后文件仍在，可Redo；多备注引用不因一条删除丢图。P8的ZIP携带全部图片，暂不自动清理。
 - `MarkdownNotes`渲染FlowDocument安全子集，纯文本模式不解释语法，无HTML执行/WebView/远程下载；链接只复制地址。Markdown支持标题、强调、列表/引用、围栏代码、简单表格、链接及本地图片。实时预览合并220ms，超过100000字有明确截断提示，源文不截断；不声称完整CommonMark兼容。图片缺失/损坏/不安全引用显示占位。
 
 新增界面文字集中在Strings.P5.zh-CN.xaml；emoji/reaction可自定义，标准ComboBox可编辑模板补齐，非编辑分类选择不变。Core/存储DTO没有增加字段，旧schema3格式无需迁移；图片资源能力的增加不意味着旧GUI具备Markdown或图片管理。
@@ -109,4 +109,12 @@ P4继续编码schema3，无读写迁移。测试中实际引用旧`bin/P31/.../D
 
 ## 验证
 
-Windows PowerShell：`powershell -NoProfile -ExecutionPolicy Bypass -File .\Test-Planner.ps1`，253 PASS/0 FAIL/1 NOT VERIFIED；`Test-P3.ps1 -Configuration P6`验证234项P3–P6控件、事务和独立进程重启。只用忽略的artifacts，不使用个人文件。测试包括原子写入故障/并发、周期保护、DST片、日程/图片以及目标来源/覆盖/类型、区间统计、运行选项不改磁盘、总结快照与文字分离及重启。Samoa2011整日跳跃本机资料未重现，物理断电/满盘、Win10及真实输入设备仍未冒称通过，详见TESTING。
+Windows PowerShell：`powershell -NoProfile -ExecutionPolicy Bypass -File .\Test-Planner.ps1`，330 PASS/0 FAIL/1 NOT VERIFIED；`Test-P3.ps1 -Configuration P8`验证266项P3–P8控件、事务和独立进程重启。只用忽略的artifacts，不使用个人文件。测试包括原子写入故障/并发、周期保护、DST片、日程/图片以及目标来源/覆盖/类型、区间统计、运行选项不改磁盘、总结快照与文字分离及重启。Samoa2011整日跳跃本机资料未重现，物理断电/满盘、Win10及真实输入设备仍未冒称通过，详见TESTING。
+
+## P7 / P8 集成边界（0.8.0）
+
+- 业务实体/JSON schema仍3，窗口偏好仍2追加UiLanguage、BackgroundColor/AccentColor/SaturdayColor/SundayColor、FixedSixRows/FixedWeekOffset。P7语言重建仅替换主视图控件，复用Controller/Workspace；用户正文不翻译，未改标准内置分类只显示本地化名称。农历使用.NET已装框架，节气/假期为独立带来源年份知识包，不写个人payload。
+- `PlannerWorkspace.MaintenanceAsync`和`PlannerStore.MaintenanceAsync`使用已有工作区gate、store gate和原跨进程lease，并检查当前文件指纹。Controller暴露维护任务到Pending，UI暂停偏好计时保存，维护期间业务只读；不是第二个JSON来源。恢复后重新读取、清空会话Undo、按偏好重建组件。
+- `PlannerBackup.Create/Inspect/Restore/RecoverInterrupted`详见BACKUP：ZIP清单schema1记录实际业务schema、长度/hash；白名单相对路径/限额/图与资产验证；原始恢复点、刷盘journal、JSON最后替换、失败回滚。待恢复journal或启动恢复受阻时不允许空初始化、业务写入、普通重新读取绕过或偏好写盘。
+- ZIP带全部完成写入的本地图片，包括当前孤儿；不删除旧安全图片/恢复点。manifest哈希不是签名或加密。恢复不建立系统Startup入口；入口属本机用户主动选择，更新脚本只跟随原已启用项。
+- 自启动不写注册表，托盘/单实例/Explorer未就绪安全回退继续沿用旧模块，未更换owner技术方案。

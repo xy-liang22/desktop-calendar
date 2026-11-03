@@ -1,4 +1,4 @@
-﻿# 离线历法资料与更新
+# 离线历法资料与更新
 
 P7 将个人业务文件与知识资料分离。程序内置 `Core/calendar.json`（仅公开日历事实），本机主动更新保存 `calendar-knowledge.json`。正常启动不联网。
 
@@ -22,9 +22,11 @@ P7 将个人业务文件与知识资料分离。程序内置 `Core/calendar.json
 窗口与脚本共用 Core.CalendarKnowledge，不存在另一套PS解析器：
 
 ```powershell
-.\Update-CalendarData.ps1 -Action Status -Configuration P7
-.\Update-CalendarData.ps1 -Action Update -Online -Configuration P7
-.\Update-CalendarData.ps1 -Action Import -PackagePath C:\trusted\calendar.json -Configuration P7
+.\Update-CalendarData.ps1 -Action Status -Configuration P8
+.\Update-CalendarData.ps1 -Action Update -Online -Configuration P8
+.\Update-CalendarData.ps1 -Action Import -PackagePath C:\trusted\calendar.json -Configuration P8
 ```
 
 默认Status离线；Update必须显式Online；只写知识文件及其备份，不读写 planner-data.json。格式含SchemaVersion、UpdatedAt、各资料覆盖年份、带Date/Kind/Zh/En/Source的Events。24节气/每年17个具名HK假期、年份、重复、可信来源和体积均校验；同目录临时文件刷盘再替换，旧文件保留.bak。较新schema拒绝覆盖；损坏本机文件可从.bak或内置包继续显示，但导入/更新不悄悄覆盖损坏原件。
+
+脚本更新后可重新打开资料面板或重启读取。维护内置公开包时，在artifacts独立目录主动更新、核对来源和新旧差异后才替换Core/calendar.json；新内地公告必须人工核对，不把推测写成正式调休。更新文件锁也与ZIP维护共用，冲突时保留旧资料并提示失败。

@@ -136,14 +136,29 @@ public partial class MainWindow : Window
     internal void ApplyAppearance(WindowPreferences p)
     {
         Appearance = p with { }; OpacitySlider.Value = p.BackgroundOpacity;
-        var c = ThemeColors.Parse(p.BackgroundColor); double mix = Math.Max(c.R, Math.Max(c.G, c.B)) > 80 ? .22 : 1;
-        var safe = Color.FromRgb((byte)(c.R * mix + 25 * (1 - mix)), (byte)(c.G * mix + 35 * (1 - mix)), (byte)(c.B * mix + 46 * (1 - mix)));
-        Shell.Background = new SolidColorBrush(Color.FromArgb((byte)(p.BackgroundOpacity * 255), safe.R, safe.G, safe.B));
+        ApplyShell(p.BackgroundOpacity);
         Application.Current.Resources["Accent"] = ThemeColors.Brush(ThemeColors.Accent(p.AccentColor));
         PlannerView?.InvalidateCalendar(); Remember();
     }
+    void ApplyShell(double opacity)
+    {
+        byte alpha = (byte)(opacity * 255); opacity = alpha / 255d;
+        var c = ThemeColors.Parse(Appearance.BackgroundColor); double mix = Math.Max(c.R, Math.Max(c.G, c.B)) > 80 ? .22 : 1;
+        var safe = Color.FromRgb((byte)(c.R * mix + 25 * (1 - mix)), (byte)(c.G * mix + 35 * (1 - mix)), (byte)(c.B * mix + 46 * (1 - mix)));
+        string Composite() => ThemeColors.Hex(Color.FromRgb((byte)(safe.R * opacity + 255 * (1 - opacity)), (byte)(safe.G * opacity + 255 * (1 - opacity)), (byte)(safe.B * opacity + 255 * (1 - opacity))));
+        for (int i = 0; i < 30 && ThemeColors.Contrast(Composite(), "#EDF2F5") < 4.5; i++) safe = Color.FromRgb((byte)(safe.R * .85), (byte)(safe.G * .85), (byte)(safe.B * .85));
+        Shell.Background = new SolidColorBrush(Color.FromArgb(alpha, safe.R, safe.G, safe.B));
+        Application.Current.Resources["PanelBackground"] = ThemeColors.Brush(opacity < .85 ? "#C0101A24" : "#35101A24");
+    }
     void AppearanceClick(object sender, RoutedEventArgs e) => ApplicationSettings.Appearance(this);
     void CalendarUpdateClick(object sender, RoutedEventArgs e) => ApplicationSettings.Calendar(this);
+    void BackupClick(object sender, RoutedEventArgs e) => ApplicationSettings.Backup(this);
+    void StartupChanged(object sender, RoutedEventArgs e)
+    {
+        try { if (Session.Testing) throw new InvalidOperationException("TestStartupUseIsolatedService"); new StartupEntry().Set(StartupToggle.IsChecked == true); }
+        catch (Exception ex) when (ex is System.IO.IOException or System.IO.InvalidDataException or UnauthorizedAccessException or InvalidOperationException or System.Text.Json.JsonException or System.Runtime.InteropServices.COMException)
+        { StartupToggle.IsChecked = !StartupToggle.IsChecked; SettingsNotice.Text = Text(ex.Message == "StartupUninstalled" ? "StartupUninstalled" : "StartupFailed"); }
+    }
     async void PlannerKey(object sender, KeyEventArgs e)
     {
         if (Session.Planner == null || (Keyboard.Modifiers & ModifierKeys.Control) == 0) return;
@@ -399,7 +414,7 @@ public partial class MainWindow : Window
         NativeWindow.Place(Handle, WindowGeometry.Clamp(new Rect(work.X + 90, work.Y + 90, bounds.Width, bounds.Height), new Rect(work.X, work.Y, work.Width, work.Height)));
         Remember();
     }
-    internal void OpenSettings() { outsideSince = DateTime.MaxValue; RefreshLayerStatus(); SettingsPanel.Visibility = Visibility.Visible; SettingsCloseButton.Focus(); }
+    internal void OpenSettings() { outsideSince = DateTime.MaxValue; RefreshLayerStatus(); if (!Session.Testing) try { StartupToggle.IsChecked = new StartupEntry().Enabled; } catch { SettingsNotice.Text = Text("StartupFailed"); } SettingsPanel.Visibility = Visibility.Visible; SettingsCloseButton.Focus(); }
     private void EdgeChanged(object sender, RoutedEventArgs e)
     {
         outsideSince = DateTime.MaxValue;
@@ -408,7 +423,7 @@ public partial class MainWindow : Window
     }
     private void OpacityChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        if (Shell != null) { var color = ((SolidColorBrush)Shell.Background).Color; color.A = (byte)(e.NewValue * 255); Shell.Background = new SolidColorBrush(color); }
+        if (Shell != null) ApplyShell(e.NewValue);
         Remember();
     }
     private void SaveNormalBounds()
@@ -474,7 +489,7 @@ public partial class MainWindow : Window
         ResizeHandles.Visibility = Visibility.Visible;
         RestoreButton.Visibility = Visibility.Collapsed;
         CompactContent.Visibility = Visibility.Collapsed;
-        if (fromToday) { Session.Planner?.Select(DateOnly.FromDateTime(DateTime.Now), true); SetPage(false); }
+        if (fromToday) { Appearance.FixedWeekOffset = 0; Session.Planner?.Select(DateOnly.FromDateTime(DateTime.Now), true); PlannerView?.InvalidateCalendar(); SetPage(false); }
         SettingsPanel.Visibility = Visibility.Collapsed;
         Shell.CornerRadius = new CornerRadius(18);
         if (needsRestore)

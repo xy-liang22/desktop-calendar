@@ -55,9 +55,12 @@ try {
     Install 'Install' $package; Install 'Update' $package
     Check 'repeat install/update one shortcut and one version' (@(Get-ChildItem (Split-Path $link -Parent) -Filter '*.lnk').Count -eq 1 -and @(Get-ChildItem (Join-Path $root 'versions') -Directory).Count -eq 1)
     $next = ClonePackage 'package-next' $true
+    $startup = Join-Path $testRoot 'Startup'; [IO.Directory]::CreateDirectory($startup) | Out-Null
+    $startupLink = Join-Path $startup 'Desktop Calendar.lnk'; $auto = $shell.CreateShortcut($startupLink); $auto.TargetPath = $firstTarget; $auto.Arguments = '--autostart'; $auto.Description = 'Desktop Calendar startup (current user)'; $auto.Save()
     Install 'Update' $next
     $second = Get-Content -Encoding UTF8 (Join-Path $root 'installation.json') -Raw | ConvertFrom-Json
     $secondTarget = $shell.CreateShortcut($link).TargetPath
+    Check 'existing opted-in startup follows update without adding a second entry' ($shell.CreateShortcut($startupLink).TargetPath -eq $secondTarget -and @(Get-ChildItem $startup -Filter '*.lnk').Count -eq 1)
     Check 'changed package switches shortcut and retains prior version' ($first.PackageId -ne $second.PackageId -and $firstTarget -ne $secondTarget -and [IO.File]::Exists($firstTarget) -and [IO.File]::Exists($secondTarget))
     $statePath = Join-Path $root 'installation.json'; $heldState = Join-Path $root 'state-held-fixture.json'
     [IO.File]::Move($statePath, $heldState)
@@ -65,6 +68,7 @@ try {
     try {
         Install 'Install' $package $testRoot $true
         Check 'late metadata failure rolls shortcut back to previous target' ($shell.CreateShortcut($link).TargetPath -eq $secondTarget)
+        Check 'late metadata failure restores startup target too' ($shell.CreateShortcut($startupLink).TargetPath -eq $secondTarget)
     } finally { [IO.Directory]::Delete($statePath); [IO.File]::Move($heldState, $statePath) }
     $bad = ClonePackage 'package-damaged' $false
     [IO.File]::AppendAllText((Join-Path $bad 'DesktopCalendar.dll'), 'damaged')
@@ -111,6 +115,7 @@ try {
     Check 'test root escaping artifacts is rejected' ([IO.File]::Exists((Join-Path $projectRoot 'AGENTS.md')))
     [IO.File]::WriteAllText((Join-Path $root 'keep-foreign.txt'), 'foreign fixture')
     Install 'Uninstall' $package; Install 'Uninstall' $package
+    Check 'uninstall removes owned startup and preserves data' (-not [IO.File]::Exists($startupLink) -and [IO.File]::Exists($sentinel))
     Check 'uninstall removes only managed entry and program versions' (-not [IO.File]::Exists($link) -and -not [IO.File]::Exists($firstTarget) -and -not [IO.File]::Exists($secondTarget))
     Check 'uninstall preserves personal data/images and foreign files' ((Get-FileHash -LiteralPath $sentinel -Algorithm SHA256).Hash -eq $initialHash -and [IO.File]::Exists($image) -and [IO.File]::Exists((Join-Path $root 'keep-foreign.txt')))
 } catch { $results.Add('FAIL unhandled install check: ' + $_.Exception.Message) }

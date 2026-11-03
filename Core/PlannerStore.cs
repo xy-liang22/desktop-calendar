@@ -106,6 +106,12 @@ public sealed class PlannerStore
         finally { gate.Release(); }
     }
     async Task<string?> DiskToken(CancellationToken ct) => File.Exists(FilePath) ? Fingerprint(await Read(FilePath, ct).ConfigureAwait(false)) : null;
+    public async Task<T> MaintenanceAsync<T>(string? expectedFingerprint, Func<Task<T>> action, CancellationToken ct = default)
+    {
+        await gate.WaitAsync(ct).ConfigureAwait(false);
+        try { using var lease = await Lease(ct).ConfigureAwait(false); if (await DiskToken(ct).ConfigureAwait(false) != expectedFingerprint) throw new PlannerException("FileChangedExternally"); return await action().ConfigureAwait(false); }
+        finally { gate.Release(); }
+    }
     async Task WriteFlushed(string path, byte[] bytes, bool fault, CancellationToken ct)
     {
         using var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, FileOptions.Asynchronous | FileOptions.WriteThrough);

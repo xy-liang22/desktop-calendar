@@ -16,10 +16,11 @@ internal static partial class Checks
     internal static async Task<int> Main(string[] args)
     {
         if (args.Length > 0 && args[0] == "--interrupt") return await InterruptChild(args);
+        if (args.Length > 0 && args[0] == "--backup-interrupt") return BackupInterrupt(args);
         if (args.Length > 0 && args[0] is "--read" or "--verify") return await ReadChild(args);
         string output = args.Length > 0 ? Path.GetFullPath(args[0]) : Path.GetFullPath("artifacts/p2-checks");
         Directory.CreateDirectory(output);
-        try { ModelChecks(); await StorageChecks(output); await ServiceChecks(output); await BoundaryChecks(output); await CompletionChecks(output); await P4Checks(output); await P5Checks(output); await P6Checks(output); await P7Checks(output); }
+        try { ModelChecks(); await StorageChecks(output); await ServiceChecks(output); await BoundaryChecks(output); await CompletionChecks(output); await P4Checks(output); await P5Checks(output); await P6Checks(output); await P7Checks(output); await P8Checks(output); }
         catch (Exception e) { Results.Add("FAIL unhandled " + e); }
         File.WriteAllLines(Path.Combine(output, "checks.txt"), Results);
         int failures = Results.Count(s => s.StartsWith("FAIL "));

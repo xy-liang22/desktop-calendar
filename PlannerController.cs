@@ -16,13 +16,15 @@ internal sealed class PlannerController
     readonly PlannerStore store;
     readonly DispatcherTimer todayTimer = new() { Interval = TimeSpan.FromMinutes(1) };
     PlannerWorkspace? workspace;
+    readonly bool maintenanceBlocked;
     DateOnly lastToday;
     internal PlannerState? State => workspace?.Snapshot;
     internal StoreLoad? Storage => workspace?.Storage;
     internal Task Pending { get; private set; } = Task.CompletedTask;
     internal bool Busy { get; private set; } = true;
     internal bool Stopping { get; private set; }
-    internal bool Writable => !Busy && !Stopping && Storage?.CanWrite == true;
+    internal bool MaintenancePending => maintenanceBlocked || System.IO.File.Exists(System.IO.Path.Combine(DataDirectory, "restore-journal.json"));
+    internal bool Writable => !Busy && !Stopping && !MaintenancePending && Storage?.CanWrite == true;
     internal bool CanUndo => Writable && workspace?.CanUndo == true;
     internal bool CanRedo => Writable && workspace?.CanRedo == true;
     internal DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
@@ -53,9 +55,9 @@ internal sealed class PlannerController
     internal string DataDirectory => System.IO.Path.GetDirectoryName(FilePath)!;
     internal event Action? Changed;
     internal event Action? PreferencesChanged;
-    internal PlannerController(string path, WindowPreferences preferences, StoreOptions? options = null)
+    internal PlannerController(string path, WindowPreferences preferences, StoreOptions? options = null, bool maintenanceBlocked = false)
     {
-        store = new(path, options); lastToday = Today; WeekStart = preferences.WeekStart; WeekLayout = preferences.WeekPlanLayout;
+        this.maintenanceBlocked = maintenanceBlocked; store = new(path, options); lastToday = Today; WeekStart = preferences.WeekStart; WeekLayout = preferences.WeekPlanLayout;
         SelectedDate = preferences.PlannerDate ?? Today;
         Month = preferences.PlannerMonth ?? new(SelectedDate.Year, SelectedDate.Month, 1);
         Month = new(Month.Year, Month.Month, 1); ColorBackground = preferences.CalendarColorBackground; TextMode = preferences.CalendarTextMode;
@@ -66,6 +68,7 @@ internal sealed class PlannerController
     {
         try
         {
+            if (maintenanceBlocked) { Diagnostic = "PendingRestoreRecoveryBlocked"; NoticeKey = "PlannerReadFailed"; return; }
             workspace = await PlannerWorkspace.OpenAsync(store, Options);
             if (workspace.Storage.Status == StoreStatus.Missing)
             {
@@ -129,6 +132,7 @@ internal sealed class PlannerController
         Busy = true; Changed?.Invoke();
         try
         {
+            if (MaintenancePending) { NoticeKey = "PlannerReadFailed"; Diagnostic = "PendingRestoreRecoveryBlocked"; return; }
             if (workspace == null) { workspace = await PlannerWorkspace.OpenAsync(store, Options); }
             else await workspace.ReloadAsync(Options);
             SetStorageNotice();
@@ -147,6 +151,24 @@ internal sealed class PlannerController
         finally { Busy = false; Changed?.Invoke(); }
     }
     internal async Task StopAsync() { Stopping = true; todayTimer.Stop(); await Pending; }
+    internal Task<T> MaintenanceAsync<T>(Func<T> operation)
+    {
+        if (Busy || Stopping || workspace == null) throw new InvalidOperationException("PlannerBusy");
+        var task = Maintain(operation); Pending = ObserveMaintenance(task); return task;
+    }
+    static async Task ObserveMaintenance(Task task) { try { await task; } catch { /* The operation caller receives the original failure; lifecycle waiting must still complete. */ } }
+    async Task<T> Maintain<T>(Func<T> operation)
+    {
+        Busy = true; Changed?.Invoke();
+        try { return await workspace!.MaintenanceAsync(() => Task.Run(operation)); }
+        finally { Busy = false; if (MaintenancePending) { NoticeKey = "PlannerReadFailed"; Diagnostic = "PendingRestoreRecoveryBlocked"; } Changed?.Invoke(); }
+    }
+    internal async Task RestorePreferencesAsync(WindowPreferences p)
+    {
+        WeekStart = p.WeekStart; WeekLayout = p.WeekPlanLayout; TextMode = p.CalendarTextMode; ColorBackground = p.CalendarColorBackground;
+        SelectedDate = p.PlannerDate ?? Today; Month = p.PlannerMonth ?? new(SelectedDate.Year, SelectedDate.Month, 1);
+        await ReloadAsync();
+    }
     internal void Dispose() { Stopping = true; todayTimer.Stop(); }
     internal void SetTextMode(CalendarTextMode mode) { if (!Enum.IsDefined(mode) || TextMode == mode) return; TextMode = mode; Changed?.Invoke(); PreferencesChanged?.Invoke(); }
     internal Todo? FindTodo(Guid id) => State?.Todos.FirstOrDefault(t => t.Id == id) ?? On(SelectedDate).FirstOrDefault(t => t.Id == id) ?? On(Today).FirstOrDefault(t => t.Id == id);
