@@ -99,15 +99,19 @@ internal sealed class CalendarTaskPanel : Panel
             UIElement body = text;
             if (task.Draft is InlineTitleDraft draft && task.Controller is PlannerController controller)
             {
-                var input = new TextBox { Text = draft.Text, FontSize = 10, Padding = new Thickness(0), BorderThickness = new Thickness(1), Height = RowHeight, MaxLength = 10000, ToolTip = draft.Error.Length > 0 ? draft.Error : MainWindow.Text("CalendarInlineHint") };
+                var input = new TextBox { Tag = draft, Text = draft.Text, FontSize = 10, Padding = new Thickness(0), BorderThickness = new Thickness(1), Height = RowHeight, MaxLength = 10000, ToolTip = draft.Error.Length > 0 ? draft.Error : MainWindow.Text("CalendarInlineHint") };
                 System.Windows.Automation.AutomationProperties.SetName(input, MainWindow.Text("CalendarInlineTitle"));
                 input.TextChanged += (_, _) => draft.Text = input.Text;
                 var ime = new ImeInput(input);
                 input.PreviewKeyDown += async (_, e) => { if (ime.Consumes(e)) return; if (e.Key == System.Windows.Input.Key.Escape) { e.Handled = true; controller.CancelInline(); } else if (e.Key == System.Windows.Input.Key.Enter) { e.Handled = true; await controller.CommitInlineAsync(); } };
-                input.LostKeyboardFocus += async (_, _) => { if (controller.Inline == draft && !draft.Saving) await controller.CommitInlineAsync(); };
+                input.LostKeyboardFocus += (_, e) =>
+                {
+                    if (e.NewFocus is FrameworkElement replacement && ReferenceEquals(replacement.Tag, draft)) return;
+                    _ = input.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.ContextIdle, new Action(async () => { if (input.IsLoaded && !input.IsKeyboardFocusWithin && controller.Inline == draft && !draft.Saving) await controller.CommitInlineAsync(); }));
+                };
                 void Error() { input.ToolTip = draft.Error.Length > 0 ? draft.Error : MainWindow.Text("CalendarInlineHint"); input.BorderBrush = ThemeColors.Brush(draft.Error.Length > 0 ? "#E3BF89" : "#A3D9C4"); }
                 draft.Changed += Error; input.Unloaded += (_, _) => draft.Changed -= Error;
-                input.Loaded += (_, _) => { if (!draft.Saving) { input.Focus(); input.SelectAll(); } }; Error(); body = input;
+                input.Loaded += (_, _) => { if (input.IsLoaded && input.IsVisible && controller.Inline == draft && !draft.Saving) { input.Focus(); input.SelectAll(); } }; Error(); body = input;
             }
             row.Children.Add(new Border { Background = backgrounds ? ThemeColors.Brush(ThemeColors.Soft(task.Color)) : Brushes.Transparent, CornerRadius = new CornerRadius(3), Child = body });
             Children.Add(row);

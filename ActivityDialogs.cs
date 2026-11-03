@@ -107,25 +107,5 @@ internal static class ActivityDialogs
         }, true);
         sheet.Loaded += (_, _) => title.Focus(); return PlannerDialogs.Show(owner, sheet) == true;
     }
-    internal static void Detail(MainWindow owner, PlannerController c, Guid id, Guid periodId)
-    {
-        var a = c.State?.Activities.FirstOrDefault(x => x.Id == id); if (a == null) return; var sheet = new PlannerDialogs.Sheet(T("ActivityDetail"), 480);
-        var header = PlannerView.Text(a.Emoji + " " + a.Title, 19); header.TextWrapping = TextWrapping.Wrap; sheet.Body.Children.Add(header);
-        void Line(string text) { var label = PlannerView.Text(text, 12); label.TextWrapping = TextWrapping.Wrap; label.Margin = new Thickness(0, 5, 0, 5); sheet.Body.Children.Add(label); }
-        Line(a.Summary); Line((c.State!.Categories.FirstOrDefault(x => x.Id == a.CategoryId)?.Name ?? "") + "  " + a.Reaction);
-        foreach (var p in a.Intervals) Line(TimeZoneInfo.ConvertTime(p.Start, PlannerTime.Zone(a.TimeZoneId)).ToString("yyyy-MM-dd HH:mm zzz") + " → " + TimeZoneInfo.ConvertTime(p.End, PlannerTime.Zone(a.TimeZoneId)).ToString("yyyy-MM-dd HH:mm zzz"));
-        Line(a.TimeZoneId);
-        if (a.Todo != null) { try { Line(T("ActivityTodo") + " · " + PlannerQueries.Resolve(c.State, a.Todo).Title); } catch (PlannerException) { Line(T("ActivityLinkedDeleted") + a.FormerTodoTitle); } } else if (a.FormerTodoTitle != null) Line(T("ActivityLinkedDeleted") + a.FormerTodoTitle);
-        foreach (var goal in c.State.Goals.Where(g => g.Activities.Contains(a.Id))) Line(T("ActivityGoal") + " · " + goal.Title);
-        sheet.Body.Children.Add(new FlowDocumentScrollViewer { Document = MarkdownNotes.Render(a.Notes.Text, a.Notes.Format, new(c.DataDirectory, () => c.State)), IsToolBarVisible = false, Height = 220, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
-        int action = 0; sheet.Save(() => Task.FromResult(true), true); sheet.Actions.Children.Clear();
-        void Action(string key, int next, bool enabled) { var button = PlannerView.Button(T(key), async () => { action = next; await sheet.SaveAndCloseAsync(false); }); button.IsEnabled = enabled; sheet.Actions.Children.Add(button); }
-        Action("ActivityEditAction", 1, c.Writable); Action("ActivityDelete", 2, c.Writable); Action("ActivityDeletePeriod", 3, c.Writable && a.Intervals.Length > 1); Action("ActivityCopy", 4, c.Writable);
-        PlannerDialogs.Show(owner, sheet);
-        if (action == 1) Edit(owner, c, a);
-        else if (action == 2 && PlannerDialogs.Confirm(owner, T("ActivityDelete"), T("ActivityDeleteConfirm"))) _ = c.ExecuteAsync(new DeleteActivity(a.Id));
-        else if (action == 3 && PlannerDialogs.Confirm(owner, T("ActivityDeletePeriod"), T("ActivityDeletePeriodConfirm")))
-        { if (JsonSerializer.Serialize(c.State?.Activities.FirstOrDefault(x => x.Id == a.Id)) != JsonSerializer.Serialize(a)) c.Report("ActivityStale"); else _ = c.ExecuteAsync(new SaveActivity(a with { Intervals = [.. a.Intervals.Where(p => p.Id != periodId)] }, false)); }
-        else if (action == 4) Edit(owner, c, draft: a with { Id = Guid.NewGuid(), Intervals = [.. a.Intervals.Select(p => p with { Id = Guid.NewGuid() })] });
-    }
+    internal static void Detail(MainWindow owner, PlannerController c, Guid id, Guid periodId) => owner.ActivityDetails?.Show(id, periodId);
 }

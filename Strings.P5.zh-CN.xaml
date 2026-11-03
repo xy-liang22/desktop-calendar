@@ -13,4 +13,5 @@
  <s:String x:Key="ActivityFromTodo">记录实际时间</s:String><s:String x:Key="ActivityCopy">复制日程</s:String><s:String x:Key="ActivityWeek">一周实际日程</s:String><s:String x:Key="ActivityWeekPlanned">周计划与总结界面将在P6接入；此处不显示模拟统计。</s:String>
  <s:String x:Key="ActivityGestureCancel">Esc / 右键取消；松开提交预览，可撤销</s:String><s:String x:Key="ActivityGestureInvalid">预览时间无效，松开不会保存；可用完整编辑器精确输入。</s:String><s:String x:Key="ActivityDragSaveFailed">拖动保存失败，预览已保留。Enter重试，Esc或右键取消；原记录未覆盖。</s:String>
  <s:String x:Key="ActivityP5Caption">P5 · 真实待办与实际日程 · 周目标完整管理待P6</s:String><s:String x:Key="ActivityEmptyShort">暂无记录</s:String><s:String x:Key="ActivityPreviewTruncated">预览仅显示前100000字；源码内容完整保留。</s:String><s:String x:Key="ActivityTitleRequired">日程标题不能为空；无效内容不会保存或删除记录。</s:String><s:String x:Key="ActivityStale">日程已发生变化，请重新打开，避免覆盖新内容。</s:String>
+ <s:String x:Key="ImageViewerTitle">本地图片 · 滚轮缩放 / 拖动平移 / Esc关闭</s:String><s:String x:Key="ImageFit">适应窗口</s:String><s:String x:Key="ImageOpen">点击查看大图</s:String>
 </ResourceDictionary>

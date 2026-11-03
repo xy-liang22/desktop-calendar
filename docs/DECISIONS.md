@@ -1,5 +1,12 @@
 # 开发决定与授权记录
 
+## 2026-11-03：P5.1编辑交互
+
+- dev/p6从eae0cc4开始，先完成P5.1独立提交后直接继续已授权P6，不修改main、owner或schema3。Sheet原DragMove只接受Source==heading，点到标题TextBlock时被排除；共用WindowGestures排除交互控件后处理标题预览鼠标，HoldOpen防止拖动失活保存，结束按所在屏工作区Fit，仍为原有owned tool式WPF窗口。
+- ActivityDetailCard在主Surface中复用一个Canvas/Border；不阻塞鼠标或创建详情Window，空白关闭不吞后续块点击。按实际Period裁片查锚点，布局变化重定位，离开视口/切页/折叠关闭；上下无空间时优先侧边，内部滚动与WrapPanel操作避免溢出，拖动偏移夹入客户区。
+- 图片帧按FlowDocumentScrollViewer实际宽度调整，保留比例/最大440DIP内部滚动；ImageViewer使用当前窗口Owner，父Sheet通过HoldOpen保护未提交内容。100%按当前显示DPI映射一图像像素到一物理像素，缩放保鼠标锚点、滚动平移，无联网/第三方包。查看器关闭保留原编辑器及滚动树。
+- 旧内联焦点失败本轮再次出现：保存重建控件时旧Loaded/失焦回调可迟到。仅当前有效草稿/已加载可见控件允许聚焦；重建同草稿焦点转移不提交，真实失焦延至ContextIdle并校验仍在树上。保留全部内联保存/取消测试，不跳过旧问题。屏幕找回断言改查移动后的实际屏而非原屏。
+
 ## 2026-11-03：P4尾部标记与P5实际日程
 
 - 用户批准直接连续执行，在dev/p5从738501b增量开发；不改owner、不加依赖、不进入P6/P7。月历CalendarTodoEntry增加显示用StatusMark，类型标记与展开按钮右停靠，正文继续真实测量；‹/⌄、↻/←语义分开，无新业务字段。

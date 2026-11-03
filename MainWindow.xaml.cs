@@ -36,6 +36,7 @@ public partial class MainWindow : Window
     private Grid monthPage = null!, weekPage = null!;
     internal TimelineView DailyTimeline { get; }
     internal TimelineView WeeklyTimeline { get; }
+    internal ActivityDetailCard? ActivityDetails { get; }
     internal PlannerView? PlannerView { get; }
     internal int PlannerDialogDepth { get; set; }
     private DockSide dockSide;
@@ -67,6 +68,7 @@ public partial class MainWindow : Window
         else { PlannerView = new PlannerView(this, session.Planner, DailyTimeline); monthPage = PlannerView; }
         weekPage = session.Planner == null ? PrototypeViews.Week(WeeklyTimeline) : new ActivityWeekView(this, session.Planner, WeeklyTimeline);
         if (session.Planner != null) { DailyTimeline.Bind(this, session.Planner); WeeklyTimeline.Bind(this, session.Planner); }
+        if (session.Planner != null) ActivityDetails = new ActivityDetailCard(this, session.Planner);
         PageHost.Children.Add(monthPage);
         PageHost.Children.Add(weekPage);
         SetPage(preferences.Week);

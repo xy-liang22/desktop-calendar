@@ -57,7 +57,15 @@ internal static class MarkdownNotes
             {
                 var bitmap = images.Read(m.Groups[2].Value);
                 if (bitmap == null) output.Add(new Run("[" + MainWindow.Text("ActivityMissingImage") + ": " + m.Groups[1].Value + "]") { Foreground = ThemeColors.Brush("#E3BF89") });
-                else output.Add(new InlineUIContainer(new Image { Source = bitmap, MaxWidth = 260, MaxHeight = 260, Stretch = Stretch.Uniform, ToolTip = m.Groups[1].Value }));
+                else
+                {
+                    var picture = new Image { Source = bitmap, Stretch = Stretch.Uniform, Cursor = Cursors.Hand, ToolTip = MainWindow.Text("ImageOpen") };
+                    var frame = new ScrollViewer { Content = picture, MaxHeight = 440, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+                    picture.MouseLeftButtonDown += (_, e) => { e.Handled = true; ImageViewer.Open(picture, bitmap); };
+                    void FitWidth() { var viewer = Ancestor<FlowDocumentScrollViewer>(frame); if (viewer == null) return; double width = Math.Max(40, viewer.ActualWidth - 40); frame.Width = width; picture.Width = width; }
+                    frame.Loaded += (_, _) => FitWidth(); frame.LayoutUpdated += (_, _) => { var viewer = Ancestor<FlowDocumentScrollViewer>(frame); if (viewer != null && Math.Abs(frame.Width - Math.Max(40, viewer.ActualWidth - 40)) > .5) FitWidth(); };
+                    output.Add(new InlineUIContainer(frame));
+                }
             }
             else if (m.Groups[4].Success)
             {
@@ -70,6 +78,8 @@ internal static class MarkdownNotes
         }
         if (position < text.Length) output.Add(new Run(text[position..]));
     }
+    static T? Ancestor<T>(DependencyObject source) where T : DependencyObject
+    { for (DependencyObject? node = source; node != null; node = node is Visual ? VisualTreeHelper.GetParent(node) : LogicalTreeHelper.GetParent(node)) if (node is T found) return found; return null; }
 }
 
 internal sealed class NoteEditor : Grid

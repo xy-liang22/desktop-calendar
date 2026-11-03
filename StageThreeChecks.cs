@@ -192,6 +192,7 @@ internal static partial class StageThreeChecks
                 await RunP32Checks(window);
                 await RunP4Checks(window);
                 await RunP5Checks(window);
+                await RunP51Checks(window);
                 view.Quick.Text = "recovery draft"; session.TestWindowLoss(); await Task.Delay(150); window = session.Window;
                 window.Show();
                 for (int i = 0; i < 100 && !window.Ready; i++) await Task.Delay(50);
