@@ -10,7 +10,7 @@ using System.Windows.Media;
 namespace DesktopCalendar;
 
 // One scale drives the entire 24-hour layout. No data editing or business persistence.
-internal sealed class TimelineView : ScrollViewer
+internal sealed partial class TimelineView : ScrollViewer
 {
     internal const double MinimumHour = 24, MaximumHour = 160, DefaultHour = 50;
     internal double HourHeight { get; private set; }
@@ -20,7 +20,7 @@ internal sealed class TimelineView : ScrollViewer
     internal readonly List<(Border Card, Slot Slot)> Cards = new();
     readonly Canvas[] days;
     bool firstLoad = true;
-    internal sealed record Slot(DemoContent.Block Block, int Lane, int Lanes, double Start, double End);
+    internal sealed record Slot(DemoContent.Block Block, int Lane, int Lanes, double Start, double End, DesktopCalendar.Core.ActivitySegment? Segment = null);
     internal TimelineView(bool week, int day, double hour = DefaultHour)
     {
         HourHeight = double.IsFinite(hour) ? Math.Clamp(hour, MinimumHour, MaximumHour) : DefaultHour;
@@ -70,6 +70,7 @@ internal sealed class TimelineView : ScrollViewer
     internal bool Wheel(int delta, bool control, double pointerY)
     {
         if (!control) return false;
+        if (CurrentGesture != null) CancelGesture();
         UpdateLayout();
         double y = Math.Clamp(pointerY, 0, ViewportHeight), anchor = (VerticalOffset + y) / HourHeight;
         double next = Math.Clamp(HourHeight * Math.Pow(1.1, delta / 120.0), MinimumHour, MaximumHour);
@@ -91,6 +92,7 @@ internal sealed class TimelineView : ScrollViewer
     }
     void PositionCards()
     {
+        foreach (var canvas in days) foreach (var label in canvas.Children.OfType<TextBlock>()) { label.Width = Math.Max(20, canvas.ActualWidth - 8); Canvas.SetTop(label, 8 * HourHeight); }
         foreach (var (card, slot) in Cards)
         {
             var canvas = (Canvas)card.Parent;

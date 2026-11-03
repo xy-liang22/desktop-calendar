@@ -8,7 +8,7 @@ using System.Windows.Media;
 namespace DesktopCalendar;
 internal sealed record CalendarTodoEntry(string Title, string TimePrefix, bool Completed, string Color, bool Emphasis, Action Toggle,
     Guid Id = default, Guid? ParentId = null, int Depth = 0, bool HasChildren = false, bool Expanded = false,
-    Action? Expand = null, Action? BeginInline = null, InlineTitleDraft? Draft = null, PlannerController? Controller = null, bool Editable = true);
+    Action? Expand = null, Action? BeginInline = null, InlineTitleDraft? Draft = null, PlannerController? Controller = null, bool Editable = true, string StatusMark = "");
 
 // Fixed date/information rows cannot be displaced by the adaptive preview body.
 internal sealed class CalendarPreviewCell : Grid
@@ -87,8 +87,9 @@ internal sealed class CalendarTaskPanel : Panel
             var row = new DockPanel { Tag = task, MinHeight = RowHeight, Margin = new Thickness(Math.Min(task.Depth, 6) * 7, 0, 0, 0), Opacity = task.Completed ? .6 : 1, ClipToBounds = true };
             if (task.HasChildren)
             {
-                var expand = PlannerView.Button(task.Expanded ? "▾" : "▸", () => task.Expand?.Invoke(), MainWindow.Text("CalendarExpand")); expand.Width = 12; expand.Height = RowHeight; expand.VerticalAlignment = VerticalAlignment.Top; expand.FontSize = 9; expand.Margin = new Thickness(0); expand.Padding = new Thickness(0); DockPanel.SetDock(expand, Dock.Right); row.Children.Add(expand);
+                var expand = PlannerView.Button(task.Expanded ? "⌄" : "‹", () => task.Expand?.Invoke(), MainWindow.Text("CalendarExpand")); expand.Width = 12; expand.Height = RowHeight; expand.VerticalAlignment = VerticalAlignment.Top; expand.FontSize = 12; expand.Margin = new Thickness(2, 0, 0, 0); expand.Padding = new Thickness(0); DockPanel.SetDock(expand, Dock.Right); row.Children.Add(expand);
             }
+            if (task.StatusMark.Length > 0) { var mark = new TextBlock { Text = task.StatusMark, Width = 14, Height = RowHeight, Margin = new Thickness(2, 0, 0, 0), Foreground = ThemeColors.Brush("#A3D9C4"), FontSize = 11, TextAlignment = TextAlignment.Center, ToolTip = task.StatusMark == "↻" ? MainWindow.Text("RepeatPeriodicMark") : MainWindow.Text("RepeatLatestMark") }; DockPanel.SetDock(mark, Dock.Right); row.Children.Add(mark); }
             var check = new CheckBox { IsChecked = task.Completed, Margin = new Thickness(0, 0, 2, 0), Width = 17, IsEnabled = task.Editable, Foreground = ThemeColors.Brush(ThemeColors.Accent(task.Color)), Style = (Style)Application.Current.FindResource("CalendarCheck"), VerticalAlignment = VerticalAlignment.Top, ToolTip = MainWindow.Text("PlannerToggle") };
             check.Click += (_, e) => { check.IsChecked = task.Completed; e.Handled = true; task.Toggle(); };
             row.Children.Add(check);

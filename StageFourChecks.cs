@@ -84,7 +84,7 @@ internal static partial class StageThreeChecks
         });
         var monthly = c.State!.Series.Single(s => s.Versions[0].Templates.Any(t => t.Title == "GUI monthly leap")); var leapRef = TodoRef.For(new(monthly.Id, monthly.RootTodoId, new(2028, 2, 29)));
         Check("monthly editor skips missing day and navigates to leap-day occurrence", c.SelectedDate == new DateOnly(2028, 2, 29) && c.On(c.SelectedDate).Any(t => t.Id == leapRef.Id) && !c.On(new(2028, 4, 29)).Any(t => t.Origin?.SeriesId == monthly.Id));
-        window.UpdateLayout(); Image(window.Surface, "p4-leap-month.png"); Check("calendar displays periodic marker", Children<TextBlock>(v).Any(t => t.Text.StartsWith("↻ ", StringComparison.Ordinal)));
+        window.UpdateLayout(); Image(window.Surface, "p4-leap-month.png"); Check("calendar displays periodic marker at trailing edge", Children<TextBlock>(v).Any(t => t.Text == "↻" && DockPanel.GetDock(t) == Dock.Right));
         Drive(() => PlannerDialogs.Copy(window, c, PlannerQueries.Resolve(c.State!, leapRef)), s => { Children<DatePicker>(s).Single().SelectedDate = new DateTime(2028, 3, 10); Click(s.Actions.Children.OfType<Button>().Last()); }); await c.Pending;
         Check("GUI occurrence copy is independent ordinary data", c.State!.Todos.Any(t => t.CopiedFromId == leapRef.Id && t.Kind == TodoKind.Once && t.PlannedDate == new DateOnly(2028, 3, 10)));
         v.Quick.Text = "mixed ordinary"; await v.AddQuickAsync(); var ordinary = c.On(c.SelectedDate).Single(t => t.Title == "mixed ordinary");

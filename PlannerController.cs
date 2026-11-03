@@ -37,6 +37,7 @@ internal sealed class PlannerController
     internal string NoticeKey { get; private set; } = "PlannerLoading";
     internal string Diagnostic { get; private set; } = "";
     internal string FilePath => store.FilePath;
+    internal string DataDirectory => System.IO.Path.GetDirectoryName(FilePath)!;
     internal event Action? Changed;
     internal event Action? PreferencesChanged;
     internal PlannerController(string path, WindowPreferences preferences, StoreOptions? options = null)
@@ -90,6 +91,7 @@ internal sealed class PlannerController
     internal Task<bool> ExecuteAsync(PlannerCommand command) => Start(() => workspace!.ExecuteAsync(command));
     internal Task<bool> UndoAsync() => Start(() => workspace!.UndoAsync());
     internal Task<bool> RedoAsync() => Start(() => workspace!.RedoAsync());
+    internal void Report(string key, string diagnostic = "") { NoticeKey = key; Diagnostic = diagnostic; Changed?.Invoke(); }
     Task<bool> Start(Func<Task<CommandResult>> action)
     {
         if (!Writable) return Task.FromResult(false);

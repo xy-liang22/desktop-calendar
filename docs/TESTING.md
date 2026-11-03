@@ -1,5 +1,58 @@
 # 阶段验证记录
 
+## 2026-11-03：P4图标收尾 + P5实际日程
+
+状态：0.5.0/dev/p5开发完成，已执行的自动/Window生命周期/控件渲染范围内通过，**实际物理拖拽、系统剪贴板与桌面像素NOT VERIFIED**；不进入P6/P7。沿用schema3、唯一业务JSON和已验收桌面owner；P4核心已由用户确认，本轮只调尾部图标，不重写周期系统。
+
+### 执行方式与最终结果
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Test-Planner.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Test-P3.ps1 -Configuration P5
+powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -Configuration P5Regression -Test
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Publish-DesktopCalendar.ps1 -Configuration P5
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-UserInstall.ps1
+```
+
+| 范围 | 结果 | 证据/限度 |
+|---|---|---|
+| 数据/存储/Core | **240 PASS / 0 FAIL / 1 NOT VERIFIED** | artifacts/p2-checks/checks.txt；原Samoa2011平台资料限制保留 |
+| P3–P5编辑/控件/图片/独立进程恢复 | **195 PASS / 0 FAIL** | artifacts/p3-checks/run-b26dd13d0d0344d58e6f7205e243de1d；main/restart/corrupt/newer四类独立进程 |
+| 桌面窗口/owner/缩放/偏好/安装资源基线 | **374 PASS / 0 FAIL** | artifacts/p1-checks.txt；P5Regression正常用户桌面会话 |
+| 五文件发布包/隔离安装更新卸载启动 | **15 PASS / 0 FAIL** | artifacts/install-checks.txt；只写项目artifacts，不替换真实开始菜单安装版 |
+| 最终构建/框架依赖发布 | **PASS：0警告/0错误** | bin/P5/net10.0-windows，artifacts/package 0.5.0 |
+
+全程Windows原生PowerShell、现有SDK、离线包源，无安装依赖/系统设置/Explorer重启/显示器设置变更。所有业务及图片夹具在项目artifacts，未访问个人planner-data.json、剪贴板私有内容或用户图片。控制台日志/PNG/JSON均忽略提交；渲染图不包含真实私人桌面。
+
+### 已执行的功能与边界
+
+- **PASS / P4图标**：窄宽52DIP实测，‹/⌄和类型↻/←右停靠，正文仍计划时间+标题，标记独立宽度且不挤走勾选框。原父子展开、深度优先、三种测量换行、+N和五/六周检查继续执行；周期标记断言改为验证右侧结构，而非旧前缀文本。
+- **PASS / 日期与时区**：跨午夜同PeriodId裁日、跨周查询基础、多个独立段；DST回拨3小时拆两偏移片、本地钟反向但绝对正时长仍可见；春季空洞保留墙钟空白/真实1小时。模糊无偏移与无效本地时间拒绝，移动保持真实时长，边缘只改一端，倒置拒绝。创建去掉鼠标小数坐标的秒/亚秒；已有时间未改则亚秒原样保留。
+- **PASS / 编辑及数据**：创建即含备注/多段/emoji/reaction、未完成Todo关联、已有WeekGoal关联；不完成待办。表单非法时间保留草稿，外部关闭走同一校验保存，取消不改，真实只读文件保存失败不关。单段删除确认保留其余段/备注/关联，整条删除不删Todo；复制入口新ID。Core原JSON中断/并发/损坏保护、UndoRedo与图完整性全部仍执行。
+- **PASS / 时间轴自动驱动**：两页均来自同一状态、无示例块；拖动控制器预览不保存，取消保持JSON摘要；释放移动/边缘调整一次事务，另一页即时更新，Undo恢复。保存失败保留可重试预览，恢复文件权限后同一次意图重试成功。重叠块独立Activity/Period标记与分列，缩放后刻度/块位置高度同一比例、指针锚点稳定，普通滚轮不被Ctrl逻辑拦截、两页比例独立。**这些调用生产手势入口/路由与真实布局，不是物理鼠标轨迹。**
+- **PASS / 备注和图片**：源码/实时FlowDocument可渲染标题、列表、引用、代码、表格、链接与本地图；HTML作为文字，远程图片占位无网络。规范PNG内容去重/相对路径，不含Base64；坏图拒绝、文件占用/不安全引用返回占位。JSON+资产登记可Undo，物理文件保留以便Redo；共享图片不因删一日程丢失。新进程重新读取两段、emoji/关联与图片校验成功，非仅检查原文件内容。系统剪贴板入口和真实文件拖入尚无物理输入证据。
+- **PASS / 渲染观察**：已查看p5-activity-editor.png、p5-notes-editor.png、p5-local-image-preview.png、p5-detail.png、p5-real-day.png和p5-real-week.png；截图式证据来自实际WPF控件RenderTargetBitmap，**不是桌面像素截图**。备注滚入编辑视口后检查，代码/表格/引用/缺图提示/本地图可见，emoji编辑值实际可见，深色文字对比正常。当前24小时/最小布局及月历原回归保留；极短块可放大时间轴或打开详情精确编辑。
+
+### 本轮失败定位与修复
+
+1. 初次构建有GridResizeDirection命名及匿名签名重复Text两处错误、剪贴板可空值一处警告，已修正；最终0警告/错误。
+2. 首轮旧内联测试一次找不到输入框；增加焦点类型/日期/可写状态诊断，不删测试。后续多轮串行全部通过，未得到可稳定重现根因，保留首轮报告run-2d202f26941d46ccae09541ca02bb138；不宣称已证实某个产品根因。
+3. 首次P5驱动在收起的周目标Expander里找CheckBox失败；按真实用户流程展开并等待布局后通过。P5选到次日后旧“找回必须有当日待办”的夹具假设失败；P5测试退出恢复原日期，保留原找回断言，非产品数据丢失。
+4. 图像显示emoji控件空白而保存值正确，确认原全局ComboBox模板无PART_EditableTextBox。补标准编辑部件及IsEditable触发器，保留非编辑外观；新增可见文本断言/图像后通过。详情的旧“编辑待办”复用文案也改为“编辑”。
+5. 曾同时运行P5与窗口基线，造成新编辑器失活、No modal测试竞争（run-7c80f6c455024b41b8b485f17fe5d19c）；停止并行GUI，独占桌面串行复跑191/0、194/0，最终195/0。独立测试目录仍保留，不把竞争记成产品通过。
+6. 第一张直接渲染视口外NoteEditor为空，因为祖先滚动裁剪；后续将实际备注滚入编辑视口、预览滚到底，检查完整编辑器图，不用空图作视觉证据。
+
+### NOT VERIFIED / 已知限制与仅需人工的两组
+
+computer-use技能本轮已阅读并调用list_windows两次，均native pipe不存在（os error2），没有可选择窗口或像素/输入接口。没有用其他输入注入或额外权限绕过；没有反复429审批请求。Win10、真实混合DPI、Explorer重启/休眠、物理断电/满盘仍为历史未验证边界；用户接受的偶发轻微缩放抖动保留，不重测已验收Win+D/任务栏/Alt+Tab。
+
+最终批次无FAIL；首轮内联焦点异常仍为未稳定复现的观察项，诊断保留，不宣称已定位根因。物理交互体验仍待确认；先从旧实例托盘退出，运行`bin/P5/net10.0-windows/DesktopCalendar.exe`：
+
+1. 右栏拖空白创建，填标题保存；拖块移动、拖上下边缘，试Esc/右键取消、Ctrl缩放及Ctrl+Z；单击看详情、双击编辑，再切周视图核对同一日程。只观察鼠标命中、预览/单双击手感和视觉，不必再逐项测已通过的数据矩阵。
+2. 编辑备注，试Ctrl+V截图及拖入一张测试图片；核对Markdown本地图、emoji自定义输入及外部点击/×/Esc保存，重新启动后图片可见。不要粘贴私人截图作反馈，也不需要把PNG/JSON提交Git。
+
+Markdown为本地安全子集，链接仅复制、远程图不加载，超100000字预览明确截断但源文保留；取消/删除留下的孤儿图保守保留，自动清理/完整ZIP留后续。这些是明确边界，不冒充未实现功能。测试之外不自动更新已安装版本，P6等待批准。
+
 ## 2026-11-02：P3.2 + P4 最终验证
 
 状态：P3.2/P4开发完成，已执行的自动、真实Window生命周期与控件渲染范围内通过；**不将物理键鼠/桌面像素标记通过，不进入P5**。P3.2单独提交74822bf，P4在其后dev/p4增量开发；应用/Core0.4.0、业务schema3、窗口schema2，无新依赖、owner源码不变。

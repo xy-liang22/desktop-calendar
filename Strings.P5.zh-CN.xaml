@@ -1,0 +1,16 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:s="clr-namespace:System;assembly=System.Runtime">
+ <s:String x:Key="ActivityNew">新增实际日程</s:String><s:String x:Key="ActivityEdit">编辑实际日程</s:String><s:String x:Key="ActivityEditAction">编辑</s:String><s:String x:Key="ActivityDetail">日程详情</s:String>
+ <s:String x:Key="ActivityHint">拖空白创建；拖块移动，拖上下边缘调时长；Esc取消；Ctrl+滚轮缩放</s:String>
+ <s:String x:Key="ActivityEmpty">暂无实际记录 · ＋或拖空白创建</s:String><s:String x:Key="ActivityEmoji">Emoji（可直接输入）</s:String><s:String x:Key="ActivityReaction">心情 / Reaction（可直接输入）</s:String>
+ <s:String x:Key="ActivitySummary">简短摘要</s:String><s:String x:Key="ActivityPeriods">实际时间段（可跨日，多段独立）</s:String><s:String x:Key="ActivityAddPeriod">＋时间段</s:String><s:String x:Key="ActivityRemovePeriod">移除此段</s:String>
+ <s:String x:Key="ActivityStart">开始</s:String><s:String x:Key="ActivityEnd">结束</s:String><s:String x:Key="ActivityZone">时区 ID</s:String><s:String x:Key="ActivityTimeHint">日期时间：yyyy-MM-dd HH:mm；右侧可填UTC偏移如 +08:00。夏令时重复小时必须明确偏移；非法/不存在时间不会自动更正。</s:String>
+ <s:String x:Key="ActivityInvalidTime">时间无效：结束须晚于开始；检查日期、时区及夏令时偏移。</s:String><s:String x:Key="ActivityAtLeastOne">至少保留一个有效时间段；删除整条日程请使用详情中的删除入口。</s:String>
+ <s:String x:Key="ActivityNotes">备注（创建时即可填写）</s:String><s:String x:Key="ActivityPlain">普通文本</s:String><s:String x:Key="ActivityMarkdown">Markdown</s:String><s:String x:Key="ActivitySource">源码</s:String><s:String x:Key="ActivityPreview">实时预览</s:String>
+ <s:String x:Key="ActivityImage">插入本地图片</s:String><s:String x:Key="ActivityImageFilter">本地图片|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.tif;*.tiff</s:String><s:String x:Key="ActivityImageHint">Ctrl+V粘贴图片，或拖入图片文件；只预览已注册的本地图片，不加载远程内容。链接点击只复制地址。</s:String>
+ <s:String x:Key="ActivityImageError">图片导入失败或超出限制（20MiB / 2400万像素 / 边长8192），原备注已保留。</s:String><s:String x:Key="ActivityMissingImage">图片缺失、未注册或校验失败</s:String><s:String x:Key="ActivityLinkCopied">链接地址已复制（未联网）</s:String>
+ <s:String x:Key="ActivityTodo">关联待办（不改变完成状态）</s:String><s:String x:Key="ActivityGoal">关联已有周目标（完整管理留P6）</s:String><s:String x:Key="ActivityNoLink">不关联</s:String><s:String x:Key="ActivityLinkedDeleted">原待办已删除：</s:String>
+ <s:String x:Key="ActivityDelete">删除整条日程</s:String><s:String x:Key="ActivityDeleteConfirm">删除整条日程及其所有时间段？关联待办与本地图片将保留，可撤销。</s:String><s:String x:Key="ActivityDeletePeriod">仅删除所选时间段</s:String><s:String x:Key="ActivityDeletePeriodConfirm">仅删除此时间段，保留日程其他内容？可撤销。</s:String>
+ <s:String x:Key="ActivityFromTodo">记录实际时间</s:String><s:String x:Key="ActivityCopy">复制日程</s:String><s:String x:Key="ActivityWeek">一周实际日程</s:String><s:String x:Key="ActivityWeekPlanned">周计划与总结界面将在P6接入；此处不显示模拟统计。</s:String>
+ <s:String x:Key="ActivityGestureCancel">Esc / 右键取消；松开提交预览，可撤销</s:String><s:String x:Key="ActivityGestureInvalid">预览时间无效，松开不会保存；可用完整编辑器精确输入。</s:String><s:String x:Key="ActivityDragSaveFailed">拖动保存失败，预览已保留。Enter重试，Esc或右键取消；原记录未覆盖。</s:String>
+ <s:String x:Key="ActivityP5Caption">P5 · 真实待办与实际日程 · 周目标完整管理待P6</s:String><s:String x:Key="ActivityEmptyShort">暂无记录</s:String><s:String x:Key="ActivityPreviewTruncated">预览仅显示前100000字；源码内容完整保留。</s:String><s:String x:Key="ActivityTitleRequired">日程标题不能为空；无效内容不会保存或删除记录。</s:String><s:String x:Key="ActivityStale">日程已发生变化，请重新打开，避免覆盖新内容。</s:String>
+</ResourceDictionary>

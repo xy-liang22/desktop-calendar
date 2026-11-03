@@ -1,6 +1,6 @@
-# 数据与服务接口：P2基础、P3编辑与P4周期/持续
+# 数据与服务接口：P2基础、P3/P4待办与P5实际日程
 
-状态：应用与Core为0.4.0，P3已接入真实普通待办，P3.1修订完成来源/快照，P3.2/P4接入换行及周期/持续管理。纯C# Core使用.NET10标准库，无WPF/数据库/联网/第三方依赖。Activity、周目标等完整管理UI仍留后续阶段；业务schema3不变。
+状态：应用与Core为0.5.0，P3/P4真实待办和P5 Activity管理已接入；周目标/总结完整UI留P6。纯C# Core使用.NET10标准库，无WPF/数据库/联网/第三方依赖，业务schema3不变。P5本地图片/备注呈现位于WPF层，实体/JSON仍不含WPF对象。
 
 ## 实体和身份
 
@@ -14,7 +14,7 @@ P3.2：新用户五分类工作/家务/个人/家庭/健康，旧分类不自动
 - `Activity`：真实时间记录，含多个各自有 ID 的 `ActivityPeriod`、emoji/摘要/reaction、文本或 Markdown 备注、可选 TodoRef、分类与图片资产引用。删除 Todo 保留 Activity 并保留旧标题；Activity 不修改 Todo 完成状态。
 - `WeekGoal`：周身份、数量/秒数/勾选目标、单一自动来源、两种导航关联列表、独立手动覆盖。类型/来源变更必须显式确认。跨周关联 Todo 不静默丢弃，数量按显式关联完成项计，查询同时返回 `OutsideWeekTodos`，供后续 UI 警告。
 - `WeeklyReview`：手写 Markdown、自定义小节，与独立自动摘要快照。`SaveReview` 不能覆盖统计；`AppendStatistics` 不能覆盖正文。
-- `LocalAsset`：ID、受限 `assets/images/<文件名>` 路径、MIME、长度、SHA256；`PlannerQueries.AssetReference/ResolveAsset`提供`asset://<GUID>`引用，只解析注册信息，拒绝file/network/路径后缀。仅数据注册，不导入/读取图片，不渲染 Markdown。剪贴板、实际图片验证与 ZIP 全量恢复属于后续阶段。
+- `LocalAsset`：ID、受限 `assets/images/<文件名>` 路径、MIME、长度、SHA256；`PlannerQueries.AssetReference/ResolveAsset`提供`asset://<GUID>`引用，只解析注册信息，拒绝file/network/路径后缀。P5 LocalImages进一步支持已注册相对路径的校验/导入/读取，Note.AssetIds记录引用。完整ZIP与孤儿清理留后续。
 
 ## 时间与统计
 
@@ -73,6 +73,19 @@ schema3严格校验来源、快照作用域、Guard与关联。v2先验旧校验
 
 P4继续编码schema3，无读写迁移。测试中实际引用旧`bin/P31/.../DesktopCalendar.Core.dll`（0.3.1）解码P4混合图，再Encode与原字节一致；这证明格式/既有校验器兼容，不表示旧GUI具有P4管理入口。尚不提供普通与系列之间的原地类型转换；复制生成普通树，新增时明确选类型。界面支持单次/系列不同作用域，不能从UI直接改底层数组。
 
+## P5显示查询、编辑与图片边界
+
+- 仍用`SaveActivity/DeleteActivity`和原`PlannerWorkspace`。界面保存多字段/资产登记/周目标关联采用同一`BatchCommand`，成功后才发布状态；TodoRef允许指向未完成或周期实例，一Todo可有多个Activity，保存实际时间不完成Todo。周关联保存在`WeekGoal.Activities`，没有新增冗余Activity.GoalIds。复制用新Activity和Period GUID，备注共享合法资产，整条删除只清周关联、不删Todo/文件。
+- `ActivityTimeline.On(state,date,zoneId)`返回只读`ActivitySegment(ActivityId,PeriodId,Date,Start,End,StartHour,EndHour,Offset)`。用PlannerTime.Day/Clip裁原区间，再按时区偏移转折分片；同Activity多段不在显示查询中合并，以保留独立编辑身份。统计仍调用P2 Merge/Seconds，不重复计时。DST回拨小时可以两个并列片，显示偏移；本地结束钟早于开始但绝对时长正的区间也不会消失。跳时留墙钟空白。
+- `ActivityTimeline.Local`调用原FromLocal，空洞拒绝、重复小时没有明确offset则拒绝。`Transform(period,wallDelta,displayZone,"move"/"start"/"end")`：移动按显示墙钟确定新起点、保持真实持续长度；边缘只改一个端点，反向拒绝，ID不变。存储仍原ActivityPeriod，不保存裁片。UI时间字段未改时保留原始DateTimeOffset及亚秒，不用格式化文本重建。
+- `ActivityTimelineView`绑定Controller后覆盖所有示例块，跨页使用同一快照/日期，周首日读Options；Slot.Segment仅显示DTO。鼠标预览不保存，成功松开一次SaveActivity即可Undo；创建则打开预填草稿，取消不写。默认5分钟/Shift1分钟；创建取整到完整分钟，不将鼠标小数坐标写入秒数。失去捕获/外部松开/Esc/右键取消；缩放先取消活动手势。保存失败保留待重试预览，陈旧快照拒绝覆盖。
+- `ActivityDialogs`复用Sheet外部关闭语义、IME保护、分类色和原工作区。PeriodFields提供ISO日期时间、时区及每端offset，草稿移除一段与整条删除清楚区分；最后一段保留，整条必须单独确认。`Sheet.HoldOpen`只用于自有文件选择器等附属交互，避免Deactivated自动提交；重要确认仍模态。
+- `LocalImages`以实际业务文件目录为根，剪贴板BitmapSource/本地图片先校验20MiB、8192边、2400万像素，再PNG编码/验证。SHA256文件名，已有同字节文件/资产复用；拒绝危险相对路径/祖先重解析点，读图核对登记长度与哈希。写入同目录唯一pending、Flush(true)、解码验证后Move；JSON提交前文件必须可校验，失败不发布新引用。Notes.AssetIds和新SaveAsset一起事务保存；相对`assets/images/<hash>.png`与既有`asset://ID`都可解析，不自动读取任意file:/远程图片。
+- 文件与JSON不假装跨文件系统事务：图片先落盘，失败或取消可能留下未登记文件；这是安全孤儿，暂不删除。已登记但当前无引用、备份或Undo中仍使用的图片也保留，避免损害恢复。Undo登记后文件仍在，可Redo；多备注引用不因一条删除丢图。未来ZIP须携带整个图片目录，暂没有自动清理/ZIP服务。
+- `MarkdownNotes`渲染FlowDocument安全子集，纯文本模式不解释语法，无HTML执行/WebView/远程下载；链接只复制地址。Markdown支持标题、强调、列表/引用、围栏代码、简单表格、链接及本地图片。实时预览合并220ms，超过100000字有明确截断提示，源文不截断；不声称完整CommonMark兼容。图片缺失/损坏/不安全引用显示占位。
+
+新增界面文字集中在Strings.P5.zh-CN.xaml；emoji/reaction可自定义，标准ComboBox可编辑模板补齐，非编辑分类选择不变。Core/存储DTO没有增加字段，旧schema3格式无需迁移；图片资源能力的增加不意味着旧GUI具备Markdown或图片管理。
+
 ## JSON 与恢复
 
 默认 `%LOCALAPPDATA%\DesktopCalendar\planner-data.json`；窗口偏好仍是独立 `window-preferences.json`，兼容旧schema2。`PlannerOptions`作为调用上下文传入，不写入业务JSON。P3正常启动读取真实业务文件；只有主/备份/残留都不存在才允许首次初始化，现有P2其他实体与关联保留。
@@ -87,4 +100,4 @@ P4继续编码schema3，无读写迁移。测试中实际引用旧`bin/P31/.../D
 
 ## 验证
 
-Windows PowerShell：`powershell -NoProfile -ExecutionPolicy Bypass -File .\Test-Planner.ps1`，227 PASS/0 FAIL/1 NOT VERIFIED；`Test-P3.ps1 -Configuration P4`验证160项P3–P4控件、事务和独立进程重启。只用忽略的artifacts，不使用个人文件。测试包含真实Windows占用/只读、两个写入器、六写入阶段直接进程退出、复制子树排序、范围历史保护与旧图兼容。历史时区以Windows资料为准；Samoa2011整日跳跃本机未重现，不能保证所有历史政令资料完整。未安装时区库；物理断电、满盘、Win10实机及真实输入设备未冒称通过，详见TESTING。
+Windows PowerShell：`powershell -NoProfile -ExecutionPolicy Bypass -File .\Test-Planner.ps1`，240 PASS/0 FAIL/1 NOT VERIFIED；`Test-P3.ps1 -Configuration P5`验证195项P3–P5控件、事务和独立进程重启。只用忽略的artifacts，不使用个人文件。测试包含真实Windows占用/只读、两个写入器、六写入阶段直接进程退出、周期范围保护、DST显示片、实际日程/关联/备注/图片/撤销和跨进程恢复。历史时区以Windows资料为准；Samoa2011整日跳跃本机未重现，不能保证所有历史政令资料完整。未安装时区库；物理断电、满盘、Win10实机及真实输入设备未冒称通过，详见TESTING。

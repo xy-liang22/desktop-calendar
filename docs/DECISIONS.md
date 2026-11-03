@@ -1,5 +1,15 @@
 # 开发决定与授权记录
 
+## 2026-11-03：P4尾部标记与P5实际日程
+
+- 用户批准直接连续执行，在dev/p5从738501b增量开发；不改owner、不加依赖、不进入P6/P7。月历CalendarTodoEntry增加显示用StatusMark，类型标记与展开按钮右停靠，正文继续真实测量；‹/⌄、↻/←语义分开，无新业务字段。
+- ActivityTimeline是原模型的纯显示查询/时间变换，不建立第二套数据源。每个裁片保留ActivityId/PeriodId，按显示时区日边界和偏移转折分割，24小时墙钟网格不改；DST重复小时并列且显示offset，真实秒数仍由原PlannerTime统计。完整原段移动保持真实持续时长，边缘调整只改选中端点，重复/无效本地时间不猜。
+- TimelineView保留原比例/滚动锚点及显式demo fixture入口；正常绑定PlannerController后全部替换为真实数据。新周视图用真实日期/周导航，仅保留明确P6占位。鼠标捕获Track，预览不写数据，松开单事务；Esc/右键/失去捕获/视口外松开取消，Ctrl缩放先取消。失败留下预览重试，陈旧快照拒绝，不抢焦点或改Z-order。
+- ActivityDialogs复用Sheet、TodoAppearance、事务与Undo。多时间段独立ID，默认精确输入ISO日期/时分（可秒）+可选offset；未改时间字段原样返回，避免改文字丢亚秒。Todo关联不改变完成，WeekGoal只关联已有记录，按Batch保存；详情的整条/单段删除区分且确认。文件选择器用Sheet.HoldOpen抑制失活提交，不影响重要模态确认。
+- 不安装Markdown/图片包：FlowDocument实现有限安全语法，无HTML/WebView/XAML载入；URL只复制、远程图占位。实时预览220ms合并输入，非回刷窗口；预览100000字上限明确提示，源码不被截断。emoji沿用editable ComboBox；图像检查发现原模板无PART_EditableTextBox，补齐标准模板部件并保留非编辑下拉外观，测试可见文本而非仅保存值。
+- LocalImages规范PNG、哈希文件名、尺寸/长度限制、路径/重解析/校验保护。同目录pending写入并刷盘，验证后移动，再以已有SaveAsset+SaveActivity批事务提交；失败/取消可留未引用文件，绝不为“清理”破坏其他备注、Undo或旧备份。跨笔记复用相同字节和资产ID；schema3及相对目录不变，便于未来ZIP。
+- computer-use本轮两次list_windows仍native pipe不存在，未使用外部输入注入绕过。控件/布局/独立进程与离屏图是替代证据，实际系统剪贴板与物理拖拽仍NOT VERIFIED。GUI测试必须串行，曾并行运行窗口基线造成失活竞争，报告保留后顺序复跑；初次内联焦点失败未稳定复现，保留诊断。最终状态见TESTING，不以数量替代实机验收。
+
 ## 2026-11-02：P4 周期与持续待办接入
 
 - 在74822bf的P3.2提交后继续dev/p4，应用/Core0.4.0；不改桌面owner，不进入P5，不安装依赖。复用原TodoSeries/RuleVersion/OccurrenceKey及持续模式，业务schema3不加字段。原0.3.1 Core真实加载P4隔离文件并编码字节一致，验证旧reader兼容而非仅推断。

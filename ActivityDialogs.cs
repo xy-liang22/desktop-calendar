@@ -1,0 +1,131 @@
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using DesktopCalendar.Core;
+
+namespace DesktopCalendar;
+
+internal sealed class PeriodFields : Border
+{
+    internal readonly TextBox Start = new(), End = new(), StartOffset = new(), EndOffset = new();
+    internal readonly Guid Id;
+    readonly ActivityPeriod original;
+    readonly string originalZone;
+    readonly string initialStart, initialEnd, initialStartOffset, initialEndOffset;
+    internal PeriodFields(ActivityPeriod value, string zone, Action remove)
+    {
+        Id = value.Id; original = value; originalZone = zone; var stack = new StackPanel(); Padding = new Thickness(7); Margin = new Thickness(0, 3, 0, 5); CornerRadius = new CornerRadius(6); Background = ThemeColors.Brush("#17232F");
+        void Row(string key, DateTimeOffset instant, TextBox time, TextBox offset)
+        {
+            var local = TimeZoneInfo.ConvertTime(instant, PlannerTime.Zone(zone)); time.Text = local.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture); offset.Text = Offset(local.Offset); time.MinHeight = offset.MinHeight = 28;
+            var row = new DockPanel(); var label = PlannerView.Text(MainWindow.Text(key), 11); label.Width = 34; row.Children.Add(label); offset.Width = 66; offset.Margin = new Thickness(5, 0, 0, 0); DockPanel.SetDock(offset, Dock.Right); row.Children.Add(offset); row.Children.Add(time); stack.Children.Add(row);
+            System.Windows.Automation.AutomationProperties.SetName(time, MainWindow.Text(key));
+        }
+        Row("ActivityStart", value.Start, Start, StartOffset); Row("ActivityEnd", value.End, End, EndOffset);
+        initialStart = Start.Text; initialEnd = End.Text; initialStartOffset = StartOffset.Text; initialEndOffset = EndOffset.Text;
+        stack.Children.Add(PlannerView.Button(MainWindow.Text("ActivityRemovePeriod"), remove)); Child = stack;
+    }
+    internal static string Offset(TimeSpan offset) => (offset < TimeSpan.Zero ? "-" : "+") + offset.Duration().ToString(@"hh\:mm", CultureInfo.InvariantCulture);
+    internal static DateTimeOffset Parse(string input, string offset, string zone)
+    {
+        string raw = input.Trim().Normalize(System.Text.NormalizationForm.FormKC).Replace('T', ' ');
+        if (!DateTime.TryParseExact(raw, new[] { "yyyy-MM-dd HH:mm", "yyyy-MM-dd HH:mm:ss" }, CultureInfo.InvariantCulture, DateTimeStyles.None, out var local)) throw new PlannerException("InvalidLocalTime");
+        TimeSpan? preferred = null;
+        if (offset.Trim().Length > 0)
+        {
+            var m = Regex.Match(offset.Trim(), @"^([+-])(\d{2}):(\d{2})$"); if (!m.Success || int.Parse(m.Groups[2].Value) > 14 || int.Parse(m.Groups[3].Value) > 59) throw new PlannerException("InvalidTimeOffset");
+            var span = new TimeSpan(int.Parse(m.Groups[2].Value), int.Parse(m.Groups[3].Value), 0); preferred = m.Groups[1].Value == "-" ? -span : span;
+        }
+        return PlannerTime.FromLocal(DateTime.SpecifyKind(local, DateTimeKind.Unspecified), zone, preferred);
+    }
+    internal ActivityPeriod Read(string zone)
+    { if (zone == originalZone && Start.Text == initialStart && End.Text == initialEnd && StartOffset.Text == initialStartOffset && EndOffset.Text == initialEndOffset) return original;
+        var a = Parse(Start.Text, StartOffset.Text, zone); var b = Parse(End.Text, EndOffset.Text, zone); if (b <= a) throw new PlannerException("InvalidInterval"); return new(Id, a, b); }
+}
+
+internal static class ActivityDialogs
+{
+    static string T(string key) => MainWindow.Text(key);
+    internal sealed record TodoChoice(TodoRef? Reference, string Name);
+    internal static Activity Draft(PlannerController c, TimeInterval? interval = null, Todo? todo = null)
+    {
+        var zone = c.State!.Options.TimeZoneId;
+        var local = c.SelectedDate.ToDateTime(new TimeOnly(9, 0), DateTimeKind.Unspecified);
+        var start = interval?.Start ?? ActivityTimeline.Local(local, zone);
+        return new() { Id = Guid.NewGuid(), Title = todo?.Title ?? "", CategoryId = todo?.CategoryId, Color = todo?.Color, Todo = todo == null ? null : TodoRef.Of(todo), TimeZoneId = zone,
+            Intervals = [new(Guid.NewGuid(), start, interval?.End ?? start.AddHours(1))] };
+    }
+    internal static bool Edit(MainWindow owner, PlannerController c, Activity? original = null, Activity? draft = null)
+    {
+        if (!c.Writable) return false; var value = original ?? draft ?? Draft(c); var sheet = new PlannerDialogs.Sheet(T(original == null ? "ActivityNew" : "ActivityEdit"), 740);
+        TextBox Field(string key, string text, bool multiline = false) { var input = new TextBox { Text = text, MinHeight = 28, Padding = new Thickness(5), AcceptsReturn = multiline, TextWrapping = multiline ? TextWrapping.Wrap : TextWrapping.NoWrap, Height = multiline ? 50 : double.NaN }; sheet.Field(key, input); return input; }
+        var title = Field("PlannerTitle", value.Title); var summary = Field("ActivitySummary", value.Summary, true);
+        ComboBox Emoji(string key, string current, string[] items) { var combo = new ComboBox { IsEditable = true, ItemsSource = items, Text = current, MinHeight = 28 }; sheet.Field(key, combo); return combo; }
+        var emoji = Emoji("ActivityEmoji", value.Emoji, ["", "💼", "📚", "💻", "🏃", "🍽️", "😴", "🎨", "🎯", "☕"]);
+        var reaction = Emoji("ActivityReaction", value.Reaction, ["", "😊", "😌", "🤔", "😴", "😣", "🔥", "❤️", "👍"]);
+        var appearance = new TodoAppearance(c, value.CategoryId, value.Color); sheet.Field("PlannerCategory", appearance);
+        var zone = Field("ActivityZone", value.TimeZoneId); var hint = PlannerView.Text(T("ActivityTimeHint"), 10, "#A2AFBC"); hint.TextWrapping = TextWrapping.Wrap; sheet.Body.Children.Add(hint);
+        var periods = new StackPanel(); sheet.Field("ActivityPeriods", periods); var rows = new List<PeriodFields>();
+        void Add(ActivityPeriod p)
+        {
+            PeriodFields row = null!; row = new(p, zone.Text.Trim(), () => { if (rows.Count == 1) sheet.Error.Text = T("ActivityAtLeastOne"); else { rows.Remove(row); periods.Children.Remove(row); } }); rows.Add(row); periods.Children.Add(row);
+        }
+        foreach (var p in value.Intervals) Add(p);
+        sheet.Body.Children.Add(PlannerView.Button(T("ActivityAddPeriod"), () => { try { var last = rows.Last().Read(zone.Text.Trim()); Add(new(Guid.NewGuid(), last.End.AddHours(1), last.End.AddHours(2))); } catch (Exception ex) when (ex is PlannerException or ArgumentOutOfRangeException) { sheet.Error.Text = T("ActivityInvalidTime"); } }));
+        var todos = c.State!.Todos.Concat(c.On(c.SelectedDate)).Concat(c.On(c.Today)).DistinctBy(t => t.Id).Where(t => t.Status != TodoStatus.Cancelled).ToList();
+        if (value.Todo != null && !todos.Any(t => t.Id == value.Todo.Id)) { try { todos.Add(PlannerQueries.Resolve(c.State, value.Todo)); } catch (PlannerException) { } }
+        var choices = new[] { new TodoChoice(null, T("ActivityNoLink")) }.Concat(todos.Select(t => new TodoChoice(TodoRef.Of(t), t.PlannedDate.ToString("yyyy-MM-dd") + " · " + t.Title))).ToArray();
+        var linked = new ComboBox { ItemsSource = choices, DisplayMemberPath = nameof(TodoChoice.Name), SelectedItem = choices.FirstOrDefault(x => x.Reference == value.Todo) ?? choices[0], MinHeight = 28 }; sheet.Field("ActivityTodo", linked);
+        linked.SelectionChanged += (_, _) => { if ((linked.SelectedItem as TodoChoice)?.Reference is TodoRef r) { try { var t = PlannerQueries.Resolve(c.State!, r); if (appearance.CategoryId == null) appearance.Refresh(t.CategoryId); } catch (PlannerException) { } } };
+        var goals = new Dictionary<Guid, CheckBox>(); var initialGoals = c.State.Goals.Where(g => g.Activities.Contains(value.Id)).Select(g => g.Id).ToHashSet();
+        var goalArea = new StackPanel(); foreach (var g in c.State.Goals.OrderBy(g => g.Week.Start)) { var box = new CheckBox { Content = g.Week.Start.ToString("yyyy-MM-dd") + " · " + g.Title, IsChecked = initialGoals.Contains(g.Id), Margin = new Thickness(0, 3, 0, 3) }; goals[g.Id] = box; goalArea.Children.Add(box); }
+        var goalSection = new Expander { Header = T("ActivityGoal"), Content = goalArea }; sheet.Body.Children.Add(goalSection);
+        var notes = new NoteEditor(c, value.Notes, sheet); sheet.Field("ActivityNotes", notes);
+        string Signature() => JsonSerializer.Serialize(new { Title = title.Text, Summary = summary.Text, Emoji = emoji.Text, Reaction = reaction.Text, Zone = zone.Text, appearance.CategoryId, Color = appearance.Color.Value, Periods = rows.Select(r => new { r.Id, Start = r.Start.Text, End = r.End.Text, A = r.StartOffset.Text, B = r.EndOffset.Text }), Todo = (linked.SelectedItem as TodoChoice)?.Reference, Goals = goals.Where(x => x.Value.IsChecked == true).Select(x => x.Key).ToArray(), Text = notes.Source.Text, Format = notes.Format.SelectedIndex });
+        string initial = Signature();
+        sheet.Save(async () =>
+        {
+            if (Signature() == initial && (original != null || sheet.CloseWithoutChanges && string.IsNullOrWhiteSpace(title.Text))) return true;
+            if (!TodoDraftRules.Title(title.Text)) { sheet.Error.Text = T("ActivityTitleRequired"); return false; }
+            if (!appearance.Color.Valid) { sheet.Error.Text = T("PlannerColorInvalid"); return false; }
+            ActivityPeriod[] parsed;
+            try { _ = PlannerTime.Zone(zone.Text.Trim()); parsed = rows.Select(r => r.Read(zone.Text.Trim())).ToArray(); }
+            catch (Exception ex) when (ex is PlannerException or ArgumentOutOfRangeException) { sheet.Error.Text = T("ActivityInvalidTime"); return false; }
+            if (original != null && JsonSerializer.Serialize(c.State!.Activities.FirstOrDefault(a => a.Id == original.Id)) != JsonSerializer.Serialize(original)) { sheet.Error.Text = T("ActivityStale"); return false; }
+            var saved = value with { Title = title.Text.Trim(), Summary = summary.Text, Emoji = emoji.Text, Reaction = reaction.Text, CategoryId = appearance.CategoryId, Color = appearance.Color.Value, TimeZoneId = zone.Text.Trim(), Intervals = [.. parsed], Notes = notes.Value, Todo = (linked.SelectedItem as TodoChoice)?.Reference };
+            var commands = new List<PlannerCommand>();
+            foreach (var asset in notes.Images.Pending.Where(a => saved.Notes.AssetIds.Contains(a.Id) && !c.State!.Assets.Any(x => x.Id == a.Id))) { if (notes.Images.Read(asset.RelativePath) == null) { sheet.Error.Text = T("ActivityImageError"); return false; } commands.Add(new SaveAsset(asset)); }
+            commands.Add(new SaveActivity(saved, false));
+            foreach (var g in c.State!.Goals) { bool chosen = goals.TryGetValue(g.Id, out var box) && box.IsChecked == true; if (chosen != g.Activities.Contains(saved.Id)) commands.Add(new SaveGoal(g with { Activities = chosen ? g.Activities.Add(saved.Id) : g.Activities.Remove(saved.Id) })); }
+            bool ok = await c.ExecuteAsync(new BatchCommand([.. commands])); if (!ok) sheet.Error.Text = T(c.NoticeKey); return ok;
+        }, true);
+        sheet.Loaded += (_, _) => title.Focus(); return PlannerDialogs.Show(owner, sheet) == true;
+    }
+    internal static void Detail(MainWindow owner, PlannerController c, Guid id, Guid periodId)
+    {
+        var a = c.State?.Activities.FirstOrDefault(x => x.Id == id); if (a == null) return; var sheet = new PlannerDialogs.Sheet(T("ActivityDetail"), 480);
+        var header = PlannerView.Text(a.Emoji + " " + a.Title, 19); header.TextWrapping = TextWrapping.Wrap; sheet.Body.Children.Add(header);
+        void Line(string text) { var label = PlannerView.Text(text, 12); label.TextWrapping = TextWrapping.Wrap; label.Margin = new Thickness(0, 5, 0, 5); sheet.Body.Children.Add(label); }
+        Line(a.Summary); Line((c.State!.Categories.FirstOrDefault(x => x.Id == a.CategoryId)?.Name ?? "") + "  " + a.Reaction);
+        foreach (var p in a.Intervals) Line(TimeZoneInfo.ConvertTime(p.Start, PlannerTime.Zone(a.TimeZoneId)).ToString("yyyy-MM-dd HH:mm zzz") + " → " + TimeZoneInfo.ConvertTime(p.End, PlannerTime.Zone(a.TimeZoneId)).ToString("yyyy-MM-dd HH:mm zzz"));
+        Line(a.TimeZoneId);
+        if (a.Todo != null) { try { Line(T("ActivityTodo") + " · " + PlannerQueries.Resolve(c.State, a.Todo).Title); } catch (PlannerException) { Line(T("ActivityLinkedDeleted") + a.FormerTodoTitle); } } else if (a.FormerTodoTitle != null) Line(T("ActivityLinkedDeleted") + a.FormerTodoTitle);
+        foreach (var goal in c.State.Goals.Where(g => g.Activities.Contains(a.Id))) Line(T("ActivityGoal") + " · " + goal.Title);
+        sheet.Body.Children.Add(new FlowDocumentScrollViewer { Document = MarkdownNotes.Render(a.Notes.Text, a.Notes.Format, new(c.DataDirectory, () => c.State)), IsToolBarVisible = false, Height = 220, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
+        int action = 0; sheet.Save(() => Task.FromResult(true), true); sheet.Actions.Children.Clear();
+        void Action(string key, int next, bool enabled) { var button = PlannerView.Button(T(key), async () => { action = next; await sheet.SaveAndCloseAsync(false); }); button.IsEnabled = enabled; sheet.Actions.Children.Add(button); }
+        Action("ActivityEditAction", 1, c.Writable); Action("ActivityDelete", 2, c.Writable); Action("ActivityDeletePeriod", 3, c.Writable && a.Intervals.Length > 1); Action("ActivityCopy", 4, c.Writable);
+        PlannerDialogs.Show(owner, sheet);
+        if (action == 1) Edit(owner, c, a);
+        else if (action == 2 && PlannerDialogs.Confirm(owner, T("ActivityDelete"), T("ActivityDeleteConfirm"))) _ = c.ExecuteAsync(new DeleteActivity(a.Id));
+        else if (action == 3 && PlannerDialogs.Confirm(owner, T("ActivityDeletePeriod"), T("ActivityDeletePeriodConfirm")))
+        { if (JsonSerializer.Serialize(c.State?.Activities.FirstOrDefault(x => x.Id == a.Id)) != JsonSerializer.Serialize(a)) c.Report("ActivityStale"); else _ = c.ExecuteAsync(new SaveActivity(a with { Intervals = [.. a.Intervals.Where(p => p.Id != periodId)] }, false)); }
+        else if (action == 4) Edit(owner, c, draft: a with { Id = Guid.NewGuid(), Intervals = [.. a.Intervals.Select(p => p with { Id = Guid.NewGuid() })] });
+    }
+}

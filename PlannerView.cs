@@ -80,7 +80,7 @@ internal sealed class PlannerView : Grid
         quickArea.Children.Add(options); quickArea.Children.Add(quick); At(todo, quickArea, 2);
         var status = new StackPanel { Margin = new Thickness(0, 8, 0, 0) }; notice = Text("", 10, "#A2AFBC"); notice.TextWrapping = TextWrapping.Wrap; status.Children.Add(notice);
         var recovery = new WrapPanel(); reload = Button(T("PlannerReload"), async () => await Controller.ReloadAsync()); recover = Button(T("PlannerRecover"), () => PlannerDialogs.Recover(owner, Controller)); recovery.Children.Add(reload); recovery.Children.Add(recover); status.Children.Add(recovery); At(todo, status, 3);
-        var actual = RowGrid(GridLength.Auto, GridLength.Auto, new GridLength(1, GridUnitType.Star)); At(actual, Text(T("ActivityTitle"), 17)); var actualNote = Text(T("PlannerActivityDemo"), 10, "#A2AFBC"); actualNote.Margin = new Thickness(0, 7, 0, 10); At(actual, actualNote, 1); At(actual, timeline, 2);
+        var actual = RowGrid(GridLength.Auto, GridLength.Auto, new GridLength(1, GridUnitType.Star)); var actualHeading = new DockPanel(); var createActivity = Button("＋", () => ActivityDialogs.Edit(owner, Controller), T("ActivityNew")); DockPanel.SetDock(createActivity, Dock.Right); actualHeading.Children.Add(createActivity); actualHeading.Children.Add(Text(T("ActivityTitle"), 17)); At(actual, actualHeading); var actualNote = Text(T("ActivityHint"), 10, "#A2AFBC"); actualNote.TextWrapping = TextWrapping.Wrap; actualNote.Margin = new Thickness(0, 7, 0, 10); At(actual, actualNote, 1); At(actual, timeline, 2);
         At(this, Panel(calendar)); At(this, Splitter(), 0, 1); At(this, Panel(todo), 0, 2); At(this, Splitter(), 0, 3); At(this, Panel(actual), 0, 4);
         Controller.Changed += Refresh;
         Refresh();
@@ -139,12 +139,12 @@ internal sealed class PlannerView : Grid
             {
                 if (node.ContextOnly) { foreach (var child in node.Children) AddCalendar(child, depth); return; }
                 var t = node.Value;
-                entries.Add(new(t.Title, KindMark(t) + Prefix(t), t.Status == TodoStatus.Completed, Controller.Color(t), t.Important || t.Urgent,
+                entries.Add(new(t.Title, Prefix(t), t.Status == TodoStatus.Completed, Controller.Color(t), t.Important || t.Urgent,
                     async () => { if (Controller.Writable) await Controller.ExecuteAsync(new SetTodoCompleted(TodoRef.Of(t), t.Status != TodoStatus.Completed)); },
                     t.Id, t.ParentId, depth, node.Children.Length > 0, calendarExpanded.Contains(t.Id),
                     () => { if (!calendarExpanded.Add(t.Id)) calendarExpanded.Remove(t.Id); renderedMonth = default; Refresh(); },
                     t.Status != TodoStatus.Cancelled ? () => Controller.BeginInline(t, date) : null,
-                    Controller.Inline?.Id == t.Id && Controller.Inline.DisplayDate == date ? Controller.Inline : null, Controller, Controller.Writable));
+                    Controller.Inline?.Id == t.Id && Controller.Inline.DisplayDate == date ? Controller.Inline : null, Controller, Controller.Writable, KindMark(t)));
                 if (calendarExpanded.Contains(t.Id)) foreach (var child in node.Children) AddCalendar(child, depth + 1);
             }
             foreach (var node in Controller.Tree(date)) AddCalendar(node, 0);
@@ -160,7 +160,7 @@ internal sealed class PlannerView : Grid
         calendarHost.Children.Add(grid);
     }
     internal static string Prefix(Todo t) => t.PlannedTime is TimeOnly time ? time.ToString("HH:mm", CultureInfo.InvariantCulture) + " " : "";
-    internal static string KindMark(Todo t) => t.Kind switch { TodoKind.Occurrence => "↻ ", TodoKind.CarryHistory or TodoKind.CarryLatest => "↪ ", _ => "" };
+    internal static string KindMark(Todo t) => t.Kind switch { TodoKind.Occurrence => "↻", TodoKind.CarryHistory or TodoKind.CarryLatest => "←", _ => "" };
     static bool InputOrigin(DependencyObject? origin, DependencyObject stop)
     {
         for (var input = origin; input != null && input != stop; input = input is FrameworkContentElement content ? content.Parent : VisualTreeHelper.GetParent(input)) if (input is ButtonBase or TextBoxBase or ComboBox || input is FrameworkElement element && element.Tag is CalendarTodoEntry) return true;
@@ -189,6 +189,7 @@ internal sealed class PlannerView : Grid
         Action("PlannerEdit", () => Edit(task), active);
         Action("PlannerAddChild", () => Edit(null, task.Id), active && !node.ContextOnly);
         Action("PlannerCopy", () => PlannerDialogs.Copy(owner, Controller, task), active);
+        Action("ActivityFromTodo", () => ActivityDialogs.Edit(owner, Controller, draft: ActivityDialogs.Draft(Controller, todo: task)), active);
         Action(task.Origin != null ? "RepeatCancel" : "PlannerDelete", () => PlannerDialogs.Delete(owner, Controller, task), active);
         if (task.Origin is OccurrenceKey key) Action("RepeatRule", () => PlannerDialogs.EditRule(owner, Controller, task), PlannerDialogs.CanEditSeries(Controller.State!, key));
         if (task.Kind is TodoKind.CarryHistory or TodoKind.CarryLatest) Action("RepeatMove", () => PlannerDialogs.MoveCarry(owner, Controller, task), task.Status == TodoStatus.Pending);

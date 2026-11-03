@@ -3,7 +3,7 @@
  <s:String x:Key="PlannerExitDraft">快速输入中还有未提交的文字。确认退出并放弃这段草稿？已成功保存的待办不会丢失。</s:String>
  <s:String x:Key="TimelineTip">示例时间块 · 实际日程编辑将在 P5 接入</s:String>
  <s:String x:Key="WeekTitle">示例周 · 10 月 26 日 — 11 月 1 日</s:String><s:String x:Key="WeekSubtitle">布局示例 · 真实周计划与总结将在 P6 接入</s:String>
- <s:String x:Key="Prototype">P4 · 真实待办 · 日程与周总结仍为示例</s:String>
+ <s:String x:Key="Prototype">P5 · 真实待办与实际日程 · 周目标完整管理待P6</s:String>
  <s:String x:Key="DemoNotice">待办即时保存到本机 · 日程仍为示例</s:String>
  <s:String x:Key="CompactDemoNotice">与月历共享真实待办 · 修改即时保存</s:String>
  <s:String x:Key="SettingsNotice">窗口偏好与待办分别保存在本机。日程仍为示例；设置和托盘均可退出。</s:String>

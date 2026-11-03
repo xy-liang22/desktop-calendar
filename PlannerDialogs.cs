@@ -23,6 +23,9 @@ internal static partial class PlannerDialogs
         Func<Task<bool>>? saveAction;
         readonly ImeInput ime;
         bool editorModeless, outsidePending, outsideByPointer;
+        int auxiliaryDepth;
+        internal IDisposable HoldOpen() { auxiliaryDepth++; return new Auxiliary(() => auxiliaryDepth--); }
+        sealed class Auxiliary(Action release) : IDisposable { Action? pending = release; public void Dispose() { pending?.Invoke(); pending = null; } }
         internal bool? Result { get; private set; }
         internal bool AutoSaveClose { get; private set; }
         internal bool CloseWithoutChanges { get; private set; }
@@ -66,7 +69,7 @@ internal static partial class PlannerDialogs
         { for (int i = 0; i < VisualTreeHelper.GetChildrenCount(obj); i++) { var child = VisualTreeHelper.GetChild(obj, i); if (child is ComboBox combo) yield return combo; foreach (var nested in FindCombos(child)) yield return nested; } }
         static System.Collections.Generic.IEnumerable<T> Find<T>(DependencyObject obj) where T : DependencyObject
         { for (int i = 0; i < VisualTreeHelper.GetChildrenCount(obj); i++) { var child = VisualTreeHelper.GetChild(obj, i); if (child is T value) yield return value; foreach (var nested in Find<T>(child)) yield return nested; } }
-        internal bool HasAuxiliary => FindCombos(this).Any(c => c.IsDropDownOpen) || Find<DatePicker>(this).Any(p => p.IsDropDownOpen) || Find<ColorField>(this).Any(c => c.Popup.IsOpen) || Application.Current.Windows.OfType<Sheet>().Any(w => w != this && w.IsVisible);
+        internal bool HasAuxiliary => auxiliaryDepth > 0 || FindCombos(this).Any(c => c.IsDropDownOpen) || Find<DatePicker>(this).Any(p => p.IsDropDownOpen) || Find<ColorField>(this).Any(c => c.Popup.IsOpen) || Application.Current.Windows.OfType<Sheet>().Any(w => w != this && w.IsVisible);
         internal bool ContainsInput(DependencyObject? target)
         {
             for (var node = target; node != null; node = node is FrameworkContentElement text ? text.Parent : node is Visual ? VisualTreeHelper.GetParent(node) : LogicalTreeHelper.GetParent(node))

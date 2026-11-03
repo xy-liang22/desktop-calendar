@@ -65,7 +65,8 @@ public partial class MainWindow : Window
         DailyTimeline.ScaleChanged += Remember; WeeklyTimeline.ScaleChanged += Remember;
         if (session.Planner == null) { monthPage = PrototypeViews.Month(DailyTimeline); CategorySettingsButton.Visibility = CalendarWrapping.Visibility = Visibility.Collapsed; }
         else { PlannerView = new PlannerView(this, session.Planner, DailyTimeline); monthPage = PlannerView; }
-        weekPage = PrototypeViews.Week(WeeklyTimeline);
+        weekPage = session.Planner == null ? PrototypeViews.Week(WeeklyTimeline) : new ActivityWeekView(this, session.Planner, WeeklyTimeline);
+        if (session.Planner != null) { DailyTimeline.Bind(this, session.Planner); WeeklyTimeline.Bind(this, session.Planner); }
         PageHost.Children.Add(monthPage);
         PageHost.Children.Add(weekPage);
         SetPage(preferences.Week);
@@ -103,7 +104,7 @@ public partial class MainWindow : Window
         edgeTimer.Tick += (_, _) => EvaluateEdge();
         RestoreButton.MouseEnter += (_, _) => { if (Mode == DisplayMode.EdgeHandle) RestoreNormal(false); };
         Closing += OnClosing;
-        Closed += (_, _) => { Ready = false; edgeTimer.Stop(); source?.RemoveHook(WindowMessage); PlannerView?.Detach(); if (session.Planner != null) session.Planner.Changed -= RefreshPlanner; };
+        Closed += (_, _) => { Ready = false; edgeTimer.Stop(); source?.RemoveHook(WindowMessage); PlannerView?.Detach(); DailyTimeline.Unbind(); WeeklyTimeline.Unbind(); if (session.Planner != null) session.Planner.Changed -= RefreshPlanner; };
         Surface.SizeChanged += (_, _) => Surface.Clip = new RectangleGeometry(new Rect(0, 0, Surface.ActualWidth, Surface.ActualHeight), Mode == DisplayMode.Normal ? 18 : 12, Mode == DisplayMode.Normal ? 18 : 12);
     }
     internal void ShowPlannerMonth() { if (Mode != DisplayMode.Normal) RestoreNormal(); SetPage(false); }

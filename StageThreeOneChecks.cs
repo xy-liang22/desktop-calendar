@@ -130,7 +130,12 @@ internal static partial class StageThreeChecks
             Check("hierarchical calendar depth-first capacity and +N boundary " + h, visible.Length == CalendarTaskPanel.Capacity(h, 4) && adaptive.Remaining == 4 - visible.Length && visible.SequenceEqual(entries.Take(visible.Length)) && visible.All(x => x.Depth == 0 || visible.Any(p => p.Id == x.ParentId)));
         }
         Image(window.Surface, "p31-hierarchy-cards.png");
+        var inlineFocus = new System.Collections.Generic.List<string>();
+        System.Windows.Input.KeyboardFocusChangedEventHandler trace = (_, e) => { if (c.Inline != null) inlineFocus.Add((e.OldFocus?.GetType().Name ?? "null") + "->" + (e.NewFocus?.GetType().Name ?? "null")); };
+        window.AddHandler(System.Windows.Input.Keyboard.LostKeyboardFocusEvent, trace, true);
         c.BeginInline(c.State!.Todos.Single(x => x.Id == root.Id)); window.UpdateLayout(); await Idle();
+        if (!Children<TextBox>(v).Any(x => AutomationProperties.GetName(x) == MainWindow.Text("CalendarInlineTitle"))) results.Add("FAIL inline diagnostics: draft=" + (c.Inline != null) + ", writable=" + c.Writable + ", selected=" + c.SelectedDate + ", planned=" + c.State!.Todos.Single(x => x.Id == root.Id).PlannedDate + ", focus=" + string.Join(";", inlineFocus));
+        window.RemoveHandler(System.Windows.Input.Keyboard.LostKeyboardFocusEvent, trace);
         TextBox Inline() => Children<TextBox>(v).Single(x => AutomationProperties.GetName(x) == MainWindow.Text("CalendarInlineTitle"));
         Inline().Text = "discard inline"; SendKey(Inline(), System.Windows.Input.Key.Escape); await Idle();
         Check("inline Escape cancels without changing title", c.Inline == null && c.State!.Todos.Single(x => x.Id == root.Id).Title == root.Title);
