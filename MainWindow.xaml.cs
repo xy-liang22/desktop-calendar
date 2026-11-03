@@ -37,7 +37,9 @@ public partial class MainWindow : Window
     internal TimelineView DailyTimeline { get; }
     internal TimelineView WeeklyTimeline { get; }
     internal ActivityDetailCard? ActivityDetails { get; }
-    internal PlannerView? PlannerView { get; }
+    internal PlannerView? PlannerView { get; private set; }
+    internal WindowPreferences Appearance { get; private set; } = new();
+    bool applyingLanguage;
     internal int PlannerDialogDepth { get; set; }
     private DockSide dockSide;
     private HwndSource? source;
@@ -60,7 +62,9 @@ public partial class MainWindow : Window
         fullPlacement = preferences.FullPlacement ?? (preferences.HasBounds ? WindowPlacement.Legacy(preferences.Bounds) : null);
         compactPlacement = preferences.CompactPlacement;
         InitializeComponent();
-        WeekStartChoice.ItemsSource = System.Globalization.CultureInfo.GetCultureInfo("zh-CN").DateTimeFormat.DayNames;
+        Appearance = preferences with { }; applyingLanguage = true; LanguageChoice.SelectedIndex = preferences.UiLanguage == "en" ? 1 : 0; applyingLanguage = false;
+        Language = System.Windows.Markup.XmlLanguage.GetLanguage(Text("PlannerUiLanguage"));
+        WeekStartChoice.ItemsSource = Localization.Culture.DateTimeFormat.DayNames;
         GuiNextMonitorButton.Visibility = session.VisualChecks ? Visibility.Visible : Visibility.Collapsed;
         DailyTimeline = new TimelineView(false, 3, preferences.DayHourHeight);
         WeeklyTimeline = new TimelineView(true, 0, preferences.WeekHourHeight);
@@ -76,6 +80,7 @@ public partial class MainWindow : Window
         PinToggle.IsChecked = preferences.Pinned;
         EdgeToggle.IsChecked = preferences.EdgeAutoHide;
         OpacitySlider.Value = preferences.BackgroundOpacity;
+        ApplyAppearance(preferences);
         CompactDate.Text = DateTime.Today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
         if (session.Planner == null) CompactItems.ItemsSource = DemoTodo.View(DemoContent.Todos);
         else
@@ -111,6 +116,34 @@ public partial class MainWindow : Window
         Surface.SizeChanged += (_, _) => Surface.Clip = new RectangleGeometry(new Rect(0, 0, Surface.ActualWidth, Surface.ActualHeight), Mode == DisplayMode.Normal ? 18 : 12, Mode == DisplayMode.Normal ? 18 : 12);
     }
     internal void ShowPlannerMonth() { if (Mode != DisplayMode.Normal) RestoreNormal(); SetPage(false); }
+    async void LanguageChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (applyingLanguage || !Ready || LanguageChoice.SelectedIndex < 0) return;
+        if (Application.Current.Windows.OfType<PlannerDialogs.Sheet>().Any(w => w.IsVisible)) { applyingLanguage = true; LanguageChoice.SelectedIndex = Appearance.UiLanguage == "en" ? 1 : 0; applyingLanguage = false; return; }
+        if (Session.Planner != null && !await Session.Planner.CommitInlineAsync()) return;
+        Appearance.UiLanguage = LanguageChoice.SelectedIndex == 1 ? "en" : "zh-CN"; Localization.Apply(Appearance.UiLanguage); Session.RefreshLanguage();
+        Language = System.Windows.Markup.XmlLanguage.GetLanguage(Text("PlannerUiLanguage")); WeekStartChoice.ItemsSource = Localization.Culture.DateTimeFormat.DayNames; WeekStartChoice.SelectedIndex = (int)(Session.Planner?.WeekStart ?? DayOfWeek.Monday);
+        if (Session.Planner != null)
+        {
+            ActivityDetails?.Hide(); PlannerView?.Detach(); (weekPage as ActivityWeekView)?.Detach(); DailyTimeline.Unbind(); WeeklyTimeline.Unbind();
+            RemoveVisual(DailyTimeline); RemoveVisual(WeeklyTimeline); PageHost.Children.Clear();
+            PlannerView = new PlannerView(this, Session.Planner, DailyTimeline); monthPage = PlannerView; weekPage = new ActivityWeekView(this, Session.Planner, WeeklyTimeline);
+            DailyTimeline.Bind(this, Session.Planner); WeeklyTimeline.Bind(this, Session.Planner); PageHost.Children.Add(monthPage); PageHost.Children.Add(weekPage); SetPage(IsWeek); RefreshPlanner();
+        }
+        RefreshLayerStatus(); Remember();
+    }
+    static void RemoveVisual(FrameworkElement child) { if (child.Parent is Panel p) p.Children.Remove(child); else if (child.Parent is Decorator d) d.Child = null; }
+    internal void ApplyAppearance(WindowPreferences p)
+    {
+        Appearance = p with { }; OpacitySlider.Value = p.BackgroundOpacity;
+        var c = ThemeColors.Parse(p.BackgroundColor); double mix = Math.Max(c.R, Math.Max(c.G, c.B)) > 80 ? .22 : 1;
+        var safe = Color.FromRgb((byte)(c.R * mix + 25 * (1 - mix)), (byte)(c.G * mix + 35 * (1 - mix)), (byte)(c.B * mix + 46 * (1 - mix)));
+        Shell.Background = new SolidColorBrush(Color.FromArgb((byte)(p.BackgroundOpacity * 255), safe.R, safe.G, safe.B));
+        Application.Current.Resources["Accent"] = ThemeColors.Brush(ThemeColors.Accent(p.AccentColor));
+        PlannerView?.InvalidateCalendar(); Remember();
+    }
+    void AppearanceClick(object sender, RoutedEventArgs e) => ApplicationSettings.Appearance(this);
+    void CalendarUpdateClick(object sender, RoutedEventArgs e) => ApplicationSettings.Calendar(this);
     async void PlannerKey(object sender, KeyEventArgs e)
     {
         if (Session.Planner == null || (Keyboard.Modifiers & ModifierKeys.Control) == 0) return;
@@ -220,7 +253,7 @@ public partial class MainWindow : Window
     internal WindowPreferences SnapshotPreferences()
     {
         if (!changingView) CapturePlacement();
-        var p = Session.Preferences with { Collapsed = Mode == DisplayMode.Compact || Mode == DisplayMode.Tray && beforeTray == DisplayMode.Compact,
+        var p = Appearance with { Collapsed = Mode == DisplayMode.Compact || Mode == DisplayMode.Tray && beforeTray == DisplayMode.Compact,
             Week = IsWeek, Pinned = PreferredPinned, EdgeAutoHide = EdgeToggle.IsChecked == true, BackgroundOpacity = OpacitySlider.Value,
             FullPlacement = fullPlacement, CompactPlacement = compactPlacement,
             DayHourHeight = DailyTimeline.HourHeight, WeekHourHeight = WeeklyTimeline.HourHeight,
@@ -375,7 +408,7 @@ public partial class MainWindow : Window
     }
     private void OpacityChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        if (Shell != null) Shell.Background = new SolidColorBrush(Color.FromArgb((byte)(e.NewValue * 255), 25, 35, 46));
+        if (Shell != null) { var color = ((SolidColorBrush)Shell.Background).Color; color.A = (byte)(e.NewValue * 255); Shell.Background = new SolidColorBrush(color); }
         Remember();
     }
     private void SaveNormalBounds()

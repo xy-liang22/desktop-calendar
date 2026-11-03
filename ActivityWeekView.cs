@@ -23,8 +23,9 @@ internal sealed class ActivityWeekView : Grid
         Border Panel(UIElement child) => new() { Background = ThemeColors.Brush("#35101A24"), CornerRadius = new CornerRadius(12), Padding = new Thickness(14), Child = child };
         Children.Add(Panel(main)); var splitter = new GridSplitter { Width = 8, HorizontalAlignment = HorizontalAlignment.Stretch, Background = System.Windows.Media.Brushes.Transparent, ResizeDirection = GridResizeDirection.Columns, ResizeBehavior = GridResizeBehavior.PreviousAndNext }; SetColumn(splitter, 1); Children.Add(splitter);
         var side = new ScrollViewer { Content = new WeekSummaryView(owner, c), VerticalScrollBarVisibility = ScrollBarVisibility.Auto }; var panel = Panel(side); SetColumn(panel, 2); Children.Add(panel);
-        c.Changed += Refresh; owner.Closed += (_, _) => c.Changed -= Refresh; Refresh();
+        c.Changed += Refresh; owner.Closed += (_, _) => Detach(); Refresh();
     }
+    internal void Detach() => controller.Changed -= Refresh;
     void Refresh()
     {
         var date = controller.SelectedDate; int back = controller.State == null ? 0 : ((int)date.DayOfWeek - (int)controller.State.Options.WeekStart + 7) % 7;

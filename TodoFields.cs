@@ -74,7 +74,7 @@ internal sealed class TodoAppearance : Grid
     internal void Refresh(Guid? selected = null)
     {
         var wanted = selected ?? CategoryId; var raw = Color.Value; loading = true;
-        category.ItemsSource = new[] { new CategoryOption(null, MainWindow.Text("PlannerUnclassified"), "#A3D9C4") }.Concat((controller.State?.Categories ?? []).Where(c => !c.Archived && !PlannerDefaults.LegacyPriority(c) || keepHistorical && c.Id == wanted).Select(c => new CategoryOption(c.Id, c.Name + (PlannerDefaults.LegacyPriority(c) ? " · " + MainWindow.Text("LegacyCategory") : ""), c.Color))).ToArray();
+        category.ItemsSource = new[] { new CategoryOption(null, MainWindow.Text("PlannerUnclassified"), "#A3D9C4") }.Concat((controller.State?.Categories ?? []).Where(c => !c.Archived && !PlannerDefaults.LegacyPriority(c) || keepHistorical && c.Id == wanted).Select(c => new CategoryOption(c.Id, Localization.Category(c) + (PlannerDefaults.LegacyPriority(c) ? " · " + MainWindow.Text("LegacyCategory") : ""), c.Color))).ToArray();
         category.SelectedValue = wanted; if (category.SelectedIndex < 0) category.SelectedIndex = 0;
         UpdateDefault(); Color.Value = raw; loading = false;
     }

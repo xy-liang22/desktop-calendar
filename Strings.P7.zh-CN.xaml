@@ -1,0 +1,36 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:s="clr-namespace:System;assembly=System.Runtime">
+ <s:String x:Key="Prototype">本地待办 · 实际日程 · 周计划与总结</s:String>
+ <s:String x:Key="SettingsNotice">个人数据仅保存在本机。资料更新需主动确认联网。</s:String>
+ <s:String x:Key="LanguageSetting">界面语言 / Language</s:String>
+ <s:String x:Key="AppearanceSetting">外观与布局</s:String>
+ <s:String x:Key="BackgroundSetting">背景颜色（过亮颜色会柔化以保持可读）</s:String>
+ <s:String x:Key="AccentSetting">强调颜色</s:String>
+ <s:String x:Key="WeekendSetting">双休日底色</s:String>
+ <s:String x:Key="MonthModeSetting">月历行数</s:String>
+ <s:String x:Key="MonthFull">完整月份</s:String>
+ <s:String x:Key="MonthFixed">固定六行（含补位日期）</s:String>
+ <s:String x:Key="AppearanceHint">实时预览。保存/×/Esc保留；取消恢复外观与布局。透明度只影响背景，文字保持清晰。</s:String>
+ <s:String x:Key="CalendarUpdate">检查 / 更新日历资料</s:String>
+ <s:String x:Key="CalendarUpdateConfirm">将主动联网读取香港天文台及香港政府1823公开资料；内地新年份须导入经核验的资料包。不会发送个人数据。继续？</s:String>
+ <s:String x:Key="CalendarUpdating">正在验证与更新资料…</s:String>
+ <s:String x:Key="CalendarUpdated">资料更新成功，已有资料已保留备份。</s:String>
+ <s:String x:Key="CalendarUpdateFailed">资料更新失败，仍使用原有离线资料。</s:String>
+ <s:String x:Key="CalendarImport">导入经核验的本地资料包</s:String>
+ <s:String x:Key="CalendarImportConfirm">仅导入你信任且核对过官方来源的资料包，替换本机日历知识资料；不会修改待办或日程。继续？</s:String>
+ <s:String x:Key="CalendarUnsupported">此日期超出农历支持范围</s:String>
+ <s:String x:Key="CalendarNoTerms">节气资料尚未覆盖此年</s:String>
+ <s:String x:Key="CalendarNoCN">内地放假调休：此年尚无已核验资料</s:String>
+ <s:String x:Key="CalendarNoHK">香港公众假期：此年尚无已核验资料</s:String>
+ <s:String x:Key="CalendarSources">资料来源：香港天文台、香港特区政府1823、国务院办公厅；数据权利归原提供者。DATA.GOV.HK 开放资料使用条款。</s:String>
+ <s:String x:Key="CalendarAlmanac">黄历宜忌暂无已获授权来源，未启用。</s:String>
+ <s:String x:Key="CalendarStatus">农历：1901-02-19—2101-01-28；节气：{0}；内地：{1}；香港：{2}；资料时间：{3}</s:String>
+ <s:String x:Key="CalendarCN">内地假期安排</s:String><s:String x:Key="CalendarWork">内地补班</s:String><s:String x:Key="CalendarHK">香港公众假期</s:String><s:String x:Key="CalendarTerm">节气</s:String><s:String x:Key="CalendarFestival">传统节日</s:String>
+ <s:String x:Key="SettingsBusy">请先完成或取消当前编辑，再更改设置。</s:String>
+ <s:String x:Key="BackupData">备份数据 ZIP</s:String><s:String x:Key="RestoreData">从 ZIP 恢复</s:String><s:String x:Key="DataFolder">打开个人数据目录</s:String>
+ <s:String x:Key="StartupSetting">登录 Windows 后启动（仅当前用户）</s:String><s:String x:Key="StartupFailed">无法更改启动入口；请检查权限或同名外来快捷方式。</s:String>
+ <s:String x:Key="BackupSaved">完整备份已验证并保存。</s:String><s:String x:Key="BackupFailed">备份或恢复失败，未假报成功。请查看错误详情；原有数据/恢复点保留。</s:String>
+ <s:String x:Key="RestoreConfirm">此备份包含 {0} 个文件，创建于 {1}。将替换业务 JSON、图片和设置，当前数据会保存完整安全恢复点。确认恢复？</s:String>
+ <s:String x:Key="RestoreDone">已恢复并重新读取；窗口偏好在重新打开后完整应用。恢复点：{0}</s:String>
+ <s:String x:Key="BackupBusy">请先保存或取消所有编辑与快速输入，再进行备份/恢复。</s:String>
+ <s:String x:Key="StartupUninstalled">自启动仅支持稳定的用户安装版本，请先运行安装脚本；不会指向临时构建目录。</s:String>
+</ResourceDictionary>

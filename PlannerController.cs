@@ -32,7 +32,7 @@ internal sealed class PlannerController
     internal CalendarTextMode TextMode { get; private set; }
     internal DayOfWeek WeekStart { get; private set; }
     internal WeekPlanLayout WeekLayout { get; private set; }
-    PlannerOptions Options => new() { TimeZoneId = TimeZoneInfo.Local.Id, WeekStart = WeekStart };
+    PlannerOptions Options => new() { TimeZoneId = TimeZoneInfo.Local.Id, WeekStart = WeekStart, Language = Localization.English ? "en" : "zh-CN" };
     internal WeekKey Week(DateOnly? date = null) => PlannerTime.Week(date ?? SelectedDate, WeekStart, State?.Options.TimeZoneId ?? TimeZoneInfo.Local.Id);
     internal void SetWeekLayout(WeekPlanLayout layout) { if (!Enum.IsDefined(layout) || WeekLayout == layout) return; WeekLayout = layout; Changed?.Invoke(); PreferencesChanged?.Invoke(); }
     internal Task SetWeekStartAsync(DayOfWeek day)

@@ -108,8 +108,8 @@ internal sealed class PlannerView : Grid
     internal void FocusDate(DateOnly date) { Controller.Select(date); owner.ShowPlannerMonth(); Quick.Focus(); }
     internal void Refresh()
     {
-        monthTitle.Text = Controller.Month.ToString(T("PlannerMonthFormat"), CultureInfo.CurrentCulture);
-        dateTitle.Text = Controller.SelectedDate.ToString("yyyy-MM-dd dddd", CultureInfo.GetCultureInfo("zh-CN"));
+        monthTitle.Text = Controller.Month.ToString(T("PlannerMonthFormat"), Localization.Culture);
+        dateTitle.Text = CalendarPresentation.Detail(owner.Session.Calendar, Controller.SelectedDate); dateTitle.TextWrapping = TextWrapping.Wrap; dateTitle.MaxHeight = 100; dateTitle.ToolTip = dateTitle.Text;
         notice.Text = T(Controller.NoticeKey); notice.ToolTip = Controller.Diagnostic;
         add.IsEnabled = quickAdd.IsEnabled = Quick.IsEnabled = QuickAppearance.IsEnabled = Controller.Writable;
         if (Controller.State != null && renderedCategories != Controller.State.Categories) { QuickAppearance.Refresh(); renderedCategories = Controller.State.Categories; }
@@ -117,7 +117,7 @@ internal sealed class PlannerView : Grid
         reload.IsEnabled = !Controller.Busy; recover.IsEnabled = !Controller.Busy && Controller.Storage?.Status != StoreStatus.NewerSchema && Controller.Storage?.Candidates.Length > 0;
         if (rendered != Controller.State || renderedMonth != Controller.Month || renderedColors != Controller.ColorBackground || renderedToday != Controller.Today || renderedInline != Controller.Inline || renderedTextMode != Controller.TextMode || renderedWeekStart != Controller.WeekStart || renderedWeekLayout != Controller.WeekLayout)
         { BuildCalendar(); rendered = Controller.State; renderedMonth = Controller.Month; renderedColors = Controller.ColorBackground; renderedToday = Controller.Today; renderedInline = Controller.Inline; renderedTextMode = Controller.TextMode; renderedWeekStart = Controller.WeekStart; renderedWeekLayout = Controller.WeekLayout; }
-        foreach (var day in days) day.Value.BorderBrush = PrototypeViews.Brush(day.Key == Controller.SelectedDate ? "#A3D9C4" : day.Key == Controller.Today ? "#607C9DB0" : "#00FFFFFF");
+        foreach (var day in days) day.Value.BorderBrush = PrototypeViews.Brush(day.Key == Controller.SelectedDate ? ThemeColors.Accent(owner.Appearance.AccentColor) : day.Key == Controller.Today ? "#607C9DB0" : "#00FFFFFF");
         Items.Children.Clear(); var rows = Controller.Tree(Controller.SelectedDate); empty.Visibility = rows.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         empty.Text = Controller.Storage?.CanWrite == true ? T("PlannerEmpty") : T(Controller.NoticeKey);
         foreach (var node in rows) AddNode(Items, node, 0);
@@ -130,9 +130,10 @@ internal sealed class PlannerView : Grid
         int count = ((offset + DateTime.DaysInMonth(first.Year, first.Month) + 6) / 7) * 7;
         return Enumerable.Range(0, count).Select(i => first.DayNumber + i - offset).Select(n => n < 0 || n > DateOnly.MaxValue.DayNumber ? (DateOnly?)null : DateOnly.FromDayNumber(n)).ToArray();
     }
+    internal void InvalidateCalendar() { renderedMonth = default; Refresh(); }
     void BuildCalendar()
     {
-        calendarHost.Children.Clear(); days.Clear(); var dates = MonthDates(Controller.Month, Controller.WeekStart); var grid = new Grid(); renderedWeekSide = Controller.WeekLayout == WeekPlanLayout.SideColumn && calendarHost.ActualWidth >= 430;
+        calendarHost.Children.Clear(); days.Clear(); var dates = MonthDates(Controller.Month, Controller.WeekStart); if (owner.Appearance.FixedSixRows && dates.Length < 42) { int start = dates.First(d => d != null)!.Value.DayNumber; dates = Enumerable.Range(0, 42).Select(i => start + i <= DateOnly.MaxValue.DayNumber ? (DateOnly?)DateOnly.FromDayNumber(start + i) : null).ToArray(); } var grid = new Grid(); renderedWeekSide = Controller.WeekLayout == WeekPlanLayout.SideColumn && calendarHost.ActualWidth >= 430;
         weekdayHost.Children.Clear(); weekdayHost.ColumnDefinitions.Clear();
         string[] names = ["PlannerSun", "PlannerMon", "PlannerTue", "PlannerWed", "PlannerThu", "PlannerFri", "PlannerSat"];
         for (int i = 0; i < 7; i++) { grid.ColumnDefinitions.Add(new()); weekdayHost.ColumnDefinitions.Add(new()); var label = Text(T(names[((int)Controller.WeekStart + i) % 7]), 11, "#A2AFBC"); label.HorizontalAlignment = HorizontalAlignment.Center; At(weekdayHost, label, 0, i); }
@@ -157,7 +158,8 @@ internal sealed class PlannerView : Grid
             }
             foreach (var node in Controller.Tree(date)) AddCalendar(node, 0);
             var cell = new CalendarPreviewCell(date, entries.ToArray(), date.Month == Controller.Month.Month, Controller.ColorBackground, () => FocusDate(date), Controller.TextMode);
-            string? decoration = Controller.State?.Decorations.FirstOrDefault(d => d.Date == date)?.Color;
+            cell.AddKnowledge(owner.Session.Calendar, date);
+            string? decoration = Controller.State?.Decorations.FirstOrDefault(d => d.Date == date)?.Color ?? (date.DayOfWeek == DayOfWeek.Saturday ? owner.Appearance.SaturdayColor : date.DayOfWeek == DayOfWeek.Sunday ? owner.Appearance.SundayColor : null);
             var button = new Button { Content = cell, Tag = date, Padding = new Thickness(0), Margin = new Thickness(2), BorderThickness = new Thickness(1), Background = PrototypeViews.Brush(decoration == null ? date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday ? "#162A3D48" : "#0BFFFFFF" : "#38" + decoration.TrimStart('#')[^6..]), HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Stretch, ClipToBounds = true, ToolTip = date.ToString("yyyy-MM-dd") + "\n" + string.Join("\n", tasks.Select(t => Prefix(t) + t.Title)) };
             // Preserve the button through selection changes, so the second click can be recognized.
             button.Click += (_, e) => { if (ReferenceEquals(e.Source, button)) Controller.Select(date); };
@@ -193,7 +195,7 @@ internal sealed class PlannerView : Grid
         check.Click += async (_, e) => { e.Handled = true; bool complete = check.IsChecked == true; check.IsChecked = task.Status == TodoStatus.Completed; await Controller.ExecuteAsync(new SetTodoCompleted(TodoRef.Of(task), complete)); }; At(row, check, 0, 1);
         var content = new StackPanel(); var line = new TextBlock { TextWrapping = TextWrapping.Wrap, TextDecorations = task.Status == TodoStatus.Completed ? TextDecorations.Strikethrough : null, Opacity = task.Status == TodoStatus.Completed ? .55 : 1 };
         line.Inlines.Add(new System.Windows.Documents.Run(Prefix(task)) { FontWeight = FontWeights.SemiBold, Foreground = PrototypeViews.Brush("#A3D9C4") }); line.Inlines.Add(new System.Windows.Documents.Run(task.Title) { FontWeight = task.Important || task.Urgent ? FontWeights.SemiBold : FontWeights.Normal }); content.Children.Add(line);
-        string meta = string.Join(" · ", new[] { Controller.State?.Categories.FirstOrDefault(c => c.Id == task.CategoryId)?.Name, task.Important ? T("PlannerImportant") : null, task.Urgent ? T("PlannerUrgent") : null, task.Kind switch { TodoKind.Occurrence => T("RepeatPeriodicMark"), TodoKind.CarryHistory => T("RepeatHistoryMark"), TodoKind.CarryLatest => T("RepeatLatestMark"), _ => null } }.Where(s => !string.IsNullOrWhiteSpace(s)));
+        string meta = string.Join(" · ", new[] { task.CategoryId == null ? null : Localization.Category(Controller.State?.Categories.FirstOrDefault(c => c.Id == task.CategoryId)), task.Important ? T("PlannerImportant") : null, task.Urgent ? T("PlannerUrgent") : null, task.Kind switch { TodoKind.Occurrence => T("RepeatPeriodicMark"), TodoKind.CarryHistory => T("RepeatHistoryMark"), TodoKind.CarryLatest => T("RepeatLatestMark"), _ => null } }.Where(s => !string.IsNullOrWhiteSpace(s)));
         if (task.CompletionIntent == CompletionIntent.ManualIncomplete && node.Children.Length > 0) meta += (meta.Length > 0 ? " · " : "") + T("ParentPendingOverride");
         if (task.CompletionSnapshotInvalidated) meta += (meta.Length > 0 ? " · " : "") + T("ParentSnapshotInvalidated");
         if (meta.Length > 0) content.Children.Add(Text(meta, 10, "#A2AFBC"));

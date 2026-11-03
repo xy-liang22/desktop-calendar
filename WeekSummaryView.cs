@@ -17,7 +17,7 @@ internal static class WeekSummary
     {
         string Clean(string text) => text.Replace('|', '/').Replace('\r', ' ').Replace('\n', ' ');
         var lines = new System.Collections.Generic.List<string> { "## " + MainWindow.Text("WeekStatsTitle") + " · " + week.Start.ToString("yyyy-MM-dd"), MainWindow.Text("WeekDenominator") + " " + Number((decimal)PlannerTime.WeekRange(week).Duration.TotalHours) + " " + MainWindow.Text("WeekHours"), "| " + MainWindow.Text("PlannerCategory") + " | " + MainWindow.Text("WeekHours") + " | % |", "| --- | --- | --- |" };
-        foreach (var t in PlannerQueries.CategoryStatistics(state, week).OrderByDescending(t => t.Seconds)) lines.Add("| " + Clean(state.Categories.FirstOrDefault(c => c.Id == t.CategoryId)?.Name ?? MainWindow.Text("WeekUncategorized")) + " | " + Number(t.Seconds / 3600) + " | " + Number(t.FractionOfWeek * 100) + "% |");
+        foreach (var t in PlannerQueries.CategoryStatistics(state, week).OrderByDescending(t => t.Seconds)) lines.Add("| " + Clean(t.CategoryId == null ? MainWindow.Text("WeekUncategorized") : Localization.Category(state.Categories.FirstOrDefault(c => c.Id == t.CategoryId))) + " | " + Number(t.Seconds / 3600) + " | " + Number(t.FractionOfWeek * 100) + "% |");
         lines.Add(MainWindow.Text("WeekGlobal") + ": " + Number(Total(state, week) / 3600) + " " + MainWindow.Text("WeekHours")); lines.Add(MainWindow.Text("WeekOverlapHint"));
         foreach (var g in state.Goals.Where(g => g.Week == week).OrderBy(g => g.SortKey)) lines.Add("- " + Clean(g.Title) + ": " + Progress(state, g)); return string.Join("\n", lines);
     }
@@ -54,7 +54,7 @@ internal sealed class WeekSummaryView : StackPanel
         Text(MainWindow.Text("WeekStatsTitle"), 17); Text(MainWindow.Text("WeekDenominator") + " " + WeekSummary.Number((decimal)PlannerTime.WeekRange(key).Duration.TotalHours) + " " + MainWindow.Text("WeekHours"), 10, "#A2AFBC");
         foreach (var duration in PlannerQueries.CategoryStatistics(c.State, key).OrderByDescending(t => t.Seconds))
         {
-            var category = c.State.Categories.FirstOrDefault(x => x.Id == duration.CategoryId); Text((category?.Name ?? MainWindow.Text("WeekUncategorized")) + " · " + WeekSummary.Number(duration.Seconds / 3600) + "h · " + WeekSummary.Number(duration.FractionOfWeek * 100) + "%", 11);
+            var category = c.State.Categories.FirstOrDefault(x => x.Id == duration.CategoryId); Text((category == null ? MainWindow.Text("WeekUncategorized") : Localization.Category(category)) + " · " + WeekSummary.Number(duration.Seconds / 3600) + "h · " + WeekSummary.Number(duration.FractionOfWeek * 100) + "%", 11);
             Children.Add(new ProgressBar { Value = (double)(duration.FractionOfWeek * 100), Maximum = 100, Height = 4, Foreground = ThemeColors.Brush(ThemeColors.Accent(category?.Color ?? "#A3D9C4")), Background = ThemeColors.Brush("#263B45"), BorderThickness = new Thickness(0) });
         }
         Text(MainWindow.Text("WeekGlobal") + " " + WeekSummary.Number(WeekSummary.Total(c.State, key) / 3600) + "h", 11); Text(MainWindow.Text("WeekOverlapHint"), 10, "#A2AFBC");

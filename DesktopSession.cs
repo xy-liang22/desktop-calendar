@@ -4,6 +4,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Threading;
 using Forms = System.Windows.Forms;
+using DesktopCalendar.Core;
 
 namespace DesktopCalendar;
 
@@ -23,6 +24,9 @@ internal sealed class DesktopSession : IDisposable
     internal bool TrayVisible => tray.Visible;
     internal string Notice => store.Notice;
     internal PlannerController? Planner { get; }
+    internal string DataDirectory { get; }
+    internal CalendarKnowledge Calendar { get; private set; }
+    internal void ReloadCalendar() { Calendar = new CalendarKnowledge(System.IO.Path.Combine(DataDirectory, "calendar-knowledge.json")); }
     internal DesktopSession(bool testing, bool visualChecks = false, bool restartCheck = false, bool lifecycleCheck = false, bool plannerCheck = false)
     {
         Testing = testing;
@@ -31,8 +35,11 @@ internal sealed class DesktopSession : IDisposable
             : visualChecks ? Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "artifacts", "ui-check-preferences"))
             : testing ? Path.Combine(Path.GetTempPath(), "DesktopCalendar-Checks-" + Guid.NewGuid().ToString("N"))
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DesktopCalendar");
+        DataDirectory = directory;
+        Calendar = new CalendarKnowledge(Path.Combine(directory, "calendar-knowledge.json"));
         store = new WindowPreferencesStore(Path.Combine(directory, "window-preferences.json"));
         Preferences = store.Load();
+        Localization.Apply(Preferences.UiLanguage);
         if (!testing || plannerCheck) Planner = new PlannerController(Path.Combine(directory, "planner-data.json"), Preferences);
         var menu = new Forms.ContextMenuStrip();
         menu.Items.Add(MainWindow.Text("Locate"), null, (_, _) => Dispatch(() => Locate()));
@@ -49,6 +56,12 @@ internal sealed class DesktopSession : IDisposable
         if (Planner != null) { Planner.PreferencesChanged += Changed; _ = Planner.InitializeAsync(); }
     }
     static void Dispatch(Action action) => Application.Current.Dispatcher.Invoke(action);
+    internal void RefreshLanguage()
+    {
+        string[] keys = { "Locate", "Topmost", "Settings", "SafeLocate", "Exit" };
+        for (int i = 0; i < keys.Length; i++) tray.ContextMenuStrip!.Items[i].Text = MainWindow.Text(keys[i]);
+        tray.Text = MainWindow.Text("AppName");
+    }
     void CreateWindow(bool fallback)
     {
         var settings = Preferences;
@@ -99,6 +112,7 @@ internal sealed class DesktopSession : IDisposable
         tray.Visible = false; tray.Visible = true;
     }
     internal void TestTrayShow() => tray.ContextMenuStrip!.Items[0].PerformClick();
+    internal string TrayMenuText(int index) => tray.ContextMenuStrip!.Items[index].Text ?? "";
     internal void TestTrayPin() => pin.PerformClick();
     internal void TestTraySettings() => tray.ContextMenuStrip!.Items[2].PerformClick();
     internal void TestWindowLoss() { Save(); Window.CloseForRecovery(); }

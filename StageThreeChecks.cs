@@ -210,6 +210,7 @@ internal static partial class StageThreeChecks
                 var beforeFailure = controller.State; window.PlannerView.Quick.Text = "failed draft"; File.SetAttributes(controller.FilePath, FileAttributes.ReadOnly);
                 try { Check("failed GUI save retains draft/state and shows compact error", !await window.PlannerView.AddQuickAsync() && window.PlannerView.Quick.Text == "failed draft" && controller.State == beforeFailure && controller.NoticeKey == "PlannerSaveFailed" && window.CompactNotice.Text == MainWindow.Text("PlannerSaveFailed")); }
                 finally { File.SetAttributes(controller.FilePath, FileAttributes.Normal); }
+                window.PlannerView.Quick.Clear(); await RunP7Checks(window);
             }
         }
         catch (Exception ex) { results.Add("FAIL unhandled " + ex); }

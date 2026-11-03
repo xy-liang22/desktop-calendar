@@ -15,6 +15,14 @@ internal sealed class CalendarPreviewCell : Grid
 {
     internal CalendarTaskPanel Preview { get; }
     internal TextBlock HeaderMore { get; }
+    internal void AddKnowledge(DesktopCalendar.Core.CalendarKnowledge knowledge, DateOnly date)
+    {
+        var events = knowledge.On(date).Concat(DesktopCalendar.Core.CalendarKnowledge.Festivals(date)).ToArray();
+        var info = new TextBlock { FontSize = 9, TextTrimming = TextTrimming.CharacterEllipsis, ToolTip = CalendarPresentation.Detail(knowledge, date) };
+        info.Inlines.Add(new System.Windows.Documents.Run(DesktopCalendar.Core.CalendarKnowledge.Lunar(date)) { Foreground = ThemeColors.Brush("#A2AFBC") });
+        foreach (var e in events) info.Inlines.Add(new System.Windows.Documents.Run(" · " + (e.Kind is "CN" or "CNWork" ? "CN " : e.Kind == "HK" ? "HK " : "") + (Localization.English ? e.En : e.Zh)) { Foreground = ThemeColors.Brush(e.Kind == "HK" ? "#BBA8DE" : e.Kind is "CN" or "CNWork" ? "#E0B17C" : "#A3D9C4") });
+        RowDefinitions[1].Height = new GridLength(15); SetRow(info, 1); Children.Add(info);
+    }
     internal CalendarPreviewCell(DateTime date, DemoTodo[] tasks, bool currentMonth, string information = "")
     {
         Margin = new Thickness(4, 4, 2, 2); ClipToBounds = true;

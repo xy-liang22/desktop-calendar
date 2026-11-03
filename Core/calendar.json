@@ -1,0 +1,2737 @@
+{
+    "SchemaVersion":  1,
+    "UpdatedAt":  "2026-11-03T12:21:45.3974320+00:00",
+    "TermYears":  [
+                      2020,
+                      2021,
+                      2022,
+                      2023,
+                      2024,
+                      2025,
+                      2026,
+                      2027,
+                      2028,
+                      2029,
+                      2030
+                  ],
+    "MainlandYears":  [
+                          2025,
+                          2026
+                      ],
+    "HongKongYears":  [
+                          2025,
+                          2026,
+                          2027
+                      ],
+    "Events":  [
+                   {
+                       "Date":  "2020-01-06",
+                       "Kind":  "Term",
+                       "Zh":  "小寒",
+                       "En":  "Moderate Cold",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2020e.txt"
+                   },
+                   {
+                       "Date":  "2020-01-20",
+                       "Kind":  "Term",
+                       "Zh":  "大寒",
+                       "En":  "Severe Cold",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2020e.txt"
+                   },
+                   {
+                       "Date":  "2020-02-04",
+                       "Kind":  "Term",
+                       "Zh":  "立春",
+                       "En":  "Spring Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2020e.txt"
+                   },
+                   {
+                       "Date":  "2020-02-19",
+                       "Kind":  "Term",
+                       "Zh":  "雨水",
+                       "En":  "Spring Showers",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2020e.txt"
+                   },
+                   {
+                       "Date":  "2020-03-05",
+                       "Kind":  "Term",
+                       "Zh":  "惊蛰",
+                       "En":  "Insects Waken",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2020e.txt"
+                   },
+                   {
+                       "Date":  "2020-03-20",
+                       "Kind":  "Term",
+                       "Zh":  "春分",
+                       "En":  "Vernal Equinox",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2020e.txt"
+                   },
+                   {
+                       "Date":  "2020-04-04",
+                       "Kind":  "Term",
+                       "Zh":  "清明",
+                       "En":  "Bright \u0026 Clear",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2020e.txt"
+                   },
+                   {
+                       "Date":  "2020-04-19",
+                       "Kind":  "Term",
+                       "Zh":  "谷雨",
+                       "En":  "Corn Rain",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2020e.txt"
+                   },
+                   {
+                       "Date":  "2020-05-05",
+                       "Kind":  "Term",
+                       "Zh":  "立夏",
+                       "En":  "Summer Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2020e.txt"
+                   },
+                   {
+                       "Date":  "2020-05-20",
+                       "Kind":  "Term",
+                       "Zh":  "小满",
+                       "En":  "Corn Forms",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2020e.txt"
+                   },
+                   {
+                       "Date":  "2020-06-05",
+                       "Kind":  "Term",
+                       "Zh":  "芒种",
+                       "En":  "Corn on Ear",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2020e.txt"
+                   },
+                   {
+                       "Date":  "2020-06-21",
+                       "Kind":  "Term",
+                       "Zh":  "夏至",
+                       "En":  "Summer Solstice",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2020e.txt"
+                   },
+                   {
+                       "Date":  "2020-07-06",
+                       "Kind":  "Term",
+                       "Zh":  "小暑",
+                       "En":  "Moderate Heat",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2020e.txt"
+                   },
+                   {
+                       "Date":  "2020-07-22",
+                       "Kind":  "Term",
+                       "Zh":  "大暑",
+                       "En":  "Great Heat",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2020e.txt"
+                   },
+                   {
+                       "Date":  "2020-08-07",
+                       "Kind":  "Term",
+                       "Zh":  "立秋",
+                       "En":  "Autumn Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2020e.txt"
+                   },
+                   {
+                       "Date":  "2020-08-22",
+                       "Kind":  "Term",
+                       "Zh":  "处暑",
+                       "En":  "End of Heat",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2020e.txt"
+                   },
+                   {
+                       "Date":  "2020-09-07",
+                       "Kind":  "Term",
+                       "Zh":  "白露",
+                       "En":  "White Dew",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2020e.txt"
+                   },
+                   {
+                       "Date":  "2020-09-22",
+                       "Kind":  "Term",
+                       "Zh":  "秋分",
+                       "En":  "Autumnal Equinox",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2020e.txt"
+                   },
+                   {
+                       "Date":  "2020-10-08",
+                       "Kind":  "Term",
+                       "Zh":  "寒露",
+                       "En":  "Cold Dew",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2020e.txt"
+                   },
+                   {
+                       "Date":  "2020-10-23",
+                       "Kind":  "Term",
+                       "Zh":  "霜降",
+                       "En":  "Frost",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2020e.txt"
+                   },
+                   {
+                       "Date":  "2020-11-07",
+                       "Kind":  "Term",
+                       "Zh":  "立冬",
+                       "En":  "Winter Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2020e.txt"
+                   },
+                   {
+                       "Date":  "2020-11-22",
+                       "Kind":  "Term",
+                       "Zh":  "小雪",
+                       "En":  "Light Snow",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2020e.txt"
+                   },
+                   {
+                       "Date":  "2020-12-07",
+                       "Kind":  "Term",
+                       "Zh":  "大雪",
+                       "En":  "Heavy Snow",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2020e.txt"
+                   },
+                   {
+                       "Date":  "2020-12-21",
+                       "Kind":  "Term",
+                       "Zh":  "冬至",
+                       "En":  "Winter Solstice",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2020e.txt"
+                   },
+                   {
+                       "Date":  "2021-01-05",
+                       "Kind":  "Term",
+                       "Zh":  "小寒",
+                       "En":  "Moderate Cold",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2021e.txt"
+                   },
+                   {
+                       "Date":  "2021-01-20",
+                       "Kind":  "Term",
+                       "Zh":  "大寒",
+                       "En":  "Severe Cold",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2021e.txt"
+                   },
+                   {
+                       "Date":  "2021-02-03",
+                       "Kind":  "Term",
+                       "Zh":  "立春",
+                       "En":  "Spring Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2021e.txt"
+                   },
+                   {
+                       "Date":  "2021-02-18",
+                       "Kind":  "Term",
+                       "Zh":  "雨水",
+                       "En":  "Spring Showers",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2021e.txt"
+                   },
+                   {
+                       "Date":  "2021-03-05",
+                       "Kind":  "Term",
+                       "Zh":  "惊蛰",
+                       "En":  "Insects Waken",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2021e.txt"
+                   },
+                   {
+                       "Date":  "2021-03-20",
+                       "Kind":  "Term",
+                       "Zh":  "春分",
+                       "En":  "Vernal Equinox",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2021e.txt"
+                   },
+                   {
+                       "Date":  "2021-04-04",
+                       "Kind":  "Term",
+                       "Zh":  "清明",
+                       "En":  "Bright \u0026 Clear",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2021e.txt"
+                   },
+                   {
+                       "Date":  "2021-04-20",
+                       "Kind":  "Term",
+                       "Zh":  "谷雨",
+                       "En":  "Corn Rain",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2021e.txt"
+                   },
+                   {
+                       "Date":  "2021-05-05",
+                       "Kind":  "Term",
+                       "Zh":  "立夏",
+                       "En":  "Summer Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2021e.txt"
+                   },
+                   {
+                       "Date":  "2021-05-21",
+                       "Kind":  "Term",
+                       "Zh":  "小满",
+                       "En":  "Corn Forms",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2021e.txt"
+                   },
+                   {
+                       "Date":  "2021-06-05",
+                       "Kind":  "Term",
+                       "Zh":  "芒种",
+                       "En":  "Corn on Ear",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2021e.txt"
+                   },
+                   {
+                       "Date":  "2021-06-21",
+                       "Kind":  "Term",
+                       "Zh":  "夏至",
+                       "En":  "Summer Solstice",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2021e.txt"
+                   },
+                   {
+                       "Date":  "2021-07-07",
+                       "Kind":  "Term",
+                       "Zh":  "小暑",
+                       "En":  "Moderate Heat",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2021e.txt"
+                   },
+                   {
+                       "Date":  "2021-07-22",
+                       "Kind":  "Term",
+                       "Zh":  "大暑",
+                       "En":  "Great Heat",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2021e.txt"
+                   },
+                   {
+                       "Date":  "2021-08-07",
+                       "Kind":  "Term",
+                       "Zh":  "立秋",
+                       "En":  "Autumn Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2021e.txt"
+                   },
+                   {
+                       "Date":  "2021-08-23",
+                       "Kind":  "Term",
+                       "Zh":  "处暑",
+                       "En":  "End of Heat",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2021e.txt"
+                   },
+                   {
+                       "Date":  "2021-09-07",
+                       "Kind":  "Term",
+                       "Zh":  "白露",
+                       "En":  "White Dew",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2021e.txt"
+                   },
+                   {
+                       "Date":  "2021-09-23",
+                       "Kind":  "Term",
+                       "Zh":  "秋分",
+                       "En":  "Autumnal Equinox",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2021e.txt"
+                   },
+                   {
+                       "Date":  "2021-10-08",
+                       "Kind":  "Term",
+                       "Zh":  "寒露",
+                       "En":  "Cold Dew",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2021e.txt"
+                   },
+                   {
+                       "Date":  "2021-10-23",
+                       "Kind":  "Term",
+                       "Zh":  "霜降",
+                       "En":  "Frost",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2021e.txt"
+                   },
+                   {
+                       "Date":  "2021-11-07",
+                       "Kind":  "Term",
+                       "Zh":  "立冬",
+                       "En":  "Winter Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2021e.txt"
+                   },
+                   {
+                       "Date":  "2021-11-22",
+                       "Kind":  "Term",
+                       "Zh":  "小雪",
+                       "En":  "Light Snow",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2021e.txt"
+                   },
+                   {
+                       "Date":  "2021-12-07",
+                       "Kind":  "Term",
+                       "Zh":  "大雪",
+                       "En":  "Heavy Snow",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2021e.txt"
+                   },
+                   {
+                       "Date":  "2021-12-21",
+                       "Kind":  "Term",
+                       "Zh":  "冬至",
+                       "En":  "Winter Solstice",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2021e.txt"
+                   },
+                   {
+                       "Date":  "2022-01-05",
+                       "Kind":  "Term",
+                       "Zh":  "小寒",
+                       "En":  "Moderate Cold",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2022e.txt"
+                   },
+                   {
+                       "Date":  "2022-01-20",
+                       "Kind":  "Term",
+                       "Zh":  "大寒",
+                       "En":  "Severe Cold",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2022e.txt"
+                   },
+                   {
+                       "Date":  "2022-02-04",
+                       "Kind":  "Term",
+                       "Zh":  "立春",
+                       "En":  "Spring Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2022e.txt"
+                   },
+                   {
+                       "Date":  "2022-02-19",
+                       "Kind":  "Term",
+                       "Zh":  "雨水",
+                       "En":  "Spring Showers",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2022e.txt"
+                   },
+                   {
+                       "Date":  "2022-03-05",
+                       "Kind":  "Term",
+                       "Zh":  "惊蛰",
+                       "En":  "Insects Waken",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2022e.txt"
+                   },
+                   {
+                       "Date":  "2022-03-20",
+                       "Kind":  "Term",
+                       "Zh":  "春分",
+                       "En":  "Vernal Equinox",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2022e.txt"
+                   },
+                   {
+                       "Date":  "2022-04-05",
+                       "Kind":  "Term",
+                       "Zh":  "清明",
+                       "En":  "Bright \u0026 Clear",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2022e.txt"
+                   },
+                   {
+                       "Date":  "2022-04-20",
+                       "Kind":  "Term",
+                       "Zh":  "谷雨",
+                       "En":  "Corn Rain",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2022e.txt"
+                   },
+                   {
+                       "Date":  "2022-05-05",
+                       "Kind":  "Term",
+                       "Zh":  "立夏",
+                       "En":  "Summer Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2022e.txt"
+                   },
+                   {
+                       "Date":  "2022-05-21",
+                       "Kind":  "Term",
+                       "Zh":  "小满",
+                       "En":  "Corn Forms",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2022e.txt"
+                   },
+                   {
+                       "Date":  "2022-06-06",
+                       "Kind":  "Term",
+                       "Zh":  "芒种",
+                       "En":  "Corn on Ear",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2022e.txt"
+                   },
+                   {
+                       "Date":  "2022-06-21",
+                       "Kind":  "Term",
+                       "Zh":  "夏至",
+                       "En":  "Summer Solstice",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2022e.txt"
+                   },
+                   {
+                       "Date":  "2022-07-07",
+                       "Kind":  "Term",
+                       "Zh":  "小暑",
+                       "En":  "Moderate Heat",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2022e.txt"
+                   },
+                   {
+                       "Date":  "2022-07-23",
+                       "Kind":  "Term",
+                       "Zh":  "大暑",
+                       "En":  "Great Heat",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2022e.txt"
+                   },
+                   {
+                       "Date":  "2022-08-07",
+                       "Kind":  "Term",
+                       "Zh":  "立秋",
+                       "En":  "Autumn Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2022e.txt"
+                   },
+                   {
+                       "Date":  "2022-08-23",
+                       "Kind":  "Term",
+                       "Zh":  "处暑",
+                       "En":  "End of Heat",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2022e.txt"
+                   },
+                   {
+                       "Date":  "2022-09-07",
+                       "Kind":  "Term",
+                       "Zh":  "白露",
+                       "En":  "White Dew",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2022e.txt"
+                   },
+                   {
+                       "Date":  "2022-09-23",
+                       "Kind":  "Term",
+                       "Zh":  "秋分",
+                       "En":  "Autumnal Equinox",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2022e.txt"
+                   },
+                   {
+                       "Date":  "2022-10-08",
+                       "Kind":  "Term",
+                       "Zh":  "寒露",
+                       "En":  "Cold Dew",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2022e.txt"
+                   },
+                   {
+                       "Date":  "2022-10-23",
+                       "Kind":  "Term",
+                       "Zh":  "霜降",
+                       "En":  "Frost",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2022e.txt"
+                   },
+                   {
+                       "Date":  "2022-11-07",
+                       "Kind":  "Term",
+                       "Zh":  "立冬",
+                       "En":  "Winter Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2022e.txt"
+                   },
+                   {
+                       "Date":  "2022-11-22",
+                       "Kind":  "Term",
+                       "Zh":  "小雪",
+                       "En":  "Light Snow",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2022e.txt"
+                   },
+                   {
+                       "Date":  "2022-12-07",
+                       "Kind":  "Term",
+                       "Zh":  "大雪",
+                       "En":  "Heavy Snow",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2022e.txt"
+                   },
+                   {
+                       "Date":  "2022-12-22",
+                       "Kind":  "Term",
+                       "Zh":  "冬至",
+                       "En":  "Winter Solstice",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2022e.txt"
+                   },
+                   {
+                       "Date":  "2023-01-05",
+                       "Kind":  "Term",
+                       "Zh":  "小寒",
+                       "En":  "Moderate Cold",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2023e.txt"
+                   },
+                   {
+                       "Date":  "2023-01-20",
+                       "Kind":  "Term",
+                       "Zh":  "大寒",
+                       "En":  "Severe Cold",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2023e.txt"
+                   },
+                   {
+                       "Date":  "2023-02-04",
+                       "Kind":  "Term",
+                       "Zh":  "立春",
+                       "En":  "Spring Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2023e.txt"
+                   },
+                   {
+                       "Date":  "2023-02-19",
+                       "Kind":  "Term",
+                       "Zh":  "雨水",
+                       "En":  "Spring Showers",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2023e.txt"
+                   },
+                   {
+                       "Date":  "2023-03-06",
+                       "Kind":  "Term",
+                       "Zh":  "惊蛰",
+                       "En":  "Insects Waken",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2023e.txt"
+                   },
+                   {
+                       "Date":  "2023-03-21",
+                       "Kind":  "Term",
+                       "Zh":  "春分",
+                       "En":  "Vernal Equinox",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2023e.txt"
+                   },
+                   {
+                       "Date":  "2023-04-05",
+                       "Kind":  "Term",
+                       "Zh":  "清明",
+                       "En":  "Bright \u0026 Clear",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2023e.txt"
+                   },
+                   {
+                       "Date":  "2023-04-20",
+                       "Kind":  "Term",
+                       "Zh":  "谷雨",
+                       "En":  "Corn Rain",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2023e.txt"
+                   },
+                   {
+                       "Date":  "2023-05-06",
+                       "Kind":  "Term",
+                       "Zh":  "立夏",
+                       "En":  "Summer Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2023e.txt"
+                   },
+                   {
+                       "Date":  "2023-05-21",
+                       "Kind":  "Term",
+                       "Zh":  "小满",
+                       "En":  "Corn Forms",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2023e.txt"
+                   },
+                   {
+                       "Date":  "2023-06-06",
+                       "Kind":  "Term",
+                       "Zh":  "芒种",
+                       "En":  "Corn on Ear",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2023e.txt"
+                   },
+                   {
+                       "Date":  "2023-06-21",
+                       "Kind":  "Term",
+                       "Zh":  "夏至",
+                       "En":  "Summer Solstice",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2023e.txt"
+                   },
+                   {
+                       "Date":  "2023-07-07",
+                       "Kind":  "Term",
+                       "Zh":  "小暑",
+                       "En":  "Moderate Heat",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2023e.txt"
+                   },
+                   {
+                       "Date":  "2023-07-23",
+                       "Kind":  "Term",
+                       "Zh":  "大暑",
+                       "En":  "Great Heat",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2023e.txt"
+                   },
+                   {
+                       "Date":  "2023-08-08",
+                       "Kind":  "Term",
+                       "Zh":  "立秋",
+                       "En":  "Autumn Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2023e.txt"
+                   },
+                   {
+                       "Date":  "2023-08-23",
+                       "Kind":  "Term",
+                       "Zh":  "处暑",
+                       "En":  "End of Heat",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2023e.txt"
+                   },
+                   {
+                       "Date":  "2023-09-08",
+                       "Kind":  "Term",
+                       "Zh":  "白露",
+                       "En":  "White Dew",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2023e.txt"
+                   },
+                   {
+                       "Date":  "2023-09-23",
+                       "Kind":  "Term",
+                       "Zh":  "秋分",
+                       "En":  "Autumnal Equinox",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2023e.txt"
+                   },
+                   {
+                       "Date":  "2023-10-08",
+                       "Kind":  "Term",
+                       "Zh":  "寒露",
+                       "En":  "Cold Dew",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2023e.txt"
+                   },
+                   {
+                       "Date":  "2023-10-24",
+                       "Kind":  "Term",
+                       "Zh":  "霜降",
+                       "En":  "Frost",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2023e.txt"
+                   },
+                   {
+                       "Date":  "2023-11-08",
+                       "Kind":  "Term",
+                       "Zh":  "立冬",
+                       "En":  "Winter Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2023e.txt"
+                   },
+                   {
+                       "Date":  "2023-11-22",
+                       "Kind":  "Term",
+                       "Zh":  "小雪",
+                       "En":  "Light Snow",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2023e.txt"
+                   },
+                   {
+                       "Date":  "2023-12-07",
+                       "Kind":  "Term",
+                       "Zh":  "大雪",
+                       "En":  "Heavy Snow",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2023e.txt"
+                   },
+                   {
+                       "Date":  "2023-12-22",
+                       "Kind":  "Term",
+                       "Zh":  "冬至",
+                       "En":  "Winter Solstice",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2023e.txt"
+                   },
+                   {
+                       "Date":  "2024-01-06",
+                       "Kind":  "Term",
+                       "Zh":  "小寒",
+                       "En":  "Moderate Cold",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2024e.txt"
+                   },
+                   {
+                       "Date":  "2024-01-20",
+                       "Kind":  "Term",
+                       "Zh":  "大寒",
+                       "En":  "Severe Cold",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2024e.txt"
+                   },
+                   {
+                       "Date":  "2024-02-04",
+                       "Kind":  "Term",
+                       "Zh":  "立春",
+                       "En":  "Spring Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2024e.txt"
+                   },
+                   {
+                       "Date":  "2024-02-19",
+                       "Kind":  "Term",
+                       "Zh":  "雨水",
+                       "En":  "Spring Showers",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2024e.txt"
+                   },
+                   {
+                       "Date":  "2024-03-05",
+                       "Kind":  "Term",
+                       "Zh":  "惊蛰",
+                       "En":  "Insects Waken",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2024e.txt"
+                   },
+                   {
+                       "Date":  "2024-03-20",
+                       "Kind":  "Term",
+                       "Zh":  "春分",
+                       "En":  "Vernal Equinox",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2024e.txt"
+                   },
+                   {
+                       "Date":  "2024-04-04",
+                       "Kind":  "Term",
+                       "Zh":  "清明",
+                       "En":  "Bright \u0026 Clear",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2024e.txt"
+                   },
+                   {
+                       "Date":  "2024-04-19",
+                       "Kind":  "Term",
+                       "Zh":  "谷雨",
+                       "En":  "Corn Rain",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2024e.txt"
+                   },
+                   {
+                       "Date":  "2024-05-05",
+                       "Kind":  "Term",
+                       "Zh":  "立夏",
+                       "En":  "Summer Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2024e.txt"
+                   },
+                   {
+                       "Date":  "2024-05-20",
+                       "Kind":  "Term",
+                       "Zh":  "小满",
+                       "En":  "Corn Forms",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2024e.txt"
+                   },
+                   {
+                       "Date":  "2024-06-05",
+                       "Kind":  "Term",
+                       "Zh":  "芒种",
+                       "En":  "Corn on Ear",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2024e.txt"
+                   },
+                   {
+                       "Date":  "2024-06-21",
+                       "Kind":  "Term",
+                       "Zh":  "夏至",
+                       "En":  "Summer Solstice",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2024e.txt"
+                   },
+                   {
+                       "Date":  "2024-07-06",
+                       "Kind":  "Term",
+                       "Zh":  "小暑",
+                       "En":  "Moderate Heat",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2024e.txt"
+                   },
+                   {
+                       "Date":  "2024-07-22",
+                       "Kind":  "Term",
+                       "Zh":  "大暑",
+                       "En":  "Great Heat",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2024e.txt"
+                   },
+                   {
+                       "Date":  "2024-08-07",
+                       "Kind":  "Term",
+                       "Zh":  "立秋",
+                       "En":  "Autumn Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2024e.txt"
+                   },
+                   {
+                       "Date":  "2024-08-22",
+                       "Kind":  "Term",
+                       "Zh":  "处暑",
+                       "En":  "End of Heat",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2024e.txt"
+                   },
+                   {
+                       "Date":  "2024-09-07",
+                       "Kind":  "Term",
+                       "Zh":  "白露",
+                       "En":  "White Dew",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2024e.txt"
+                   },
+                   {
+                       "Date":  "2024-09-22",
+                       "Kind":  "Term",
+                       "Zh":  "秋分",
+                       "En":  "Autumnal Equinox",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2024e.txt"
+                   },
+                   {
+                       "Date":  "2024-10-08",
+                       "Kind":  "Term",
+                       "Zh":  "寒露",
+                       "En":  "Cold Dew",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2024e.txt"
+                   },
+                   {
+                       "Date":  "2024-10-23",
+                       "Kind":  "Term",
+                       "Zh":  "霜降",
+                       "En":  "Frost",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2024e.txt"
+                   },
+                   {
+                       "Date":  "2024-11-07",
+                       "Kind":  "Term",
+                       "Zh":  "立冬",
+                       "En":  "Winter Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2024e.txt"
+                   },
+                   {
+                       "Date":  "2024-11-22",
+                       "Kind":  "Term",
+                       "Zh":  "小雪",
+                       "En":  "Light Snow",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2024e.txt"
+                   },
+                   {
+                       "Date":  "2024-12-06",
+                       "Kind":  "Term",
+                       "Zh":  "大雪",
+                       "En":  "Heavy Snow",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2024e.txt"
+                   },
+                   {
+                       "Date":  "2024-12-21",
+                       "Kind":  "Term",
+                       "Zh":  "冬至",
+                       "En":  "Winter Solstice",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2024e.txt"
+                   },
+                   {
+                       "Date":  "2025-01-01",
+                       "Kind":  "CN",
+                       "Zh":  "元旦",
+                       "En":  "New Year",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202411/content_6986383.htm"
+                   },
+                   {
+                       "Date":  "2025-01-01",
+                       "Kind":  "HK",
+                       "Zh":  "一月一日",
+                       "En":  "The first day of January",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2025-01-05",
+                       "Kind":  "Term",
+                       "Zh":  "小寒",
+                       "En":  "Moderate Cold",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2025e.txt"
+                   },
+                   {
+                       "Date":  "2025-01-20",
+                       "Kind":  "Term",
+                       "Zh":  "大寒",
+                       "En":  "Severe Cold",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2025e.txt"
+                   },
+                   {
+                       "Date":  "2025-01-26",
+                       "Kind":  "CNWork",
+                       "Zh":  "调休补班",
+                       "En":  "Adjusted working day",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202411/content_6986383.htm"
+                   },
+                   {
+                       "Date":  "2025-01-28",
+                       "Kind":  "CN",
+                       "Zh":  "春节",
+                       "En":  "Spring Festival",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202411/content_6986383.htm"
+                   },
+                   {
+                       "Date":  "2025-01-29",
+                       "Kind":  "CN",
+                       "Zh":  "春节",
+                       "En":  "Spring Festival",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202411/content_6986383.htm"
+                   },
+                   {
+                       "Date":  "2025-01-29",
+                       "Kind":  "HK",
+                       "Zh":  "农历年初一",
+                       "En":  "Lunar New Year’s Day",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2025-01-30",
+                       "Kind":  "CN",
+                       "Zh":  "春节",
+                       "En":  "Spring Festival",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202411/content_6986383.htm"
+                   },
+                   {
+                       "Date":  "2025-01-30",
+                       "Kind":  "HK",
+                       "Zh":  "农历年初二",
+                       "En":  "The second day of Lunar New Year",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2025-01-31",
+                       "Kind":  "CN",
+                       "Zh":  "春节",
+                       "En":  "Spring Festival",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202411/content_6986383.htm"
+                   },
+                   {
+                       "Date":  "2025-01-31",
+                       "Kind":  "HK",
+                       "Zh":  "农历年初三",
+                       "En":  "The third day of Lunar New Year",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2025-02-01",
+                       "Kind":  "CN",
+                       "Zh":  "春节",
+                       "En":  "Spring Festival",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202411/content_6986383.htm"
+                   },
+                   {
+                       "Date":  "2025-02-02",
+                       "Kind":  "CN",
+                       "Zh":  "春节",
+                       "En":  "Spring Festival",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202411/content_6986383.htm"
+                   },
+                   {
+                       "Date":  "2025-02-03",
+                       "Kind":  "CN",
+                       "Zh":  "春节",
+                       "En":  "Spring Festival",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202411/content_6986383.htm"
+                   },
+                   {
+                       "Date":  "2025-02-03",
+                       "Kind":  "Term",
+                       "Zh":  "立春",
+                       "En":  "Spring Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2025e.txt"
+                   },
+                   {
+                       "Date":  "2025-02-04",
+                       "Kind":  "CN",
+                       "Zh":  "春节",
+                       "En":  "Spring Festival",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202411/content_6986383.htm"
+                   },
+                   {
+                       "Date":  "2025-02-08",
+                       "Kind":  "CNWork",
+                       "Zh":  "调休补班",
+                       "En":  "Adjusted working day",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202411/content_6986383.htm"
+                   },
+                   {
+                       "Date":  "2025-02-18",
+                       "Kind":  "Term",
+                       "Zh":  "雨水",
+                       "En":  "Spring Showers",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2025e.txt"
+                   },
+                   {
+                       "Date":  "2025-03-05",
+                       "Kind":  "Term",
+                       "Zh":  "惊蛰",
+                       "En":  "Insects Waken",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2025e.txt"
+                   },
+                   {
+                       "Date":  "2025-03-20",
+                       "Kind":  "Term",
+                       "Zh":  "春分",
+                       "En":  "Vernal Equinox",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2025e.txt"
+                   },
+                   {
+                       "Date":  "2025-04-04",
+                       "Kind":  "CN",
+                       "Zh":  "清明节",
+                       "En":  "Qingming",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202411/content_6986383.htm"
+                   },
+                   {
+                       "Date":  "2025-04-04",
+                       "Kind":  "HK",
+                       "Zh":  "清明节",
+                       "En":  "Ching Ming Festival",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2025-04-04",
+                       "Kind":  "Term",
+                       "Zh":  "清明",
+                       "En":  "Bright \u0026 Clear",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2025e.txt"
+                   },
+                   {
+                       "Date":  "2025-04-05",
+                       "Kind":  "CN",
+                       "Zh":  "清明节",
+                       "En":  "Qingming",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202411/content_6986383.htm"
+                   },
+                   {
+                       "Date":  "2025-04-06",
+                       "Kind":  "CN",
+                       "Zh":  "清明节",
+                       "En":  "Qingming",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202411/content_6986383.htm"
+                   },
+                   {
+                       "Date":  "2025-04-18",
+                       "Kind":  "HK",
+                       "Zh":  "耶稣受难节",
+                       "En":  "Good Friday",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2025-04-19",
+                       "Kind":  "HK",
+                       "Zh":  "耶稣受难节翌日",
+                       "En":  "The day following Good Friday",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2025-04-20",
+                       "Kind":  "Term",
+                       "Zh":  "谷雨",
+                       "En":  "Corn Rain",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2025e.txt"
+                   },
+                   {
+                       "Date":  "2025-04-21",
+                       "Kind":  "HK",
+                       "Zh":  "复活节星期一",
+                       "En":  "Easter Monday",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2025-04-27",
+                       "Kind":  "CNWork",
+                       "Zh":  "调休补班",
+                       "En":  "Adjusted working day",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202411/content_6986383.htm"
+                   },
+                   {
+                       "Date":  "2025-05-01",
+                       "Kind":  "CN",
+                       "Zh":  "劳动节",
+                       "En":  "Labour Day",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202411/content_6986383.htm"
+                   },
+                   {
+                       "Date":  "2025-05-01",
+                       "Kind":  "HK",
+                       "Zh":  "劳动节",
+                       "En":  "Labour Day",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2025-05-02",
+                       "Kind":  "CN",
+                       "Zh":  "劳动节",
+                       "En":  "Labour Day",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202411/content_6986383.htm"
+                   },
+                   {
+                       "Date":  "2025-05-03",
+                       "Kind":  "CN",
+                       "Zh":  "劳动节",
+                       "En":  "Labour Day",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202411/content_6986383.htm"
+                   },
+                   {
+                       "Date":  "2025-05-04",
+                       "Kind":  "CN",
+                       "Zh":  "劳动节",
+                       "En":  "Labour Day",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202411/content_6986383.htm"
+                   },
+                   {
+                       "Date":  "2025-05-05",
+                       "Kind":  "CN",
+                       "Zh":  "劳动节",
+                       "En":  "Labour Day",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202411/content_6986383.htm"
+                   },
+                   {
+                       "Date":  "2025-05-05",
+                       "Kind":  "HK",
+                       "Zh":  "佛诞",
+                       "En":  "The Birthday of the Buddha",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2025-05-05",
+                       "Kind":  "Term",
+                       "Zh":  "立夏",
+                       "En":  "Summer Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2025e.txt"
+                   },
+                   {
+                       "Date":  "2025-05-21",
+                       "Kind":  "Term",
+                       "Zh":  "小满",
+                       "En":  "Corn Forms",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2025e.txt"
+                   },
+                   {
+                       "Date":  "2025-05-31",
+                       "Kind":  "CN",
+                       "Zh":  "端午节",
+                       "En":  "Dragon Boat Festival",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202411/content_6986383.htm"
+                   },
+                   {
+                       "Date":  "2025-05-31",
+                       "Kind":  "HK",
+                       "Zh":  "端午节",
+                       "En":  "Tuen Ng Festival",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2025-06-01",
+                       "Kind":  "CN",
+                       "Zh":  "端午节",
+                       "En":  "Dragon Boat Festival",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202411/content_6986383.htm"
+                   },
+                   {
+                       "Date":  "2025-06-02",
+                       "Kind":  "CN",
+                       "Zh":  "端午节",
+                       "En":  "Dragon Boat Festival",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202411/content_6986383.htm"
+                   },
+                   {
+                       "Date":  "2025-06-05",
+                       "Kind":  "Term",
+                       "Zh":  "芒种",
+                       "En":  "Corn on Ear",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2025e.txt"
+                   },
+                   {
+                       "Date":  "2025-06-21",
+                       "Kind":  "Term",
+                       "Zh":  "夏至",
+                       "En":  "Summer Solstice",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2025e.txt"
+                   },
+                   {
+                       "Date":  "2025-07-01",
+                       "Kind":  "HK",
+                       "Zh":  "香港特别行政区成立纪念日",
+                       "En":  "Hong Kong Special Administrative Region Establishment Day",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2025-07-07",
+                       "Kind":  "Term",
+                       "Zh":  "小暑",
+                       "En":  "Moderate Heat",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2025e.txt"
+                   },
+                   {
+                       "Date":  "2025-07-22",
+                       "Kind":  "Term",
+                       "Zh":  "大暑",
+                       "En":  "Great Heat",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2025e.txt"
+                   },
+                   {
+                       "Date":  "2025-08-07",
+                       "Kind":  "Term",
+                       "Zh":  "立秋",
+                       "En":  "Autumn Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2025e.txt"
+                   },
+                   {
+                       "Date":  "2025-08-23",
+                       "Kind":  "Term",
+                       "Zh":  "处暑",
+                       "En":  "End of Heat",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2025e.txt"
+                   },
+                   {
+                       "Date":  "2025-09-07",
+                       "Kind":  "Term",
+                       "Zh":  "白露",
+                       "En":  "White Dew",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2025e.txt"
+                   },
+                   {
+                       "Date":  "2025-09-23",
+                       "Kind":  "Term",
+                       "Zh":  "秋分",
+                       "En":  "Autumnal Equinox",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2025e.txt"
+                   },
+                   {
+                       "Date":  "2025-09-28",
+                       "Kind":  "CNWork",
+                       "Zh":  "调休补班",
+                       "En":  "Adjusted working day",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202411/content_6986383.htm"
+                   },
+                   {
+                       "Date":  "2025-10-01",
+                       "Kind":  "CN",
+                       "Zh":  "国庆/中秋假期",
+                       "En":  "National Day / Mid-Autumn break",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202411/content_6986383.htm"
+                   },
+                   {
+                       "Date":  "2025-10-01",
+                       "Kind":  "HK",
+                       "Zh":  "国庆日",
+                       "En":  "National Day",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2025-10-02",
+                       "Kind":  "CN",
+                       "Zh":  "国庆/中秋假期",
+                       "En":  "National Day / Mid-Autumn break",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202411/content_6986383.htm"
+                   },
+                   {
+                       "Date":  "2025-10-03",
+                       "Kind":  "CN",
+                       "Zh":  "国庆/中秋假期",
+                       "En":  "National Day / Mid-Autumn break",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202411/content_6986383.htm"
+                   },
+                   {
+                       "Date":  "2025-10-04",
+                       "Kind":  "CN",
+                       "Zh":  "国庆/中秋假期",
+                       "En":  "National Day / Mid-Autumn break",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202411/content_6986383.htm"
+                   },
+                   {
+                       "Date":  "2025-10-05",
+                       "Kind":  "CN",
+                       "Zh":  "国庆/中秋假期",
+                       "En":  "National Day / Mid-Autumn break",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202411/content_6986383.htm"
+                   },
+                   {
+                       "Date":  "2025-10-06",
+                       "Kind":  "CN",
+                       "Zh":  "国庆/中秋假期",
+                       "En":  "National Day / Mid-Autumn break",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202411/content_6986383.htm"
+                   },
+                   {
+                       "Date":  "2025-10-07",
+                       "Kind":  "CN",
+                       "Zh":  "国庆/中秋假期",
+                       "En":  "National Day / Mid-Autumn break",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202411/content_6986383.htm"
+                   },
+                   {
+                       "Date":  "2025-10-07",
+                       "Kind":  "HK",
+                       "Zh":  "中秋节翌日",
+                       "En":  "The day following the Chinese Mid-Autumn Festival",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2025-10-08",
+                       "Kind":  "CN",
+                       "Zh":  "国庆/中秋假期",
+                       "En":  "National Day / Mid-Autumn break",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202411/content_6986383.htm"
+                   },
+                   {
+                       "Date":  "2025-10-08",
+                       "Kind":  "Term",
+                       "Zh":  "寒露",
+                       "En":  "Cold Dew",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2025e.txt"
+                   },
+                   {
+                       "Date":  "2025-10-11",
+                       "Kind":  "CNWork",
+                       "Zh":  "调休补班",
+                       "En":  "Adjusted working day",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202411/content_6986383.htm"
+                   },
+                   {
+                       "Date":  "2025-10-23",
+                       "Kind":  "Term",
+                       "Zh":  "霜降",
+                       "En":  "Frost",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2025e.txt"
+                   },
+                   {
+                       "Date":  "2025-10-29",
+                       "Kind":  "HK",
+                       "Zh":  "重阳节",
+                       "En":  "Chung Yeung Festival",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2025-11-07",
+                       "Kind":  "Term",
+                       "Zh":  "立冬",
+                       "En":  "Winter Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2025e.txt"
+                   },
+                   {
+                       "Date":  "2025-11-22",
+                       "Kind":  "Term",
+                       "Zh":  "小雪",
+                       "En":  "Light Snow",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2025e.txt"
+                   },
+                   {
+                       "Date":  "2025-12-07",
+                       "Kind":  "Term",
+                       "Zh":  "大雪",
+                       "En":  "Heavy Snow",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2025e.txt"
+                   },
+                   {
+                       "Date":  "2025-12-21",
+                       "Kind":  "Term",
+                       "Zh":  "冬至",
+                       "En":  "Winter Solstice",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2025e.txt"
+                   },
+                   {
+                       "Date":  "2025-12-25",
+                       "Kind":  "HK",
+                       "Zh":  "圣诞节",
+                       "En":  "Christmas Day",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2025-12-26",
+                       "Kind":  "HK",
+                       "Zh":  "圣诞节后第一个周日",
+                       "En":  "The first weekday after Christmas Day",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2026-01-01",
+                       "Kind":  "CN",
+                       "Zh":  "元旦",
+                       "En":  "New Year",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-01-01",
+                       "Kind":  "HK",
+                       "Zh":  "一月一日",
+                       "En":  "The first day of January",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2026-01-02",
+                       "Kind":  "CN",
+                       "Zh":  "元旦",
+                       "En":  "New Year",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-01-03",
+                       "Kind":  "CN",
+                       "Zh":  "元旦",
+                       "En":  "New Year",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-01-04",
+                       "Kind":  "CNWork",
+                       "Zh":  "调休补班",
+                       "En":  "Adjusted working day",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-01-05",
+                       "Kind":  "Term",
+                       "Zh":  "小寒",
+                       "En":  "Moderate Cold",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2026e.txt"
+                   },
+                   {
+                       "Date":  "2026-01-20",
+                       "Kind":  "Term",
+                       "Zh":  "大寒",
+                       "En":  "Severe Cold",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2026e.txt"
+                   },
+                   {
+                       "Date":  "2026-02-04",
+                       "Kind":  "Term",
+                       "Zh":  "立春",
+                       "En":  "Spring Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2026e.txt"
+                   },
+                   {
+                       "Date":  "2026-02-14",
+                       "Kind":  "CNWork",
+                       "Zh":  "调休补班",
+                       "En":  "Adjusted working day",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-02-15",
+                       "Kind":  "CN",
+                       "Zh":  "春节",
+                       "En":  "Spring Festival",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-02-16",
+                       "Kind":  "CN",
+                       "Zh":  "春节",
+                       "En":  "Spring Festival",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-02-17",
+                       "Kind":  "CN",
+                       "Zh":  "春节",
+                       "En":  "Spring Festival",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-02-17",
+                       "Kind":  "HK",
+                       "Zh":  "农历年初一",
+                       "En":  "Lunar New Year’s Day",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2026-02-18",
+                       "Kind":  "CN",
+                       "Zh":  "春节",
+                       "En":  "Spring Festival",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-02-18",
+                       "Kind":  "HK",
+                       "Zh":  "农历年初二",
+                       "En":  "The second day of Lunar New Year",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2026-02-18",
+                       "Kind":  "Term",
+                       "Zh":  "雨水",
+                       "En":  "Spring Showers",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2026e.txt"
+                   },
+                   {
+                       "Date":  "2026-02-19",
+                       "Kind":  "CN",
+                       "Zh":  "春节",
+                       "En":  "Spring Festival",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-02-19",
+                       "Kind":  "HK",
+                       "Zh":  "农历年初三",
+                       "En":  "The third day of Lunar New Year",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2026-02-20",
+                       "Kind":  "CN",
+                       "Zh":  "春节",
+                       "En":  "Spring Festival",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-02-21",
+                       "Kind":  "CN",
+                       "Zh":  "春节",
+                       "En":  "Spring Festival",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-02-22",
+                       "Kind":  "CN",
+                       "Zh":  "春节",
+                       "En":  "Spring Festival",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-02-23",
+                       "Kind":  "CN",
+                       "Zh":  "春节",
+                       "En":  "Spring Festival",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-02-28",
+                       "Kind":  "CNWork",
+                       "Zh":  "调休补班",
+                       "En":  "Adjusted working day",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-03-05",
+                       "Kind":  "Term",
+                       "Zh":  "惊蛰",
+                       "En":  "Insects Waken",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2026e.txt"
+                   },
+                   {
+                       "Date":  "2026-03-20",
+                       "Kind":  "Term",
+                       "Zh":  "春分",
+                       "En":  "Vernal Equinox",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2026e.txt"
+                   },
+                   {
+                       "Date":  "2026-04-03",
+                       "Kind":  "HK",
+                       "Zh":  "耶稣受难节",
+                       "En":  "Good Friday",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2026-04-04",
+                       "Kind":  "CN",
+                       "Zh":  "清明节",
+                       "En":  "Qingming",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-04-04",
+                       "Kind":  "HK",
+                       "Zh":  "耶稣受难节翌日",
+                       "En":  "The day following Good Friday",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2026-04-05",
+                       "Kind":  "CN",
+                       "Zh":  "清明节",
+                       "En":  "Qingming",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-04-05",
+                       "Kind":  "Term",
+                       "Zh":  "清明",
+                       "En":  "Bright \u0026 Clear",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2026e.txt"
+                   },
+                   {
+                       "Date":  "2026-04-06",
+                       "Kind":  "CN",
+                       "Zh":  "清明节",
+                       "En":  "Qingming",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-04-06",
+                       "Kind":  "HK",
+                       "Zh":  "清明节翌日",
+                       "En":  "The day following Ching Ming Festival",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2026-04-07",
+                       "Kind":  "HK",
+                       "Zh":  "复活节星期一翌日",
+                       "En":  "The day following Easter Monday",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2026-04-20",
+                       "Kind":  "Term",
+                       "Zh":  "谷雨",
+                       "En":  "Corn Rain",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2026e.txt"
+                   },
+                   {
+                       "Date":  "2026-05-01",
+                       "Kind":  "CN",
+                       "Zh":  "劳动节",
+                       "En":  "Labour Day",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-05-01",
+                       "Kind":  "HK",
+                       "Zh":  "劳动节",
+                       "En":  "Labour Day",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2026-05-02",
+                       "Kind":  "CN",
+                       "Zh":  "劳动节",
+                       "En":  "Labour Day",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-05-03",
+                       "Kind":  "CN",
+                       "Zh":  "劳动节",
+                       "En":  "Labour Day",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-05-04",
+                       "Kind":  "CN",
+                       "Zh":  "劳动节",
+                       "En":  "Labour Day",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-05-05",
+                       "Kind":  "CN",
+                       "Zh":  "劳动节",
+                       "En":  "Labour Day",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-05-05",
+                       "Kind":  "Term",
+                       "Zh":  "立夏",
+                       "En":  "Summer Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2026e.txt"
+                   },
+                   {
+                       "Date":  "2026-05-09",
+                       "Kind":  "CNWork",
+                       "Zh":  "调休补班",
+                       "En":  "Adjusted working day",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-05-21",
+                       "Kind":  "Term",
+                       "Zh":  "小满",
+                       "En":  "Corn Forms",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2026e.txt"
+                   },
+                   {
+                       "Date":  "2026-05-25",
+                       "Kind":  "HK",
+                       "Zh":  "佛诞翌日",
+                       "En":  "The day following the Birthday of the Buddha",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2026-06-05",
+                       "Kind":  "Term",
+                       "Zh":  "芒种",
+                       "En":  "Corn on Ear",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2026e.txt"
+                   },
+                   {
+                       "Date":  "2026-06-19",
+                       "Kind":  "CN",
+                       "Zh":  "端午节",
+                       "En":  "Dragon Boat Festival",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-06-19",
+                       "Kind":  "HK",
+                       "Zh":  "端午节",
+                       "En":  "Tuen Ng Festival",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2026-06-20",
+                       "Kind":  "CN",
+                       "Zh":  "端午节",
+                       "En":  "Dragon Boat Festival",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-06-21",
+                       "Kind":  "CN",
+                       "Zh":  "端午节",
+                       "En":  "Dragon Boat Festival",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-06-21",
+                       "Kind":  "Term",
+                       "Zh":  "夏至",
+                       "En":  "Summer Solstice",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2026e.txt"
+                   },
+                   {
+                       "Date":  "2026-07-01",
+                       "Kind":  "HK",
+                       "Zh":  "香港特别行政区成立纪念日",
+                       "En":  "Hong Kong Special Administrative Region Establishment Day",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2026-07-07",
+                       "Kind":  "Term",
+                       "Zh":  "小暑",
+                       "En":  "Moderate Heat",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2026e.txt"
+                   },
+                   {
+                       "Date":  "2026-07-23",
+                       "Kind":  "Term",
+                       "Zh":  "大暑",
+                       "En":  "Great Heat",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2026e.txt"
+                   },
+                   {
+                       "Date":  "2026-08-07",
+                       "Kind":  "Term",
+                       "Zh":  "立秋",
+                       "En":  "Autumn Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2026e.txt"
+                   },
+                   {
+                       "Date":  "2026-08-23",
+                       "Kind":  "Term",
+                       "Zh":  "处暑",
+                       "En":  "End of Heat",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2026e.txt"
+                   },
+                   {
+                       "Date":  "2026-09-07",
+                       "Kind":  "Term",
+                       "Zh":  "白露",
+                       "En":  "White Dew",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2026e.txt"
+                   },
+                   {
+                       "Date":  "2026-09-20",
+                       "Kind":  "CNWork",
+                       "Zh":  "调休补班",
+                       "En":  "Adjusted working day",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-09-23",
+                       "Kind":  "Term",
+                       "Zh":  "秋分",
+                       "En":  "Autumnal Equinox",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2026e.txt"
+                   },
+                   {
+                       "Date":  "2026-09-25",
+                       "Kind":  "CN",
+                       "Zh":  "中秋节",
+                       "En":  "Mid-Autumn Festival",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-09-26",
+                       "Kind":  "CN",
+                       "Zh":  "中秋节",
+                       "En":  "Mid-Autumn Festival",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-09-26",
+                       "Kind":  "HK",
+                       "Zh":  "中秋节翌日",
+                       "En":  "The day following the Chinese Mid-Autumn Festival",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2026-09-27",
+                       "Kind":  "CN",
+                       "Zh":  "中秋节",
+                       "En":  "Mid-Autumn Festival",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-10-01",
+                       "Kind":  "CN",
+                       "Zh":  "国庆节",
+                       "En":  "National Day",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-10-01",
+                       "Kind":  "HK",
+                       "Zh":  "国庆日",
+                       "En":  "National Day",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2026-10-02",
+                       "Kind":  "CN",
+                       "Zh":  "国庆节",
+                       "En":  "National Day",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-10-03",
+                       "Kind":  "CN",
+                       "Zh":  "国庆节",
+                       "En":  "National Day",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-10-04",
+                       "Kind":  "CN",
+                       "Zh":  "国庆节",
+                       "En":  "National Day",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-10-05",
+                       "Kind":  "CN",
+                       "Zh":  "国庆节",
+                       "En":  "National Day",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-10-06",
+                       "Kind":  "CN",
+                       "Zh":  "国庆节",
+                       "En":  "National Day",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-10-07",
+                       "Kind":  "CN",
+                       "Zh":  "国庆节",
+                       "En":  "National Day",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-10-08",
+                       "Kind":  "Term",
+                       "Zh":  "寒露",
+                       "En":  "Cold Dew",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2026e.txt"
+                   },
+                   {
+                       "Date":  "2026-10-10",
+                       "Kind":  "CNWork",
+                       "Zh":  "调休补班",
+                       "En":  "Adjusted working day",
+                       "Source":  "https://www.gov.cn/zhengce/zhengceku/202511/content_7047091.htm"
+                   },
+                   {
+                       "Date":  "2026-10-19",
+                       "Kind":  "HK",
+                       "Zh":  "重阳节翌日",
+                       "En":  "The day following Chung Yeung Festival",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2026-10-23",
+                       "Kind":  "Term",
+                       "Zh":  "霜降",
+                       "En":  "Frost",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2026e.txt"
+                   },
+                   {
+                       "Date":  "2026-11-07",
+                       "Kind":  "Term",
+                       "Zh":  "立冬",
+                       "En":  "Winter Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2026e.txt"
+                   },
+                   {
+                       "Date":  "2026-11-22",
+                       "Kind":  "Term",
+                       "Zh":  "小雪",
+                       "En":  "Light Snow",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2026e.txt"
+                   },
+                   {
+                       "Date":  "2026-12-07",
+                       "Kind":  "Term",
+                       "Zh":  "大雪",
+                       "En":  "Heavy Snow",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2026e.txt"
+                   },
+                   {
+                       "Date":  "2026-12-22",
+                       "Kind":  "Term",
+                       "Zh":  "冬至",
+                       "En":  "Winter Solstice",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2026e.txt"
+                   },
+                   {
+                       "Date":  "2026-12-25",
+                       "Kind":  "HK",
+                       "Zh":  "圣诞节",
+                       "En":  "Christmas Day",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2026-12-26",
+                       "Kind":  "HK",
+                       "Zh":  "圣诞节后第一个周日",
+                       "En":  "The first weekday after Christmas Day",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2027-01-01",
+                       "Kind":  "HK",
+                       "Zh":  "一月一日",
+                       "En":  "The first day of January",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2027-01-05",
+                       "Kind":  "Term",
+                       "Zh":  "小寒",
+                       "En":  "Moderate Cold",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2027e.txt"
+                   },
+                   {
+                       "Date":  "2027-01-20",
+                       "Kind":  "Term",
+                       "Zh":  "大寒",
+                       "En":  "Severe Cold",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2027e.txt"
+                   },
+                   {
+                       "Date":  "2027-02-04",
+                       "Kind":  "Term",
+                       "Zh":  "立春",
+                       "En":  "Spring Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2027e.txt"
+                   },
+                   {
+                       "Date":  "2027-02-06",
+                       "Kind":  "HK",
+                       "Zh":  "农历年初一",
+                       "En":  "Lunar New Year\u0027s Day",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2027-02-08",
+                       "Kind":  "HK",
+                       "Zh":  "农历年初三",
+                       "En":  "The third day of Lunar New Year",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2027-02-09",
+                       "Kind":  "HK",
+                       "Zh":  "农历年初四",
+                       "En":  "The fourth day of Lunar New Year",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2027-02-19",
+                       "Kind":  "Term",
+                       "Zh":  "雨水",
+                       "En":  "Spring Showers",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2027e.txt"
+                   },
+                   {
+                       "Date":  "2027-03-06",
+                       "Kind":  "Term",
+                       "Zh":  "惊蛰",
+                       "En":  "Insects Waken",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2027e.txt"
+                   },
+                   {
+                       "Date":  "2027-03-21",
+                       "Kind":  "Term",
+                       "Zh":  "春分",
+                       "En":  "Vernal Equinox",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2027e.txt"
+                   },
+                   {
+                       "Date":  "2027-03-26",
+                       "Kind":  "HK",
+                       "Zh":  "耶稣受难节",
+                       "En":  "Good Friday",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2027-03-27",
+                       "Kind":  "HK",
+                       "Zh":  "耶稣受难节翌日",
+                       "En":  "The day following Good Friday",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2027-03-29",
+                       "Kind":  "HK",
+                       "Zh":  "复活节星期一",
+                       "En":  "Easter Monday",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2027-04-05",
+                       "Kind":  "HK",
+                       "Zh":  "清明节",
+                       "En":  "Ching Ming Festival",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2027-04-05",
+                       "Kind":  "Term",
+                       "Zh":  "清明",
+                       "En":  "Bright \u0026 Clear",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2027e.txt"
+                   },
+                   {
+                       "Date":  "2027-04-20",
+                       "Kind":  "Term",
+                       "Zh":  "谷雨",
+                       "En":  "Corn Rain",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2027e.txt"
+                   },
+                   {
+                       "Date":  "2027-05-01",
+                       "Kind":  "HK",
+                       "Zh":  "劳动节",
+                       "En":  "Labour Day",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2027-05-06",
+                       "Kind":  "Term",
+                       "Zh":  "立夏",
+                       "En":  "Summer Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2027e.txt"
+                   },
+                   {
+                       "Date":  "2027-05-13",
+                       "Kind":  "HK",
+                       "Zh":  "佛诞",
+                       "En":  "The Birthday of the Buddha",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2027-05-21",
+                       "Kind":  "Term",
+                       "Zh":  "小满",
+                       "En":  "Corn Forms",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2027e.txt"
+                   },
+                   {
+                       "Date":  "2027-06-06",
+                       "Kind":  "Term",
+                       "Zh":  "芒种",
+                       "En":  "Corn on Ear",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2027e.txt"
+                   },
+                   {
+                       "Date":  "2027-06-09",
+                       "Kind":  "HK",
+                       "Zh":  "端午节",
+                       "En":  "Tuen Ng Festival",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2027-06-21",
+                       "Kind":  "Term",
+                       "Zh":  "夏至",
+                       "En":  "Summer Solstice",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2027e.txt"
+                   },
+                   {
+                       "Date":  "2027-07-01",
+                       "Kind":  "HK",
+                       "Zh":  "香港特别行政区成立纪念日",
+                       "En":  "Hong Kong Special Administrative Region Establishment Day",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2027-07-07",
+                       "Kind":  "Term",
+                       "Zh":  "小暑",
+                       "En":  "Moderate Heat",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2027e.txt"
+                   },
+                   {
+                       "Date":  "2027-07-23",
+                       "Kind":  "Term",
+                       "Zh":  "大暑",
+                       "En":  "Great Heat",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2027e.txt"
+                   },
+                   {
+                       "Date":  "2027-08-08",
+                       "Kind":  "Term",
+                       "Zh":  "立秋",
+                       "En":  "Autumn Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2027e.txt"
+                   },
+                   {
+                       "Date":  "2027-08-23",
+                       "Kind":  "Term",
+                       "Zh":  "处暑",
+                       "En":  "End of Heat",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2027e.txt"
+                   },
+                   {
+                       "Date":  "2027-09-08",
+                       "Kind":  "Term",
+                       "Zh":  "白露",
+                       "En":  "White Dew",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2027e.txt"
+                   },
+                   {
+                       "Date":  "2027-09-16",
+                       "Kind":  "HK",
+                       "Zh":  "中秋节翌日",
+                       "En":  "The day following the Chinese Mid-Autumn Festival",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2027-09-23",
+                       "Kind":  "Term",
+                       "Zh":  "秋分",
+                       "En":  "Autumnal Equinox",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2027e.txt"
+                   },
+                   {
+                       "Date":  "2027-10-01",
+                       "Kind":  "HK",
+                       "Zh":  "国庆日",
+                       "En":  "National Day",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2027-10-08",
+                       "Kind":  "HK",
+                       "Zh":  "重阳节",
+                       "En":  "Chung Yeung Festival",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2027-10-08",
+                       "Kind":  "Term",
+                       "Zh":  "寒露",
+                       "En":  "Cold Dew",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2027e.txt"
+                   },
+                   {
+                       "Date":  "2027-10-23",
+                       "Kind":  "Term",
+                       "Zh":  "霜降",
+                       "En":  "Frost",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2027e.txt"
+                   },
+                   {
+                       "Date":  "2027-11-07",
+                       "Kind":  "Term",
+                       "Zh":  "立冬",
+                       "En":  "Winter Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2027e.txt"
+                   },
+                   {
+                       "Date":  "2027-11-22",
+                       "Kind":  "Term",
+                       "Zh":  "小雪",
+                       "En":  "Light Snow",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2027e.txt"
+                   },
+                   {
+                       "Date":  "2027-12-07",
+                       "Kind":  "Term",
+                       "Zh":  "大雪",
+                       "En":  "Heavy Snow",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2027e.txt"
+                   },
+                   {
+                       "Date":  "2027-12-22",
+                       "Kind":  "Term",
+                       "Zh":  "冬至",
+                       "En":  "Winter Solstice",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2027e.txt"
+                   },
+                   {
+                       "Date":  "2027-12-25",
+                       "Kind":  "HK",
+                       "Zh":  "圣诞节",
+                       "En":  "Christmas Day",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2027-12-27",
+                       "Kind":  "HK",
+                       "Zh":  "圣诞节后第一个周日",
+                       "En":  "The first weekday after Christmas Day",
+                       "Source":  "https://www.1823.gov.hk/common/ical/en.json"
+                   },
+                   {
+                       "Date":  "2028-01-06",
+                       "Kind":  "Term",
+                       "Zh":  "小寒",
+                       "En":  "Moderate Cold",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2028e.txt"
+                   },
+                   {
+                       "Date":  "2028-01-20",
+                       "Kind":  "Term",
+                       "Zh":  "大寒",
+                       "En":  "Severe Cold",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2028e.txt"
+                   },
+                   {
+                       "Date":  "2028-02-04",
+                       "Kind":  "Term",
+                       "Zh":  "立春",
+                       "En":  "Spring Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2028e.txt"
+                   },
+                   {
+                       "Date":  "2028-02-19",
+                       "Kind":  "Term",
+                       "Zh":  "雨水",
+                       "En":  "Spring Showers",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2028e.txt"
+                   },
+                   {
+                       "Date":  "2028-03-05",
+                       "Kind":  "Term",
+                       "Zh":  "惊蛰",
+                       "En":  "Insects Waken",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2028e.txt"
+                   },
+                   {
+                       "Date":  "2028-03-20",
+                       "Kind":  "Term",
+                       "Zh":  "春分",
+                       "En":  "Vernal Equinox",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2028e.txt"
+                   },
+                   {
+                       "Date":  "2028-04-04",
+                       "Kind":  "Term",
+                       "Zh":  "清明",
+                       "En":  "Bright \u0026 Clear",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2028e.txt"
+                   },
+                   {
+                       "Date":  "2028-04-19",
+                       "Kind":  "Term",
+                       "Zh":  "谷雨",
+                       "En":  "Corn Rain",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2028e.txt"
+                   },
+                   {
+                       "Date":  "2028-05-05",
+                       "Kind":  "Term",
+                       "Zh":  "立夏",
+                       "En":  "Summer Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2028e.txt"
+                   },
+                   {
+                       "Date":  "2028-05-20",
+                       "Kind":  "Term",
+                       "Zh":  "小满",
+                       "En":  "Corn Forms",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2028e.txt"
+                   },
+                   {
+                       "Date":  "2028-06-05",
+                       "Kind":  "Term",
+                       "Zh":  "芒种",
+                       "En":  "Corn on Ear",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2028e.txt"
+                   },
+                   {
+                       "Date":  "2028-06-21",
+                       "Kind":  "Term",
+                       "Zh":  "夏至",
+                       "En":  "Summer Solstice",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2028e.txt"
+                   },
+                   {
+                       "Date":  "2028-07-06",
+                       "Kind":  "Term",
+                       "Zh":  "小暑",
+                       "En":  "Moderate Heat",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2028e.txt"
+                   },
+                   {
+                       "Date":  "2028-07-22",
+                       "Kind":  "Term",
+                       "Zh":  "大暑",
+                       "En":  "Great Heat",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2028e.txt"
+                   },
+                   {
+                       "Date":  "2028-08-07",
+                       "Kind":  "Term",
+                       "Zh":  "立秋",
+                       "En":  "Autumn Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2028e.txt"
+                   },
+                   {
+                       "Date":  "2028-08-22",
+                       "Kind":  "Term",
+                       "Zh":  "处暑",
+                       "En":  "End of Heat",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2028e.txt"
+                   },
+                   {
+                       "Date":  "2028-09-07",
+                       "Kind":  "Term",
+                       "Zh":  "白露",
+                       "En":  "White Dew",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2028e.txt"
+                   },
+                   {
+                       "Date":  "2028-09-22",
+                       "Kind":  "Term",
+                       "Zh":  "秋分",
+                       "En":  "Autumnal Equinox",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2028e.txt"
+                   },
+                   {
+                       "Date":  "2028-10-08",
+                       "Kind":  "Term",
+                       "Zh":  "寒露",
+                       "En":  "Cold Dew",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2028e.txt"
+                   },
+                   {
+                       "Date":  "2028-10-23",
+                       "Kind":  "Term",
+                       "Zh":  "霜降",
+                       "En":  "Frost",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2028e.txt"
+                   },
+                   {
+                       "Date":  "2028-11-07",
+                       "Kind":  "Term",
+                       "Zh":  "立冬",
+                       "En":  "Winter Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2028e.txt"
+                   },
+                   {
+                       "Date":  "2028-11-22",
+                       "Kind":  "Term",
+                       "Zh":  "小雪",
+                       "En":  "Light Snow",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2028e.txt"
+                   },
+                   {
+                       "Date":  "2028-12-06",
+                       "Kind":  "Term",
+                       "Zh":  "大雪",
+                       "En":  "Heavy Snow",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2028e.txt"
+                   },
+                   {
+                       "Date":  "2028-12-21",
+                       "Kind":  "Term",
+                       "Zh":  "冬至",
+                       "En":  "Winter Solstice",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2028e.txt"
+                   },
+                   {
+                       "Date":  "2029-01-05",
+                       "Kind":  "Term",
+                       "Zh":  "小寒",
+                       "En":  "Moderate Cold",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2029e.txt"
+                   },
+                   {
+                       "Date":  "2029-01-20",
+                       "Kind":  "Term",
+                       "Zh":  "大寒",
+                       "En":  "Severe Cold",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2029e.txt"
+                   },
+                   {
+                       "Date":  "2029-02-03",
+                       "Kind":  "Term",
+                       "Zh":  "立春",
+                       "En":  "Spring Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2029e.txt"
+                   },
+                   {
+                       "Date":  "2029-02-18",
+                       "Kind":  "Term",
+                       "Zh":  "雨水",
+                       "En":  "Spring Showers",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2029e.txt"
+                   },
+                   {
+                       "Date":  "2029-03-05",
+                       "Kind":  "Term",
+                       "Zh":  "惊蛰",
+                       "En":  "Insects Waken",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2029e.txt"
+                   },
+                   {
+                       "Date":  "2029-03-20",
+                       "Kind":  "Term",
+                       "Zh":  "春分",
+                       "En":  "Vernal Equinox",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2029e.txt"
+                   },
+                   {
+                       "Date":  "2029-04-04",
+                       "Kind":  "Term",
+                       "Zh":  "清明",
+                       "En":  "Bright \u0026 Clear",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2029e.txt"
+                   },
+                   {
+                       "Date":  "2029-04-20",
+                       "Kind":  "Term",
+                       "Zh":  "谷雨",
+                       "En":  "Corn Rain",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2029e.txt"
+                   },
+                   {
+                       "Date":  "2029-05-05",
+                       "Kind":  "Term",
+                       "Zh":  "立夏",
+                       "En":  "Summer Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2029e.txt"
+                   },
+                   {
+                       "Date":  "2029-05-21",
+                       "Kind":  "Term",
+                       "Zh":  "小满",
+                       "En":  "Corn Forms",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2029e.txt"
+                   },
+                   {
+                       "Date":  "2029-06-05",
+                       "Kind":  "Term",
+                       "Zh":  "芒种",
+                       "En":  "Corn on Ear",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2029e.txt"
+                   },
+                   {
+                       "Date":  "2029-06-21",
+                       "Kind":  "Term",
+                       "Zh":  "夏至",
+                       "En":  "Summer Solstice",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2029e.txt"
+                   },
+                   {
+                       "Date":  "2029-07-07",
+                       "Kind":  "Term",
+                       "Zh":  "小暑",
+                       "En":  "Moderate Heat",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2029e.txt"
+                   },
+                   {
+                       "Date":  "2029-07-22",
+                       "Kind":  "Term",
+                       "Zh":  "大暑",
+                       "En":  "Great Heat",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2029e.txt"
+                   },
+                   {
+                       "Date":  "2029-08-07",
+                       "Kind":  "Term",
+                       "Zh":  "立秋",
+                       "En":  "Autumn Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2029e.txt"
+                   },
+                   {
+                       "Date":  "2029-08-23",
+                       "Kind":  "Term",
+                       "Zh":  "处暑",
+                       "En":  "End of Heat",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2029e.txt"
+                   },
+                   {
+                       "Date":  "2029-09-07",
+                       "Kind":  "Term",
+                       "Zh":  "白露",
+                       "En":  "White Dew",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2029e.txt"
+                   },
+                   {
+                       "Date":  "2029-09-23",
+                       "Kind":  "Term",
+                       "Zh":  "秋分",
+                       "En":  "Autumnal Equinox",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2029e.txt"
+                   },
+                   {
+                       "Date":  "2029-10-08",
+                       "Kind":  "Term",
+                       "Zh":  "寒露",
+                       "En":  "Cold Dew",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2029e.txt"
+                   },
+                   {
+                       "Date":  "2029-10-23",
+                       "Kind":  "Term",
+                       "Zh":  "霜降",
+                       "En":  "Frost",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2029e.txt"
+                   },
+                   {
+                       "Date":  "2029-11-07",
+                       "Kind":  "Term",
+                       "Zh":  "立冬",
+                       "En":  "Winter Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2029e.txt"
+                   },
+                   {
+                       "Date":  "2029-11-22",
+                       "Kind":  "Term",
+                       "Zh":  "小雪",
+                       "En":  "Light Snow",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2029e.txt"
+                   },
+                   {
+                       "Date":  "2029-12-07",
+                       "Kind":  "Term",
+                       "Zh":  "大雪",
+                       "En":  "Heavy Snow",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2029e.txt"
+                   },
+                   {
+                       "Date":  "2029-12-21",
+                       "Kind":  "Term",
+                       "Zh":  "冬至",
+                       "En":  "Winter Solstice",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2029e.txt"
+                   },
+                   {
+                       "Date":  "2030-01-05",
+                       "Kind":  "Term",
+                       "Zh":  "小寒",
+                       "En":  "Moderate Cold",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2030e.txt"
+                   },
+                   {
+                       "Date":  "2030-01-20",
+                       "Kind":  "Term",
+                       "Zh":  "大寒",
+                       "En":  "Severe Cold",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2030e.txt"
+                   },
+                   {
+                       "Date":  "2030-02-04",
+                       "Kind":  "Term",
+                       "Zh":  "立春",
+                       "En":  "Spring Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2030e.txt"
+                   },
+                   {
+                       "Date":  "2030-02-18",
+                       "Kind":  "Term",
+                       "Zh":  "雨水",
+                       "En":  "Spring Showers",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2030e.txt"
+                   },
+                   {
+                       "Date":  "2030-03-05",
+                       "Kind":  "Term",
+                       "Zh":  "惊蛰",
+                       "En":  "Insects Waken",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2030e.txt"
+                   },
+                   {
+                       "Date":  "2030-03-20",
+                       "Kind":  "Term",
+                       "Zh":  "春分",
+                       "En":  "Vernal Equinox",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2030e.txt"
+                   },
+                   {
+                       "Date":  "2030-04-05",
+                       "Kind":  "Term",
+                       "Zh":  "清明",
+                       "En":  "Bright \u0026 Clear",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2030e.txt"
+                   },
+                   {
+                       "Date":  "2030-04-20",
+                       "Kind":  "Term",
+                       "Zh":  "谷雨",
+                       "En":  "Corn Rain",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2030e.txt"
+                   },
+                   {
+                       "Date":  "2030-05-05",
+                       "Kind":  "Term",
+                       "Zh":  "立夏",
+                       "En":  "Summer Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2030e.txt"
+                   },
+                   {
+                       "Date":  "2030-05-21",
+                       "Kind":  "Term",
+                       "Zh":  "小满",
+                       "En":  "Corn Forms",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2030e.txt"
+                   },
+                   {
+                       "Date":  "2030-06-05",
+                       "Kind":  "Term",
+                       "Zh":  "芒种",
+                       "En":  "Corn on Ear",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2030e.txt"
+                   },
+                   {
+                       "Date":  "2030-06-21",
+                       "Kind":  "Term",
+                       "Zh":  "夏至",
+                       "En":  "Summer Solstice",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2030e.txt"
+                   },
+                   {
+                       "Date":  "2030-07-07",
+                       "Kind":  "Term",
+                       "Zh":  "小暑",
+                       "En":  "Moderate Heat",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2030e.txt"
+                   },
+                   {
+                       "Date":  "2030-07-23",
+                       "Kind":  "Term",
+                       "Zh":  "大暑",
+                       "En":  "Great Heat",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2030e.txt"
+                   },
+                   {
+                       "Date":  "2030-08-07",
+                       "Kind":  "Term",
+                       "Zh":  "立秋",
+                       "En":  "Autumn Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2030e.txt"
+                   },
+                   {
+                       "Date":  "2030-08-23",
+                       "Kind":  "Term",
+                       "Zh":  "处暑",
+                       "En":  "End of Heat",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2030e.txt"
+                   },
+                   {
+                       "Date":  "2030-09-07",
+                       "Kind":  "Term",
+                       "Zh":  "白露",
+                       "En":  "White Dew",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2030e.txt"
+                   },
+                   {
+                       "Date":  "2030-09-23",
+                       "Kind":  "Term",
+                       "Zh":  "秋分",
+                       "En":  "Autumnal Equinox",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2030e.txt"
+                   },
+                   {
+                       "Date":  "2030-10-08",
+                       "Kind":  "Term",
+                       "Zh":  "寒露",
+                       "En":  "Cold Dew",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2030e.txt"
+                   },
+                   {
+                       "Date":  "2030-10-23",
+                       "Kind":  "Term",
+                       "Zh":  "霜降",
+                       "En":  "Frost",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2030e.txt"
+                   },
+                   {
+                       "Date":  "2030-11-07",
+                       "Kind":  "Term",
+                       "Zh":  "立冬",
+                       "En":  "Winter Commences",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2030e.txt"
+                   },
+                   {
+                       "Date":  "2030-11-22",
+                       "Kind":  "Term",
+                       "Zh":  "小雪",
+                       "En":  "Light Snow",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2030e.txt"
+                   },
+                   {
+                       "Date":  "2030-12-07",
+                       "Kind":  "Term",
+                       "Zh":  "大雪",
+                       "En":  "Heavy Snow",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2030e.txt"
+                   },
+                   {
+                       "Date":  "2030-12-22",
+                       "Kind":  "Term",
+                       "Zh":  "冬至",
+                       "En":  "Winter Solstice",
+                       "Source":  "https://www.hko.gov.hk/en/gts/time/calendar/text/files/T2030e.txt"
+                   }
+               ]
+}
