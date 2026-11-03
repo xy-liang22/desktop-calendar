@@ -4,13 +4,13 @@
 
 Windows 本地桌面日历：第一页是月历、计划待办与实际时间轴，第二页是七天时间轴、周计划和周总结。待办是计划，Activity 是实际发生的时间；两者可以关联，状态独立。
 
-**P7 + P8 开发完成（0.8.0），已执行验证范围内通过，等待最终综合验收授权。** P6已由用户验收。已接入离线历法、即时中英、可取消外观预览、完整ZIP和安全恢复、用户级自启动。保留原有桌面owner与业务模型。来源/覆盖范围见 [CALENDAR_DATA](docs/CALENDAR_DATA.md)，操作和恢复故障处理见 [BACKUP](docs/BACKUP.md)，验证边界见 [TESTING](docs/TESTING.md)。
+**0.8.1 发布候选：P7/P8月历显示修订及P9综合验收已执行，等待用户确认正式发布。** 农历简写、日期信息同排、普通周日标签降噪已接入；完整详情/原始资料/业务schema不变。已验证范围与未测兼容性见 [TESTING](docs/TESTING.md)；数据来源见 [CALENDAR_DATA](docs/CALENDAR_DATA.md)，备份恢复见 [BACKUP](docs/BACKUP.md)。不将状态检查或控件渲染冒充实机GUI通过。
 
 ## 已实现与 Planned
 
 P5.1已独立提交332b73e（dev/p6）：待办/日程标题区可拖动并夹入当前屏；详情为主窗口内的锚定卡片，点击别处关闭，长事件优先避让。备注图按容器宽度显示，可点开大图，适应/100%/滚轮缩放/拖动平移，Esc关闭后保留草稿与滚动。跨天详情按所点击片段的日期/偏移锚定。
 
-P3.2已实现编辑外部离开验证保存、IME上下文保护、行末展开及深度优先子项、三种实际测量换行（设置，默认两行）、子任务默认继承。新文档五类工作/家务/个人/家庭/健康及新色，旧分类/引用/颜色不替换；可主动补齐缺失预置。点击外部用于关闭的第一次点击不同时执行其他待办动作；确认框保持模态。当前可运行`bin/P8/net10.0-windows/DesktopCalendar.exe`，测试数据/报告在artifacts，真实开始菜单版本不自动更新。
+P3.2已实现编辑外部离开验证保存、IME上下文保护、行末展开及深度优先子项、三种实际测量换行（设置，默认两行）、子任务默认继承。新文档五类工作/家务/个人/家庭/健康及新色，旧分类/引用/颜色不替换；可主动补齐缺失预置。点击外部用于关闭的第一次点击不同时执行其他待办动作；确认框保持模态。当前可运行`bin/P9/net10.0-windows/DesktopCalendar.exe`，测试数据/报告在artifacts，源码构建本身不自动更新入口；本轮P9已通过安装脚本更新真实开始菜单到0.8.1。
 
 | 能力 | 状态 |
 |---|---|
@@ -91,7 +91,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -Test
 powershell -NoProfile -ExecutionPolicy Bypass -File .\Start-Prototype.ps1
 ```
 
-也可运行 `bin\Release\net10.0-windows\DesktopCalendar.exe`。本轮直接启动 `bin\P8\net10.0-windows\DesktopCalendar.exe`，或 `Start-Prototype.ps1 -Configuration P8`。先从托盘退出旧实例；根目录历史名称“Desktop Calendar P1”的快捷方式指向最近构建配置，不代表仍用模拟数据。
+也可运行 `bin\Release\net10.0-windows\DesktopCalendar.exe`。本轮直接启动 `bin\P9\net10.0-windows\DesktopCalendar.exe`，或 `Start-Prototype.ps1 -Configuration P9`。先从托盘退出旧实例；根目录历史名称“Desktop Calendar P1”的快捷方式指向最近构建配置，不代表仍用模拟数据。
 
 ```powershell
 # 先发布，再做项目 artifacts 下的安装/卸载隔离测试
@@ -110,7 +110,7 @@ dotnet build .\Core\DesktopCalendar.Core.csproj -c Release
 测试明细与隔离数据在忽略的 `artifacts/p2-checks/`；P3通过ProjectReference引用Core。新增WPF控件/弹窗/退出重启测试：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\Test-P3.ps1 -Configuration P8
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Test-P3.ps1 -Configuration P9
 ```
 
 P3/P4报告、隔离数据及渲染图在`artifacts/p3-checks/run-<GUID>/`，不写个人数据。发布包含Core DLL，安装器兼容旧四文件包。业务schema3继续保存完成来源/快照及周期版本/例外，不增加第二套存储；兼容v1/v2读取迁移，窗口偏好仍schema2。
@@ -237,14 +237,14 @@ AGENTS.md / docs/            长期规范、PRD、决定、测试、研究
 experiments/DesktopHostProbe/     旧实验，未复制失败的子窗口路线
 ```
 
-本轮 P7 已独立提交9137c93，P8随后独立提交，当前开发分支dev/p7-p8，main保持不变。自动/真实Window控件与资产恢复测试结果见TESTING；computer-use管道缺失，控件渲染图不冒充桌面像素。Win10、实际混合DPI、登录顺序、Explorer重启/休眠和物理断电尚未验证。没有开启真实系统启动项或替换当前安装入口。
+本轮 P7 已独立提交9137c93，P8随后独立提交，当前开发分支dev/p7-p8，main保持不变。自动/真实Window控件与资产恢复测试结果见TESTING；computer-use管道缺失，控件渲染图不冒充桌面像素。Win10、实际混合DPI、登录顺序、Explorer重启/休眠和物理断电尚未验证。P7/P8当时未更改真实入口；P9已更新既有用户级安装与开始菜单到0.8.1，未新建启动项或停止旧实例。
 
 ## P7 / P8 使用入口
 
 - 设置中即时切换中文/English；用户正文、Markdown、改名分类不翻译或改写，标准预置名仅翻译显示。语言不改变周首日。
 - 外观与布局：背景/强调/双休日色、透明度65%–98%、完整月份/固定六行，实时预览，取消恢复。过亮背景柔化，文字保持不透明。原有文本颜色/底色、三种换行、周计划布局、置顶/贴边偏好继续可用。
 - 月历⌄选择1901–2100的年份/月；完整月模式箭头翻月，固定六行模式翻六周页，↑/↓翻一周，今天重置视口。超出知识覆盖范围有明确提示，不猜测节气/调休。
-- 日历资料按钮显示覆盖年份/来源/时间，确认才联网。脚本默认离线Status：`Update-CalendarData.ps1 -Configuration P8`；主动更新加`-Action Update -Online`；内地新年份需经核验离线包或程序更新。
+- 日历资料按钮显示覆盖年份/来源/时间，确认才联网。脚本默认离线Status：`Update-CalendarData.ps1 -Configuration P9`；主动更新加`-Action Update -Online`；内地新年份需经核验离线包或程序更新。
 - 备份数据ZIP面板可备份/确认恢复/打开目录，详细步骤见BACKUP。个人数据仍是`%LOCALAPPDATA%\DesktopCalendar`；仅复制planner-data.json会漏掉本地图片，手动备份须退出后复制整个目录。
 - 登录自启动默认关闭，由用户主动启用；先安装/更新到0.8.0或更新稳定版本，更新跟随已有入口，不创建第二个实例或全局配置。ZIP恢复不替你在新电脑启用自启动。
 - 安装包已准备在忽略的`artifacts/package`，可退出旧实例后执行：
@@ -254,6 +254,14 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\Install-DesktopCalendar.ps
 # 未安装过则使用 -Action Install
 ```
 
-之后从开始菜单搜索Desktop Calendar启动。开发版可直接运行`bin/P8/net10.0-windows/DesktopCalendar.exe`。
+之后从开始菜单搜索Desktop Calendar启动。开发版可直接运行`bin/P9/net10.0-windows/DesktopCalendar.exe`。
 
-Planned：最终综合验收与发布（未获批不开始）；黄历宜忌暂无合适授权来源，未启用；无云同步、无自动网络更新，不自动清理私人图片/恢复点。
+Planned：正式发布/合并main/GitHub Release（须用户确认）；黄历宜忌暂无合适授权来源，未启用；无云同步、无自动网络更新，不自动清理私人图片/恢复点。
+## 0.8.1 月格与候选验收
+
+- 初一只显示月份（含闰月），其余只显示农历日；冬/腊月初一显示十一/十二月。公历、短标签和+N共用一行，为待办释放原历法行。内地/HK用不同地区标记和颜色；长信息省略，完整内容悬停或中栏可看。普通周日不额外贴HK假期标签，具名/补假和完整日期属性保留。
+- 语言切换保留分栏原单位/权重，旧周视图解除窗口Closed订阅；已有桌面owner和业务不改。
+- 在完整隔离夹具上执行三分钟运行监测；短时空闲CPU/内存记录见TESTING，不等同隔夜稳定性。可复现：Test-Quality.ps1 -FixtureRoot <项目artifacts下的已完成控件夹具> -Configuration P9。
+- 当前为待确认的候选版本，无正式GitHub Release、未合并main。剩余实机观察仅合并为一组：退出旧实例，从开始菜单打开候选，查看宽窄月格/中英标签并检查Win+D后仍可见及普通应用覆盖。Win10、混合DPI和小时级运行仍列未验证；无需重复真实数据备份覆盖操作。
+
+P9候选检查：数据330/0（另1历史资料未验）、控件331/0、窗口374/0、隔离安装18/0、真实入口9/0。实际开始菜单、开发构建与安装五个运行文件SHA256一致；只读检查/隔离烟测不加载个人日程。三分钟监测空闲CPU约1.42%单逻辑核心，私有内存较预热后下降8.36MiB；长时/Win10/混合DPI和本轮物理键鼠仍未验证，不把短时数据当作全面发布认证。

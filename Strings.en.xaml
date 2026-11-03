@@ -345,4 +345,5 @@
  <s:String x:Key="CalendarNextPage">Next month / fixed page</s:String>
  <s:String x:Key="CalendarPreviousRow">Fixed rows: previous week</s:String>
  <s:String x:Key="CalendarNextRow">Fixed rows: next week</s:String>
+ <s:String x:Key="CalendarCNShort">CN</s:String><s:String x:Key="CalendarHKShort">HK</s:String>
 </ResourceDictionary>

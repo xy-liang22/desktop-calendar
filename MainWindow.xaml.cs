@@ -125,9 +125,12 @@ public partial class MainWindow : Window
         Language = System.Windows.Markup.XmlLanguage.GetLanguage(Text("PlannerUiLanguage")); WeekStartChoice.ItemsSource = Localization.Culture.DateTimeFormat.DayNames; WeekStartChoice.SelectedIndex = (int)(Session.Planner?.WeekStart ?? DayOfWeek.Monday);
         if (Session.Planner != null)
         {
+            var monthWidths = monthPage.ColumnDefinitions.Select(c => c.Width).ToArray(); var weekWidths = weekPage.ColumnDefinitions.Select(c => c.Width).ToArray();
             ActivityDetails?.Hide(); PlannerView?.Detach(); (weekPage as ActivityWeekView)?.Detach(); DailyTimeline.Unbind(); WeeklyTimeline.Unbind();
             RemoveVisual(DailyTimeline); RemoveVisual(WeeklyTimeline); PageHost.Children.Clear();
             PlannerView = new PlannerView(this, Session.Planner, DailyTimeline); monthPage = PlannerView; weekPage = new ActivityWeekView(this, Session.Planner, WeeklyTimeline);
+            for (int i = 0; i < monthWidths.Length; i++) monthPage.ColumnDefinitions[i].Width = monthWidths[i];
+            for (int i = 0; i < weekWidths.Length; i++) weekPage.ColumnDefinitions[i].Width = weekWidths[i];
             DailyTimeline.Bind(this, Session.Planner); WeeklyTimeline.Bind(this, Session.Planner); PageHost.Children.Add(monthPage); PageHost.Children.Add(weekPage); SetPage(IsWeek); RefreshPlanner();
         }
         RefreshLayerStatus(); Remember();

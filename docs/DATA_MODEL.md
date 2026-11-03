@@ -1,6 +1,6 @@
 # 数据与服务接口：P2基础与P3–P8集成
 
-状态：应用与Core为0.8.0，真实待办、周期、Activity与P6周目标/统计/总结界面已接入。纯C# Core使用.NET10标准库，无WPF/数据库/第三方依赖；仅用户主动的历法更新入口可联网，业务schema3不变。图片/备注呈现及偏好位于WPF层，实体/JSON仍不含WPF对象；P7/P8已授权并接入，见末节。
+状态：应用与Core为0.8.1，真实待办、周期、Activity与P6周目标/统计/总结界面已接入。纯C# Core使用.NET10标准库，无WPF/数据库/第三方依赖；仅用户主动的历法更新入口可联网，业务schema3不变。图片/备注呈现及偏好位于WPF层，实体/JSON仍不含WPF对象；P7/P8已授权并接入，见末节。
 
 ## 实体和身份
 
@@ -109,7 +109,7 @@ P4继续编码schema3，无读写迁移。测试中实际引用旧`bin/P31/.../D
 
 ## 验证
 
-Windows PowerShell：`powershell -NoProfile -ExecutionPolicy Bypass -File .\Test-Planner.ps1`，330 PASS/0 FAIL/1 NOT VERIFIED；`Test-P3.ps1 -Configuration P8`验证266项P3–P8控件、事务和独立进程重启。只用忽略的artifacts，不使用个人文件。测试包括原子写入故障/并发、周期保护、DST片、日程/图片以及目标来源/覆盖/类型、区间统计、运行选项不改磁盘、总结快照与文字分离及重启。Samoa2011整日跳跃本机资料未重现，物理断电/满盘、Win10及真实输入设备仍未冒称通过，详见TESTING。
+Windows PowerShell：`powershell -NoProfile -ExecutionPolicy Bypass -File .\Test-Planner.ps1`，330 PASS/0 FAIL/1 NOT VERIFIED；`Test-P3.ps1 -Configuration P8`验证331项P3–P9控件、事务和独立进程重启。只用忽略的artifacts，不使用个人文件。测试包括原子写入故障/并发、周期保护、DST片、日程/图片以及目标来源/覆盖/类型、区间统计、运行选项不改磁盘、总结快照与文字分离及重启。Samoa2011整日跳跃本机资料未重现，物理断电/满盘、Win10及真实输入设备仍未冒称通过，详见TESTING。
 
 ## P7 / P8 集成边界（0.8.0）
 
@@ -118,3 +118,4 @@ Windows PowerShell：`powershell -NoProfile -ExecutionPolicy Bypass -File .\Test
 - `PlannerBackup.Create/Inspect/Restore/RecoverInterrupted`详见BACKUP：ZIP清单schema1记录实际业务schema、长度/hash；白名单相对路径/限额/图与资产验证；原始恢复点、刷盘journal、JSON最后替换、失败回滚。待恢复journal或启动恢复受阻时不允许空初始化、业务写入、普通重新读取绕过或偏好写盘。
 - ZIP带全部完成写入的本地图片，包括当前孤儿；不删除旧安全图片/恢复点。manifest哈希不是签名或加密。恢复不建立系统Startup入口；入口属本机用户主动选择，更新脚本只跟随原已启用项。
 - 自启动不写注册表，托盘/单实例/Explorer未就绪安全回退继续沿用旧模块，未更换owner技术方案。
+P9仅在展示层简写农历/过滤通用Sunday，Core.On、完整Lunar、官方包、JSON/关联/统计均未更改；候选包与用户级入口版本一致性另见TESTING。

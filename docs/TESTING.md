@@ -1,5 +1,65 @@
 # 阶段验证记录
 
+## 2026-11-03：0.8.1 候选 / P9综合验收
+
+基线d6bfa83/dev/p7-p8。用户授权月历三项修订及P9质量保证，未授权合并main或正式GitHub Release。候选版0.8.1；业务schema3、偏好schema2、Core农历算法/官方知识包不变。
+
+| 范围 | 结果 | 证据 |
+|---|---|---|
+| 数据/周期/日程/统计/原子存储/ZIP | **330 PASS / 0 FAIL / 1 NOT VERIFIED** | artifacts/p2-checks/checks.txt；历史Samoa2011资料边界保留 |
+| P3–P9真实Window/控件/独立重启 | **331 PASS / 0 FAIL** | artifacts/p3-checks/run-7ea0a482a80c4c7ab199ce71c6ec1f32 |
+| 原窗口/owner/缩放/托盘/生命周期 | **374 PASS / 0 FAIL** | artifacts/p1-checks.txt，P9构建后执行 |
+| 运行监测 | **4 PASS / 0 FAIL** | artifacts/quality-c8fd1141f3d04e53beb34270cef12f0c |
+| 隔离安装更新/启动/卸载/保护 | **18 PASS / 0 FAIL** | artifacts/install-checks.txt，0.8.1候选包 |
+| 开发包/实际安装/实际开始菜单 | **9 PASS / 0 FAIL** | artifacts/entry-checks-f13a495c8e77414783a306dd95674226 |
+| 构建/本地候选包 | **PASS，0警告/0错误** | bin/P9、artifacts/package；无新依赖 |
+
+### 三项修订与视觉证据
+
+PASS：初一十月/十一月及闰六月/闰二月；非初一初二/初十/二十/三十；完整农历与中栏不变，越界仍空简写+详情明确提示。生产日期格只21DIP头与Star待办两行，公历Auto、辅助Star、+N Auto；长标签不抢公历或+N，0/1/3/10项、36/56/96/160DIP、37/70/120高度共48组测量和隐藏数量检查。优先节气/传统节日/具名假期及补班，内地/HK短标分色；全部事件在日期头悬停/详情保留。
+
+PASS：普通Sunday是查询合成的通用HK事件，不是官方17个具名日期包。紧凑展示按精确身份过滤，未删除原始数据或改变On/统计；具名周日与观察补假不按weekday过滤，原包序列化与业务图摘要保持一致。
+
+已查看p9-header-matrix、p9-en-1480、p9-zh-CN-880等控件图（中英各880/1240/1480窗口），日期与辅助信息确在同一行，窄格优先公历及+N、长节气英文省略；大窗口待办空间增加。源为真实WPF布局后的RenderTargetBitmap，**非桌面像素截图**。看不全的信息可悬停/查看中栏，不把长文本裁剪等同丢数据。
+
+### P9发现并修复
+
+- 语言切换重建页面原先会重置分栏。初次复验run-836063f965c9458cac69602754942598仍有1 FAIL：用ActualWidth当新Star权重重复施加最小宽度约束，实际比例仍改变。改为复制GridLength单位/权重，保留原断言；最终同实际尺寸分栏一致（p9-columns.json）。
+- ActivityWeekView对owner.Closed使用匿名订阅，旧语言页面虽脱离Controller仍被窗口引用。改为可解除的具名事件；Detach同时解除Closed，GC/WeakReference检查旧页可回收。没有重写窗口系统。
+- Test-P3整套上限由90扩至120秒，包含新测量、渲染与GC断言；没有降低UI刷新或跳过失败。3分钟监测为另一独立进程，不与其他GUI套件并行。
+
+### 短时资源监测
+
+完整控件夹具的独立副本，实际WPF进程连续182.15秒：前20秒切页、折叠、语言、置顶往返，后续空闲每30秒采样，最终正常退出且业务摘要不变。空闲段CPU **1.42%（折算一个逻辑核心）**；私有内存比30秒预热基线下降8.36MiB，句柄减少9；末次Private约322.8MiB、WorkingSet约210.5MiB、托管堆约18.6MiB。未见短时持续增长；这不是“小时级/隔夜稳定”或资源极小的承诺。
+
+可复现：
+
+```powershell
+.\Test-Planner.ps1
+.\Test-P3.ps1 -Configuration P9
+.\build.ps1 -Configuration P9 -Test
+.\Test-Quality.ps1 -FixtureRoot <已完成的项目artifacts控件目录> -Configuration P9
+# 小时级/隔夜测试入口已提供，但本轮未执行这些时长：
+.\Test-Quality.ps1 -FixtureRoot <同上> -Configuration P9 -DurationSeconds 14400
+.\Publish-DesktopCalendar.ps1 -Configuration P9
+.\scripts\Test-UserInstall.ps1
+.\scripts\Test-EntryConsistency.ps1 -Configuration P9
+```
+
+### 安装一致性、数据与Git卫生
+
+发现真实开始菜单仍指向0.1.1。先通过候选包隔离安装测试，再用既有脚本Update到当前用户Programs/DesktopCalendar，开始菜单指向新版本指纹目录；保留旧版本和运行中实例，不访问个人业务目录，不创建启动项/改注册表。真实安装EXE只用生命周期测试旗标和artifacts独立根启动烟测，不加载个人待办。
+
+Git忽略规则用argv实测planner JSON、偏好、assets/images、ZIP、.env、bin、截图；不经PowerShell管道传git路径，避免CRLF被当作文件名字符而误判。已跟踪图片仅三项公开品牌资源（SVG/ICO/PNG64），无个人图片/备份。git diff --check与文件清单审查；有限令牌/私钥特征扫描无匹配，不冒称全面安全审计。测试图/JSON/日志/性能采样仅忽略的artifacts。
+
+### NOT VERIFIED / 发布门槛
+
+按computer-use技能检查list_windows，仍native pipe missing(os error2)，本轮不能注入物理输入/取桌面像素。owner/TOPMOST/任务栏工具窗口样式仅自动状态PASS；Win+D、Alt+Tab排除、普通应用覆盖沿用用户既有P1/P1.1–P6实机验收，**本轮未实际重按，不能标成新通过**。Win10、混合DPI硬件、Explorer真实重启/登录顺序/休眠、小时级或隔夜运行、物理满盘/断电仍NOT VERIFIED。已知偶发轻微缩放抖动为用户接受限制；日历官方覆盖与黄历缺源边界不变。
+
+结论：**可供确认的候选版，已执行范围无未解决FAIL/代码级阻塞；尚非全平台无条件发布认证。** 正式发布仍须用户确认候选及兼容风险；不合并main、不创建Release、不改仓库可见性。
+
+最少人工检查合并一组：从托盘退出旧实例，再从开始菜单打开Desktop Calendar；切换中英、宽/窄月历，看日期同行与周日无冗余HK标签，悬停看完整事件；按Win+D后用普通应用覆盖一次。此组只补新安装的屏幕/键鼠证据，不要求重复数据编辑、备份覆盖、排序或全部历史用例。其他平台需有对应硬件时再验。
+
 ## 2026-11-03：P7 + P8 最终开发验收记录
 
 P6 a865de1由用户验收；本轮dev/p7-p8连续开发，P7独立9137c93，P8为后续增量。应用/Core0.8.0，业务schema3、偏好schema2兼容追加。**开发完成，已执行范围内通过；不等同未测平台/真实输入全部通过，不进入最终综合验收或发布阶段。**

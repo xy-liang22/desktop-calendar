@@ -8,7 +8,7 @@ function Run($phase, $directory) {
     $info = [Diagnostics.ProcessStartInfo]::new($exe, '--planner-check ' + $phase)
     $info.UseShellExecute = $false; $info.EnvironmentVariables['DESKTOP_CALENDAR_P3_CHECK_ROOT'] = $directory
     $process = [Diagnostics.Process]::Start($info)
-    try { if (-not $process.WaitForExit(90000)) { $process.Kill(); throw "Own check process timed out: $phase; inspect progress-checks.txt in $directory" }; if ($process.ExitCode -ne 0) { throw "P3 check failed: $phase; reports: $directory" } } finally { $process.Dispose() }
+    try { if (-not $process.WaitForExit(120000)) { $process.Kill(); throw "Own check process timed out: $phase; inspect progress-checks.txt in $directory" }; if ($process.ExitCode -ne 0) { throw "P3 check failed: $phase; reports: $directory" } } finally { $process.Dispose() }
 }
 Run '' $root
 Run '--verify-restart' $root

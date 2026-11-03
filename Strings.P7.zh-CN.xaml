@@ -41,4 +41,5 @@
  <s:String x:Key="CalendarNextPage">下一月 / 固定模式下一页</s:String>
  <s:String x:Key="CalendarPreviousRow">固定行数：上一周</s:String>
  <s:String x:Key="CalendarNextRow">固定行数：下一周</s:String>
+ <s:String x:Key="CalendarCNShort">内</s:String><s:String x:Key="CalendarHKShort">港</s:String>
 </ResourceDictionary>

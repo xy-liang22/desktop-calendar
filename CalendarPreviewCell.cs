@@ -10,18 +10,23 @@ internal sealed record CalendarTodoEntry(string Title, string TimePrefix, bool C
     Guid Id = default, Guid? ParentId = null, int Depth = 0, bool HasChildren = false, bool Expanded = false,
     Action? Expand = null, Action? BeginInline = null, InlineTitleDraft? Draft = null, PlannerController? Controller = null, bool Editable = true, string StatusMark = "");
 
-// Fixed date/information rows cannot be displaced by the adaptive preview body.
+// One fixed production header; auxiliary text shares its width with the date and overflow.
 internal sealed class CalendarPreviewCell : Grid
 {
     internal CalendarTaskPanel Preview { get; }
     internal TextBlock HeaderMore { get; }
+    readonly Grid? knowledgeHeader;
+    internal TextBlock? CalendarInfo { get; private set; }
     internal void AddKnowledge(DesktopCalendar.Core.CalendarKnowledge knowledge, DateOnly date)
     {
-        var events = knowledge.On(date).Concat(DesktopCalendar.Core.CalendarKnowledge.Festivals(date)).ToArray();
-        var info = new TextBlock { FontSize = 9, TextTrimming = TextTrimming.CharacterEllipsis, ToolTip = CalendarPresentation.Detail(knowledge, date) };
-        info.Inlines.Add(new System.Windows.Documents.Run(DesktopCalendar.Core.CalendarKnowledge.Lunar(date)) { Foreground = ThemeColors.Brush("#A2AFBC") });
-        foreach (var e in events) info.Inlines.Add(new System.Windows.Documents.Run(" · " + (e.Kind is "CN" or "CNWork" ? "CN " : e.Kind == "HK" ? "HK " : "") + (Localization.English ? e.En : e.Zh)) { Foreground = ThemeColors.Brush(e.Kind == "HK" ? "#BBA8DE" : e.Kind is "CN" or "CNWork" ? "#E0B17C" : "#A3D9C4") });
-        RowDefinitions[1].Height = new GridLength(15); SetRow(info, 1); Children.Add(info);
+        if (knowledgeHeader == null) return;
+        if (CalendarInfo != null) knowledgeHeader.Children.Remove(CalendarInfo);
+        var events = CalendarPresentation.CompactEvents(knowledge, date); var primary = events.OrderBy(CalendarPresentation.Priority).FirstOrDefault();
+        var info = new TextBlock { FontSize = 9, MinWidth = 0, Margin = new Thickness(3, 0, 2, 0), VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, ClipToBounds = true, ToolTip = CalendarPresentation.Detail(knowledge, date) };
+        foreach (string region in new[] { "CN", "HK" })
+            if (events.Any(e => region == "CN" ? e.Kind is "CN" or "CNWork" : e.Kind == "HK")) info.Inlines.Add(new System.Windows.Documents.Run(MainWindow.Text(region == "CN" ? "CalendarCNShort" : "CalendarHKShort") + " ") { Foreground = ThemeColors.Brush(CalendarPresentation.EventColor(region)) });
+        info.Inlines.Add(new System.Windows.Documents.Run(primary == null ? CalendarPresentation.ShortLunar(date) : Localization.English ? primary.En : primary.Zh) { Foreground = ThemeColors.Brush(primary == null ? "#A2AFBC" : CalendarPresentation.EventColor(primary.Kind)) });
+        CalendarInfo = info; knowledgeHeader.ToolTip = CalendarPresentation.Detail(knowledge, date); SetColumn(info, 1); knowledgeHeader.Children.Add(info);
     }
     internal CalendarPreviewCell(DateTime date, DemoTodo[] tasks, bool currentMonth, string information = "")
     {
@@ -45,14 +50,14 @@ internal sealed class CalendarPreviewCell : Grid
     internal CalendarPreviewCell(DateOnly date, CalendarTodoEntry[] tasks, bool currentMonth, bool backgroundColors, Action more, CalendarTextMode textMode = CalendarTextMode.SingleLine)
     {
         Margin = new Thickness(4, 4, 2, 2); ClipToBounds = true;
-        RowDefinitions.Add(new() { Height = new GridLength(21) }); RowDefinitions.Add(new() { Height = new GridLength(3) }); RowDefinitions.Add(new() { Height = new GridLength(1, GridUnitType.Star) });
-        var header = new Grid(); header.ColumnDefinitions.Add(new()); header.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
+        RowDefinitions.Add(new() { Height = new GridLength(21) }); RowDefinitions.Add(new() { Height = new GridLength(1, GridUnitType.Star) });
+        var header = knowledgeHeader = new Grid { ClipToBounds = true }; header.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); header.ColumnDefinitions.Add(new() { MinWidth = 0 }); header.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
         header.Children.Add(new TextBlock { Text = date.Day.ToString(CultureInfo.InvariantCulture), FontSize = 14, FontWeight = date == DateOnly.FromDateTime(DateTime.Today) ? FontWeights.Bold : FontWeights.Normal, Foreground = PrototypeViews.Brush(currentMonth ? "#EDF2F5" : "#6E7C89") });
         HeaderMore = new TextBlock { FontSize = 9, Foreground = PrototypeViews.Brush("#A3D9C4"), Cursor = System.Windows.Input.Cursors.Hand, VerticalAlignment = VerticalAlignment.Center, ToolTip = MainWindow.Text("PlannerAllTasks") };
         HeaderMore.MouseLeftButtonUp += (_, e) => { e.Handled = true; more(); };
-        SetColumn(HeaderMore, 1); header.Children.Add(HeaderMore); Children.Add(header);
+        SetColumn(HeaderMore, 2); header.Children.Add(HeaderMore); Children.Add(header);
         Preview = new CalendarTaskPanel(tasks, hidden => HeaderMore.Text = hidden == 0 ? "" : "+" + hidden.ToString(CultureInfo.InvariantCulture), backgroundColors, more, textMode);
-        SetRow(Preview, 2); Children.Add(Preview);
+        SetRow(Preview, 1); Children.Add(Preview);
     }
 }
 

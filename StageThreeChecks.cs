@@ -54,6 +54,7 @@ internal static partial class StageThreeChecks
     internal static async Task Run(MainWindow window)
     {
         if (started) return; started = true;
+        if (Environment.GetCommandLineArgs().Contains("--verify-soak")) { await RunP9Soak(window); return; }
         string phase = Environment.GetCommandLineArgs().Contains("--verify-restart") ? "restart" : Environment.GetCommandLineArgs().Contains("--verify-corrupt") ? "corrupt" : Environment.GetCommandLineArgs().Contains("--verify-newer") ? "newer" : "main";
         var session = window.Session; var controller = session.Planner!;
         try
@@ -211,7 +212,7 @@ internal static partial class StageThreeChecks
                 var beforeFailure = controller.State; window.PlannerView.Quick.Text = "failed draft"; File.SetAttributes(controller.FilePath, FileAttributes.ReadOnly);
                 try { Check("failed GUI save retains draft/state and shows compact error", !await window.PlannerView.AddQuickAsync() && window.PlannerView.Quick.Text == "failed draft" && controller.State == beforeFailure && controller.NoticeKey == "PlannerSaveFailed" && window.CompactNotice.Text == MainWindow.Text("PlannerSaveFailed")); }
                 finally { File.SetAttributes(controller.FilePath, FileAttributes.Normal); }
-                window.PlannerView.Quick.Clear(); await RunP7Checks(window); window = await RunP8Checks(window);
+                window.PlannerView.Quick.Clear(); await RunP7Checks(window); window = await RunP8Checks(window); await RunP9Checks(window);
             }
         }
         catch (Exception ex) { results.Add("FAIL unhandled " + ex); }
