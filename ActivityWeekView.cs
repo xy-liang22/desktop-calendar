@@ -1,3 +1,4 @@
+using TextBlock = DesktopCalendar.EmojiTextBlock;
 using System;
 using System.Globalization;
 using System.Windows;

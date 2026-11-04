@@ -1,3 +1,4 @@
+using TextBlock = DesktopCalendar.EmojiTextBlock;
 using System;
 using System.Globalization;
 using System.Linq;
@@ -37,6 +38,7 @@ internal static partial class PlannerDialogs
         internal Sheet(string title, double width = 430)
         {
             Foreground = ThemeColors.Brush("#EDF2F5");
+            FontSize = SystemFonts.MessageFontSize * FontPreferences.Scale;
             Title = title; Language = System.Windows.Markup.XmlLanguage.GetLanguage(T("PlannerUiLanguage")); Width = width; MaxHeight = 740; SizeToContent = SizeToContent.Height; MinHeight = 160; MinWidth = 320; WindowStyle = WindowStyle.None; AllowsTransparency = true; Background = Brushes.Transparent; ShowInTaskbar = false; ResizeMode = ResizeMode.NoResize;
             var root = new Grid(); root.RowDefinitions.Add(new() { Height = GridLength.Auto }); root.RowDefinitions.Add(new()); root.RowDefinitions.Add(new() { Height = GridLength.Auto });
             var heading = new DockPanel { Margin = new Thickness(0, 0, 0, 12), Background = Brushes.Transparent }; closeButton = PlannerView.Button("×", Close, T("PlannerCancel")); DockPanel.SetDock(closeButton, Dock.Right); heading.Children.Add(closeButton); heading.Children.Add(PlannerView.Text(title, 18)); WindowGestures.Header(this, heading, HoldOpen); root.Children.Add(heading);
@@ -149,6 +151,11 @@ internal static partial class PlannerDialogs
         {
             type = new ComboBox { MinHeight = 28, ItemsSource = newRoot ? new[] { T("RepeatOnce"), T("RepeatCarryHistory"), T("RepeatCarryLatest"), T("RepeatPeriodic") } : new[] { T("RepeatCarryHistory"), T("RepeatCarryLatest") }, SelectedIndex = newRoot || original!.Kind == TodoKind.CarryHistory ? 0 : 1 }; sheet.Field("RepeatType", type);
         }
+        if (original != null && (original.ParentId == null || original.Origin == null))
+            sheet.Body.Children.Add(PlannerView.Button(T("TodoSaveChangeType"), async () =>
+            {
+                if (await sheet.SaveAndCloseAsync(false) && controller.FindTodo(original.Id) is Todo saved) ChangeType(owner, controller, saved);
+            }));
         if (occurrence != null)
         {
             scope = RecurrenceFields.Scopes(true, occurrence.Date);
@@ -165,6 +172,7 @@ internal static partial class PlannerDialogs
         date.DateValidationError += (_, e) => { e.ThrowException = false; invalidDate = true; sheet.Error.Text = T("PlannerDateRequired"); };
         date.SelectedDateChanged += (_, _) => invalidDate = false;
         var time = Input(draft.PlannedTime?.ToString("HH:mm", CultureInfo.InvariantCulture) ?? ""); time.ToolTip = T("PlannerTimeHint"); Grid.SetColumn(time, 1); dateTime.Children.Add(date); dateTime.Children.Add(time); sheet.Field("PlannerDateTime", dateTime); AutomationProperties.SetName(date, T("PlannerDate")); AutomationProperties.SetName(time, T("PlannerTime"));
+        TodoDraftRules.BindTimePunctuation(time, new ImeInput(time));
         RecurrenceFields? repeat = null; Expander? repeatSection = null;
         if (newRoot)
         {

@@ -8,7 +8,7 @@
  <s:String x:Key="WeekendSetting">双休日底色</s:String>
  <s:String x:Key="MonthModeSetting">月历行数</s:String>
  <s:String x:Key="MonthFull">完整月份</s:String>
- <s:String x:Key="MonthFixed">固定六行（含补位日期）</s:String>
+ <s:String x:Key="MonthFixed">固定行数（含补位日期）</s:String>
  <s:String x:Key="AppearanceHint">实时预览。保存/×/Esc保留；取消恢复外观与布局。透明度只影响背景，文字保持清晰。</s:String>
  <s:String x:Key="CalendarUpdate">检查 / 更新日历资料</s:String>
  <s:String x:Key="CalendarUpdateConfirm">将主动联网读取香港天文台及香港政府1823公开资料；内地新年份须导入经核验的资料包。不会发送个人数据。继续？</s:String>
@@ -42,4 +42,24 @@
  <s:String x:Key="CalendarPreviousRow">固定行数：上一周</s:String>
  <s:String x:Key="CalendarNextRow">固定行数：下一周</s:String>
  <s:String x:Key="CalendarCNShort">内</s:String><s:String x:Key="CalendarHKShort">港</s:String>
+ <s:String x:Key="ShortcutCapture">点击输入框后按下组合键</s:String>
+ <s:String x:Key="ShortcutEnabled">启用全局快捷键</s:String>
+ <s:String x:Key="TodoConversionDate">生效日期 / 普通待办的显示日期</s:String>
+ <s:String x:Key="ChildrenCollapseSetting">默认折叠已完成子任务</s:String>
+ <s:String x:Key="ChildrenHideDone">折叠已完成子任务（{0}）</s:String>
+ <s:String x:Key="ShortcutUnavailable">快捷键无效或已被其他程序占用，请换一个组合。原快捷键仍有效。</s:String>
+ <s:String x:Key="ShortcutSetting">显示组件快捷键</s:String>
+ <s:String x:Key="TodoConversionConfirm">确认更改类型？已完成历史会保留；被替换的未完成记录将取消，仍可撤销。关联将迁移到对应的新任务，无法对应的关联保留在旧记录。</s:String>
+ <s:String x:Key="TodoConversionHint">普通与持续互转保留原ID及关联。涉及周期任务时，从生效日期起替换未完成发生；已完成历史保留，未来新任务使用新身份。周期规则仍通过“周期规则”修改。</s:String>
+ <s:String x:Key="TodoChangeType">更改待办类型…</s:String>
+ <s:String x:Key="ChildrenShowDone">展开已完成子任务（{0}）</s:String>
+ <s:String x:Key="ShortcutHint">按Ctrl/Alt，可再加Shift，以及字母、数字或功能键（F12除外）。默认关闭，建议Ctrl+Alt+D。仅显示/定位组件，不改变置顶偏好。</s:String>
+ <s:String x:Key="FixedLastWeek">最后一行所在周（含该周，随行数联动）</s:String>
+ <s:String x:Key="FixedRowCount">显示周数（1–12 行）</s:String>
+ <s:String x:Key="FixedFirstWeek">第一行所在周（任选该周一天）</s:String>
+ <s:String x:Key="TextScaleSetting">字号缩放（85%–135%）</s:String>
+ <s:String x:Key="CalendarBrightnessSetting">月历待办文字增亮（保留分类原色）</s:String>
+ <s:String x:Key="AppearanceInvalid">请检查颜色、显示周数和起止周；结束周须与行数一致。</s:String>
+ <s:String x:Key="TodoSaveChangeType">保存并更改类型…</s:String>
+ <s:String x:Key="ShortcutSaveFailed">快捷键设置无法写入本地文件，输入已保留。请检查数据目录权限后重试。</s:String>
 </ResourceDictionary>

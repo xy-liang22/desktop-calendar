@@ -1,3 +1,4 @@
+using TextBlock = DesktopCalendar.EmojiTextBlock;
 using System;
 using System.Globalization;
 using System.Linq;
@@ -17,6 +18,11 @@ internal static class ThemeColors
     static double L(Color c) { double F(byte b) { double x = b / 255d; return x <= .04045 ? x / 12.92 : Math.Pow((x + .055) / 1.055, 2.4); } return .2126 * F(c.R) + .7152 * F(c.G) + .0722 * F(c.B); }
     internal static double Contrast(string a, string b) { double x = L(Parse(a)), y = L(Parse(b)); return (Math.Max(x, y) + .05) / (Math.Min(x, y) + .05); }
     internal static string Foreground(string background) => Contrast(background, "#EDF2F5") >= Contrast(background, "#101820") ? "#EDF2F5" : "#101820";
+    internal static string CalendarAccent(string hex, double brightness)
+    {
+        var c = Parse(Accent(hex)); double amount = Math.Clamp(brightness, 0, .65);
+        return Hex(Color.FromRgb((byte)Math.Round(c.R + (255 - c.R) * amount), (byte)Math.Round(c.G + (255 - c.G) * amount), (byte)Math.Round(c.B + (255 - c.B) * amount)));
+    }
     internal static string Soft(string hex) { var c = Parse(hex); var b = Parse("#19232E"); return Hex(Color.FromRgb((byte)(b.R * .78 + c.R * .22), (byte)(b.G * .78 + c.G * .22), (byte)(b.B * .78 + c.B * .22))); }
     internal static string Accent(string hex)
     {

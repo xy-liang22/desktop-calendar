@@ -11,6 +11,7 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        EmojiText.Initialize();
         if (CalendarCommand.TryRun(e.Args, out int calendarExit)) { Shutdown(calendarExit); return; }
         bool testing = Array.IndexOf(e.Args, "--self-test") >= 0;
         bool plannerCheck = Array.IndexOf(e.Args, "--planner-check") >= 0;

@@ -15,15 +15,40 @@ internal static partial class StageThreeChecks
     static async Task Idle() => await Application.Current.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
     static async Task Eventually(Func<bool> condition) { for (int i = 0; i < 100 && !condition(); i++) await Task.Delay(20); }
     static void SendKey(UIElement target, Key key) => target.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(target), 0, key) { RoutedEvent = Keyboard.PreviewKeyDownEvent });
+    static bool editorInitializing, editorGuardRegistered;
+    static readonly System.Collections.Generic.Dictionary<PlannerDialogs.Sheet, IDisposable> editorGuards = new();
     static async Task DriveAsync(Action open, Func<PlannerDialogs.Sheet, Task> action)
     {
+        if (!editorGuardRegistered)
+        {
+            editorGuardRegistered = true;
+            EventManager.RegisterClassHandler(typeof(PlannerDialogs.Sheet), FrameworkElement.LoadedEvent, new RoutedEventHandler((sender, e) =>
+            {
+                // A concurrently used desktop may deactivate a new empty modeless editor before the driver fills it.
+                // Hold only initialization. Outside-click/IME tests run after this lease is released.
+                if (editorInitializing && sender is PlannerDialogs.Sheet sheet && ReferenceEquals(e.OriginalSource, sheet) && !editorGuards.ContainsKey(sheet)) editorGuards.Add(sheet, sheet.HoldOpen());
+            }));
+        }
+        editorInitializing = true;
         var done = new TaskCompletionSource();
         _ = Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(async () =>
         {
-            var dialog = Application.Current.Windows.OfType<PlannerDialogs.Sheet>().LastOrDefault();
-            try { if (dialog == null) throw new Exception("No modal"); dialog.Activate(); await Idle(); await action(dialog); }
+            // STA COM/font initialization can pump the dispatcher before Show() has finished.
+            await Eventually(() => Application.Current.Windows.OfType<PlannerDialogs.Sheet>().Any(s => s.IsVisible));
+            var dialog = Application.Current.Windows.OfType<PlannerDialogs.Sheet>().LastOrDefault(s => s.IsVisible);
+            try
+            {
+                if (dialog == null)
+                {
+                    var planner = (Application.Current.MainWindow as MainWindow)?.Session.Planner;
+                    throw new Exception("No modal; " + System.Text.Json.JsonSerializer.Serialize(new { planner?.Writable, planner?.Busy, Status = planner?.Storage?.Status.ToString(), planner?.NoticeKey, planner?.Diagnostic }));
+                }
+                dialog.Activate(); await Idle(); editorInitializing = false;
+                foreach (var guard in editorGuards.Values) guard.Dispose(); editorGuards.Clear();
+                await action(dialog);
+            }
             catch (Exception ex) { results.Add("FAIL P3.1 modal " + ex); }
-            finally { if (dialog?.IsVisible == true) Click(dialog.Actions.Children.OfType<Button>().First()); done.SetResult(); }
+            finally { editorInitializing = false; foreach (var guard in editorGuards.Values) guard.Dispose(); editorGuards.Clear(); if (dialog?.IsVisible == true) Click(dialog.Actions.Children.OfType<Button>().First()); done.SetResult(); }
         }));
         open(); await done.Task;
     }

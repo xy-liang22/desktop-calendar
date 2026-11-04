@@ -1,3 +1,4 @@
+using TextBlock = DesktopCalendar.EmojiTextBlock;
 using System;
 using System.IO;
 using System.Linq;
@@ -9,11 +10,35 @@ namespace DesktopCalendar;
 internal static class ApplicationSettings
 {
     static string T(string key) => MainWindow.Text(key);
+    internal static void Shortcut(MainWindow owner)
+    {
+        var sheet = new PlannerDialogs.Sheet(T("ShortcutSetting"));
+        var enabled = new CheckBox { Content = T("ShortcutEnabled"), IsChecked = owner.Appearance.RevealHotkey.Length > 0 };
+        sheet.Body.Children.Add(enabled);
+        var input = new TextBox { Text = owner.Appearance.RevealHotkey.Length > 0 ? owner.Appearance.RevealHotkey : "Ctrl+Alt+D", IsReadOnly = true, MinHeight = 30 };
+        sheet.Field("ShortcutCapture", input);
+        var hint = PlannerView.Text(T("ShortcutHint"), 11, "#A2AFBC"); hint.TextWrapping = TextWrapping.Wrap; sheet.Body.Children.Add(hint);
+        input.PreviewKeyDown += (_, e) =>
+        {
+            var key = e.Key == System.Windows.Input.Key.System ? e.SystemKey : e.Key;
+            string value = RevealShortcut.Capture(key, System.Windows.Input.Keyboard.Modifiers);
+            if (!RevealShortcut.Valid(value)) return;
+            e.Handled = true; input.Text = value; enabled.IsChecked = true;
+        };
+        sheet.Save(() =>
+        {
+            string value = enabled.IsChecked == true ? input.Text : "";
+            if (!RevealShortcut.Valid(value)) { sheet.Error.Text = T("ShortcutUnavailable"); return System.Threading.Tasks.Task.FromResult(false); }
+            bool ok = owner.SetRevealHotkey(value);
+            if (!ok) sheet.Error.Text = T(owner.HotkeyError);
+            return System.Threading.Tasks.Task.FromResult(ok);
+        }); PlannerDialogs.Show(owner, sheet);
+    }
     internal static void ChooseMonth(MainWindow owner)
     {
         var c = owner.Session.Planner; if (c == null) return; var sheet = new PlannerDialogs.Sheet(T("CalendarChooseMonth"));
         var year = new TextBox { Text = c.Month.Year.ToString(System.Globalization.CultureInfo.InvariantCulture) }; var month = new ComboBox { ItemsSource = Localization.Culture.DateTimeFormat.MonthNames.Take(12).ToArray(), SelectedIndex = c.Month.Month - 1 }; sheet.Field("CalendarYear", year); sheet.Field("CalendarMonth", month);
-        sheet.Save(() => { if (!int.TryParse(year.Text, out int y) || y < 1901 || y > 2100 || month.SelectedIndex < 0) { sheet.Error.Text = T("PlannerDateRequired"); return System.Threading.Tasks.Task.FromResult(false); } owner.ApplyAppearance(owner.Appearance with { FixedWeekOffset = 0 }); c.Select(new(y, month.SelectedIndex + 1, 1), true); return System.Threading.Tasks.Task.FromResult(true); }); PlannerDialogs.Show(owner, sheet);
+        sheet.Save(() => { if (!int.TryParse(year.Text, out int y) || y < 1901 || y > 2100 || month.SelectedIndex < 0) { sheet.Error.Text = T("PlannerDateRequired"); return System.Threading.Tasks.Task.FromResult(false); } owner.ApplyAppearance(owner.Appearance with { FixedWeekOffset = 0, FixedWeekStart = null }); c.Select(new(y, month.SelectedIndex + 1, 1), true); return System.Threading.Tasks.Task.FromResult(true); }); PlannerDialogs.Show(owner, sheet);
     }
     internal static void ValidateBackupFile(string name, byte[] bytes)
     {
@@ -70,10 +95,23 @@ internal static class ApplicationSettings
         var sat = new ColorField(before.SaturdayColor, false); var sun = new ColorField(before.SundayColor, false); s.Field("PlannerSat", sat); s.Field("PlannerSun", sun);
         var opacity = new Slider { Minimum = .65, Maximum = .98, Value = before.BackgroundOpacity }; s.Field("Opacity", opacity);
         var rows = new ComboBox { ItemsSource = new[] { T("MonthFull"), T("MonthFixed") }, SelectedIndex = before.FixedSixRows ? 1 : 0 }; s.Field("MonthModeSetting", rows);
+        var fixedFields = new FixedCalendarFields(before, owner.Session.Planner?.Month ?? DateOnly.FromDateTime(DateTime.Today), owner.Session.Planner?.WeekStart ?? before.WeekStart); s.Body.Children.Add(fixedFields);
+        var textScale = new Slider { Minimum = .85, Maximum = 1.35, Value = before.TextScale, TickFrequency = .05, IsSnapToTickEnabled = true }; s.Field("TextScaleSetting", textScale);
+        var brightness = new Slider { Minimum = 0, Maximum = .65, Value = before.CalendarTextBrightness, TickFrequency = .05, IsSnapToTickEnabled = true }; s.Field("CalendarBrightnessSetting", brightness);
         bool Good(ColorField field) => field.Valid && field.Value?.Length == 7;
-        void Preview() { if (!Good(background) || !Good(accent) || !Good(sat) || !Good(sun)) return; owner.ApplyAppearance(before with { BackgroundColor = background.Value!, AccentColor = accent.Value!, SaturdayColor = sat.Value!, SundayColor = sun.Value!, BackgroundOpacity = opacity.Value, FixedSixRows = rows.SelectedIndex == 1 }); }
-        background.Changed += Preview; accent.Changed += Preview; sat.Changed += Preview; sun.Changed += Preview; rows.SelectionChanged += (_, _) => Preview(); opacity.ValueChanged += (_, _) => Preview();
-        s.Save(() => { bool ok = Good(background) && Good(accent) && Good(sat) && Good(sun); if (!ok) s.Error.Text = T("PlannerColorInvalid"); return System.Threading.Tasks.Task.FromResult(ok); }, true);
+        void Preview()
+        {
+            fixedFields.IsEnabled = rows.SelectedIndex == 1;
+            if (!Good(background) || !Good(accent) || !Good(sat) || !Good(sun)) return;
+            if (rows.SelectedIndex == 1 && !fixedFields.Read(out _, out _)) return;
+            s.Error.Text = "";
+            fixedFields.Read(out int rowCount, out var anchor);
+            owner.ApplyAppearance(before with { BackgroundColor = background.Value!, AccentColor = accent.Value!, SaturdayColor = sat.Value!, SundayColor = sun.Value!, BackgroundOpacity = opacity.Value, FixedSixRows = rows.SelectedIndex == 1, FixedWeekRows = rowCount, FixedWeekStart = anchor, FixedWeekOffset = 0, TextScale = textScale.Value, CalendarTextBrightness = brightness.Value });
+        }
+        background.Changed += Preview; accent.Changed += Preview; sat.Changed += Preview; sun.Changed += Preview; fixedFields.Changed += Preview;
+        rows.SelectionChanged += (_, _) => Preview(); opacity.ValueChanged += (_, _) => Preview(); textScale.ValueChanged += (_, _) => Preview(); brightness.ValueChanged += (_, _) => Preview();
+        fixedFields.IsEnabled = rows.SelectedIndex == 1;
+        s.Save(() => { bool ok = Good(background) && Good(accent) && Good(sat) && Good(sun) && (rows.SelectedIndex != 1 || fixedFields.Read(out _, out _)); if (!ok) s.Error.Text = T("AppearanceInvalid"); else Preview(); return System.Threading.Tasks.Task.FromResult(ok); }, true);
         if (PlannerDialogs.Show(owner, s) != true) owner.ApplyAppearance(before);
     }
     internal static void Calendar(MainWindow owner)

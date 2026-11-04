@@ -1,3 +1,4 @@
+using TextBlock = DesktopCalendar.EmojiTextBlock;
 using System;
 using System.ComponentModel;
 using System.Windows;
@@ -24,7 +25,7 @@ public partial class MainWindow : Window
     internal DesktopSession Session { get; }
     internal bool Ready { get; private set; }
     internal bool LayerInitialized { get; set; }
-    internal bool IsPinned => DesktopMode?.Layer == WindowLayer.Topmost;
+    internal bool IsPinned => Mode == DisplayMode.EdgeHandle ? PreferredPinned : DesktopMode?.Layer == WindowLayer.Topmost;
     internal bool PreferredPinned { get; private set; }
     WindowPlacement? fullPlacement, compactPlacement;
     bool changingView;
@@ -62,6 +63,7 @@ public partial class MainWindow : Window
         fullPlacement = preferences.FullPlacement ?? (preferences.HasBounds ? WindowPlacement.Legacy(preferences.Bounds) : null);
         compactPlacement = preferences.CompactPlacement;
         InitializeComponent();
+        FontSize = SystemFonts.MessageFontSize * preferences.TextScale;
         Appearance = preferences with { }; applyingLanguage = true; LanguageChoice.SelectedIndex = preferences.UiLanguage == "en" ? 1 : 0; applyingLanguage = false;
         Language = System.Windows.Markup.XmlLanguage.GetLanguage(Text("PlannerUiLanguage"));
         WeekStartChoice.ItemsSource = Localization.Culture.DateTimeFormat.DayNames;
@@ -139,6 +141,7 @@ public partial class MainWindow : Window
     internal void ApplyAppearance(WindowPreferences p)
     {
         Appearance = p with { }; OpacitySlider.Value = p.BackgroundOpacity;
+        FontPreferences.Apply(p.TextScale);
         ApplyShell(p.BackgroundOpacity);
         Application.Current.Resources["Accent"] = ThemeColors.Brush(ThemeColors.Accent(p.AccentColor));
         PlannerView?.InvalidateCalendar(); Remember();
@@ -170,6 +173,19 @@ public partial class MainWindow : Window
         if (e.Key == Key.Y) { e.Handled = true; await Session.Planner.RedoAsync(); }
     }
     void CategorySettingsClick(object sender, RoutedEventArgs e) { if (Session.Planner?.Writable == true) PlannerDialogs.ManageCategories(this, Session.Planner); }
+    void ShortcutClick(object sender, RoutedEventArgs e) => ApplicationSettings.Shortcut(this);
+    void CompletedChildrenClick(object sender, RoutedEventArgs e) => Session.Planner?.SetCompletedChildren(CompletedChildrenToggle.IsChecked == true);
+    internal string HotkeyError { get; private set; } = "ShortcutUnavailable";
+    internal bool SetRevealHotkey(string value)
+    {
+        HotkeyError = "ShortcutUnavailable"; string old = Appearance.RevealHotkey;
+        if (!Session.Hotkey.Apply(value)) return false;
+        Appearance = Appearance with { RevealHotkey = value }; Session.Changed();
+        if (Session.Save()) return true;
+        HotkeyError = "ShortcutSaveFailed";
+        if (Session.Hotkey.Apply(old)) Appearance = Appearance with { RevealHotkey = old };
+        Session.Changed(); return false;
+    }
     void CalendarWrappingChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e) { if (CalendarWrapping.SelectedIndex >= 0) Session.Planner?.SetTextMode((CalendarTextMode)CalendarWrapping.SelectedIndex); }
     async void WeekStartChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e) { if (WeekStartChoice.SelectedIndex >= 0 && Session.Planner != null) await Session.Planner.SetWeekStartAsync((DayOfWeek)WeekStartChoice.SelectedIndex); }
     void WeekLayoutChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e) { if (WeekLayoutChoice.SelectedIndex >= 0) Session.Planner?.SetWeekLayout((WeekPlanLayout)WeekLayoutChoice.SelectedIndex); }
@@ -177,6 +193,7 @@ public partial class MainWindow : Window
     {
         var planner = Session.Planner!;
         CalendarWrapping.SelectedIndex = (int)planner.TextMode;
+        CompletedChildrenToggle.IsChecked = planner.CollapseCompletedChildren;
         WeekStartChoice.SelectedIndex = (int)planner.WeekStart; WeekLayoutChoice.SelectedIndex = (int)planner.WeekLayout;
         PlannerFooter.Text = CompactNotice.Text = Text(planner.NoticeKey);
         PlannerFooter.ToolTip = planner.Diagnostic.Length == 0 ? Text(planner.NoticeKey) : planner.Diagnostic;
@@ -193,7 +210,8 @@ public partial class MainWindow : Window
             var check = new CheckBox { Content = text, IsChecked = task.Status == TodoStatus.Completed, Margin = new Thickness(depth * 12, 0, 0, 12), IsEnabled = !node.ContextOnly };
             System.Windows.Automation.AutomationProperties.SetName(check, task.Title);
             check.Click += async (_, _) => { bool complete = check.IsChecked == true; check.IsChecked = task.Status == TodoStatus.Completed; await planner.ExecuteAsync(new SetTodoCompleted(TodoRef.Of(task), complete)); };
-            CompactRealList.Children.Add(check); foreach (var child in node.Children) Row(child, Math.Min(depth + 1, 6));
+            CompactRealList.Children.Add(check); foreach (var child in planner.DisplayChildren(node)) Row(child, Math.Min(depth + 1, 6));
+            int done = planner.CompletedChildCount(node); if (done > 0) CompactRealList.Children.Add(PlannerView.Button(string.Format(Localization.Culture, Text(planner.CompletedCollapsed(task.Id) ? "ChildrenShowDone" : "ChildrenHideDone"), done), () => planner.ToggleCompletedChildren(task.Id)));
         }
         foreach (var node in rows) Row(node, 0);
     }
@@ -267,6 +285,7 @@ public partial class MainWindow : Window
         if (Session.VisualChecks) ModeStatus.Text = Text("GuiCheckTitle");
         SettingsNotice.Text = DesktopMode.Layer == WindowLayer.Fallback ? Text("FallbackNotice") : Text("SettingsNotice");
         if (Session.Notice.Length > 0) SettingsNotice.Text += "\n" + Text(Session.Notice);
+        if (Session.HotkeyUnavailable) SettingsNotice.Text += "\n" + Text("ShortcutUnavailable");
     }
     internal WindowPreferences SnapshotPreferences()
     {
@@ -278,7 +297,7 @@ public partial class MainWindow : Window
             PlannerDate = Session.Planner?.SelectedDate ?? Session.Preferences.PlannerDate, PlannerMonth = Session.Planner?.Month ?? Session.Preferences.PlannerMonth,
             CalendarColorBackground = Session.Planner?.ColorBackground ?? Session.Preferences.CalendarColorBackground,
             CalendarTextMode = Session.Planner?.TextMode ?? Session.Preferences.CalendarTextMode,
-            WeekStart = Session.Planner?.WeekStart ?? Session.Preferences.WeekStart, WeekPlanLayout = Session.Planner?.WeekLayout ?? Session.Preferences.WeekPlanLayout };
+            CollapseCompletedChildren = Session.Planner?.CollapseCompletedChildren ?? Session.Preferences.CollapseCompletedChildren, WeekStart = Session.Planner?.WeekStart ?? Session.Preferences.WeekStart, WeekPlanLayout = Session.Planner?.WeekLayout ?? Session.Preferences.WeekPlanLayout };
         p.SetBounds(fullPlacement?.Bounds ?? SavedBounds);
         if (monthPage.IsVisible) p.MonthColumns = ColumnWidths(monthPage);
         if (weekPage.IsVisible) p.WeekColumns = ColumnWidths(weekPage);
@@ -400,7 +419,7 @@ public partial class MainWindow : Window
     internal void SetPinned(bool enabled)
     {
         PreferredPinned = enabled;
-        DesktopMode.Apply(enabled);
+        DesktopMode.Apply(enabled || Mode == DisplayMode.EdgeHandle);
         RefreshLayerStatus(); Remember();
     }
     private void SettingsClick(object sender, RoutedEventArgs e) => OpenSettings();
@@ -453,10 +472,12 @@ public partial class MainWindow : Window
     internal void EnterCompact()
     {
         if (Mode == DisplayMode.Compact) return;
+        bool wasHandle = Mode == DisplayMode.EdgeHandle;
         CompactDate.Text = DateTime.Today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
         SaveNormalBounds();
         CapturePlacement(); changingView = true;
         SmallMode(DisplayMode.Compact);
+        if (wasHandle) DesktopMode.Apply(PreferredPinned);
         CompactContent.Visibility = Visibility.Visible;
         ResizeHandles.Visibility = Visibility.Visible;
         MinWidth = 320; MinHeight = 240;
@@ -467,11 +488,13 @@ public partial class MainWindow : Window
     }
     internal void HideToTray()
     {
+        bool wasHandle = Mode == DisplayMode.EdgeHandle;
         SaveNormalBounds();
         CapturePlacement();
         if (Mode != DisplayMode.Tray) beforeTray = Mode == DisplayMode.Compact ? DisplayMode.Compact : DisplayMode.Normal;
         SettingsPanel.Visibility = Visibility.Collapsed;
         Mode = DisplayMode.Tray;
+        if (wasHandle) DesktopMode.Apply(PreferredPinned);
         Hide(); Remember(); if (Ready) Session.Save();
     }
     internal void ShowComponent()
@@ -483,6 +506,7 @@ public partial class MainWindow : Window
     }
     internal void RestoreNormal(bool activate = true)
     {
+        bool wasHandle = Mode == DisplayMode.EdgeHandle;
         bool fromToday = Mode == DisplayMode.Compact || Mode == DisplayMode.Tray && beforeTray == DisplayMode.Compact;
         bool needsRestore = Mode != DisplayMode.Normal;
         CapturePlacement(); changingView = true;
@@ -492,7 +516,7 @@ public partial class MainWindow : Window
         ResizeHandles.Visibility = Visibility.Visible;
         RestoreButton.Visibility = Visibility.Collapsed;
         CompactContent.Visibility = Visibility.Collapsed;
-        if (fromToday) { Appearance.FixedWeekOffset = 0; Session.Planner?.Select(DateOnly.FromDateTime(DateTime.Now), true); PlannerView?.InvalidateCalendar(); SetPage(false); }
+        if (fromToday) { Appearance.FixedWeekOffset = 0; Appearance.FixedWeekStart = CalendarViewport.TodayAnchor(DateOnly.FromDateTime(DateTime.Now), Appearance.FixedWeekRows); Session.Planner?.Select(DateOnly.FromDateTime(DateTime.Now), true); PlannerView?.InvalidateCalendar(); SetPage(false); }
         SettingsPanel.Visibility = Visibility.Collapsed;
         Shell.CornerRadius = new CornerRadius(18);
         if (needsRestore)
@@ -500,6 +524,7 @@ public partial class MainWindow : Window
             ApplyPlacement(fullPlacement ?? WindowPlacement.Legacy(SavedBounds), false);
         }
         Show(); FitToScreen();
+        if (wasHandle) DesktopMode.Apply(PreferredPinned);
         if (activate) { Activate(); (IsWeek ? WeekButton : MonthButton).Focus(); }
         outsideSince = DateTime.MaxValue;
         suppressEdgeUntil = DateTime.UtcNow.AddSeconds(1.2);
@@ -514,6 +539,7 @@ public partial class MainWindow : Window
         var bounds = WindowGeometry.Handle(SavedBounds, work, side, Scale);
         changingView = true;
         SmallMode(DisplayMode.EdgeHandle);
+        DesktopMode.Apply(true); // Only the recovery handle floats; the expanded view keeps the user's preference.
         NativeWindow.Place(Handle, bounds);
         changingView = false; Remember();
     }

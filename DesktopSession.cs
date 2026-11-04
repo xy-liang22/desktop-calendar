@@ -19,13 +19,18 @@ internal sealed class DesktopSession : IDisposable
     bool closing, recovered, disposed;
     int maintenanceDepth;
     bool recoveryBlocked;
+    internal RevealShortcut Hotkey { get; } = new();
+    internal bool HotkeyUnavailable => Preferences.RevealHotkey.Length > 0 && Hotkey.Value != Preferences.RevealHotkey;
     internal IDisposable SuspendPreferences() { maintenanceDepth++; saveTimer.Stop(); return new PreferencePause(this); }
     sealed class PreferencePause(DesktopSession session) : IDisposable { public void Dispose() { session.maintenanceDepth--; } }
     internal async System.Threading.Tasks.Task ReloadRestoredAsync()
     {
         Preferences = store.Load(); Localization.Apply(Preferences.UiLanguage); RefreshLanguage(); ReloadCalendar();
+        FontPreferences.Apply(Preferences.TextScale);
+        bool hotkeyReady = Hotkey.Apply(Preferences.RevealHotkey);
         if (Planner != null) await Planner.RestorePreferencesAsync(Preferences);
         var previous = Window; CreateWindow(false); previous.CloseForRecovery();
+        if (!hotkeyReady) Window.SettingsNotice.Text = MainWindow.Text("ShortcutUnavailable");
     }
     internal MainWindow Window { get; private set; } = null!;
     internal WindowPreferences Preferences { get; private set; }
@@ -51,6 +56,7 @@ internal sealed class DesktopSession : IDisposable
         Calendar = new CalendarKnowledge(Path.Combine(directory, "calendar-knowledge.json"));
         store = new WindowPreferencesStore(Path.Combine(directory, "window-preferences.json"));
         Preferences = store.Load();
+        FontPreferences.Apply(Preferences.TextScale);
         Localization.Apply(Preferences.UiLanguage);
         if (!testing || plannerCheck) Planner = new PlannerController(Path.Combine(directory, "planner-data.json"), Preferences, maintenanceBlocked: recoveryBlocked);
         var menu = new Forms.ContextMenuStrip();
@@ -65,6 +71,8 @@ internal sealed class DesktopSession : IDisposable
         tray.DoubleClick += (_, _) => Dispatch(() => Locate());
         saveTimer.Tick += (_, _) => { saveTimer.Stop(); Save(); };
         CreateWindow(false);
+        Hotkey.Invoked += () => Locate();
+        if (!Hotkey.Apply(Preferences.RevealHotkey)) Window.SettingsNotice.Text = MainWindow.Text("ShortcutUnavailable");
         if (Planner != null) { Planner.PreferencesChanged += Changed; _ = Planner.InitializeAsync(); }
     }
     static void Dispatch(Action action) => Application.Current.Dispatcher.Invoke(action);
@@ -101,12 +109,12 @@ internal sealed class DesktopSession : IDisposable
         pin.Checked = Window.IsPinned;
         saveTimer.Stop(); saveTimer.Start();
     }
-    internal void Save()
+    internal bool Save()
     {
-        if (maintenanceDepth > 0 || recoveryBlocked || File.Exists(Path.Combine(DataDirectory, "restore-journal.json"))) return;
-        if (!Window.Ready) return;
+        if (maintenanceDepth > 0 || recoveryBlocked || File.Exists(Path.Combine(DataDirectory, "restore-journal.json"))) return false;
+        if (!Window.Ready) return false;
         if (DesktopWindowMode.IsWindow(Window.Handle)) Preferences = Window.SnapshotPreferences();
-        if (!store.Save(Preferences)) Window.RefreshLayerStatus();
+        bool saved = store.Save(Preferences); if (!saved) Window.RefreshLayerStatus(); return saved;
     }
     internal void Locate(bool safe = false)
     {
@@ -150,6 +158,6 @@ internal sealed class DesktopSession : IDisposable
     public void Dispose()
     {
         if (disposed) return;
-        disposed = true; Planner?.Dispose(); saveTimer.Stop(); tray.ContextMenuStrip?.Dispose(); tray.Dispose(); trayIcon.Dispose();
+        disposed = true; Hotkey.Dispose(); Planner?.Dispose(); saveTimer.Stop(); tray.ContextMenuStrip?.Dispose(); tray.Dispose(); trayIcon.Dispose();
     }
 }

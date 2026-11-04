@@ -144,7 +144,7 @@
  <s:String x:Key="LanguageSetting">Language</s:String>
  <s:String x:Key="LegacyCategory">Historical category</s:String>
  <s:String x:Key="Locate">Show / locate component</s:String>
- <s:String x:Key="MonthFixed">Fixed six rows (including adjacent dates)</s:String>
+ <s:String x:Key="MonthFixed">Fixed rows (including adjacent dates)</s:String>
  <s:String x:Key="MonthFull">Complete month</s:String>
  <s:String x:Key="MonthModeSetting">Calendar rows</s:String>
  <s:String x:Key="MonthSubtitle">Leave room for what matters.</s:String>
@@ -346,4 +346,24 @@
  <s:String x:Key="CalendarPreviousRow">Fixed rows: previous week</s:String>
  <s:String x:Key="CalendarNextRow">Fixed rows: next week</s:String>
  <s:String x:Key="CalendarCNShort">CN</s:String><s:String x:Key="CalendarHKShort">HK</s:String>
+ <s:String x:Key="ShortcutCapture">Focus this field, then press the key combination</s:String>
+ <s:String x:Key="ShortcutEnabled">Enable global shortcut</s:String>
+ <s:String x:Key="TodoConversionDate">Effective date / date for a one-off task</s:String>
+ <s:String x:Key="ChildrenCollapseSetting">Collapse completed subtasks by default</s:String>
+ <s:String x:Key="ChildrenHideDone">Hide completed subtasks ({0})</s:String>
+ <s:String x:Key="ShortcutUnavailable">Invalid or unavailable shortcut. Choose another combination. The previous shortcut remains active.</s:String>
+ <s:String x:Key="ShortcutSetting">Show component shortcut</s:String>
+ <s:String x:Key="TodoConversionConfirm">Change task type? Completed history stays. Replaced unfinished records are cancelled; undo is available. Links move to matching replacements; unmatched links remain on the old records.</s:String>
+ <s:String x:Key="TodoConversionHint">One-off and carry conversions retain identity and links. Recurring conversions replace unfinished occurrences from the effective date; completed history remains, and replacements get new identities. Use Recurrence rule to change cadence.</s:String>
+ <s:String x:Key="TodoChangeType">Change task type…</s:String>
+ <s:String x:Key="ChildrenShowDone">Show completed subtasks ({0})</s:String>
+ <s:String x:Key="ShortcutHint">Use Ctrl/Alt, optionally Shift, plus a letter, digit or function key (except F12). Disabled by default; suggested Ctrl+Alt+D. Reveals the component without changing the topmost preference.</s:String>
+ <s:String x:Key="FixedLastWeek">Last visible week (inclusive, linked to row count)</s:String>
+ <s:String x:Key="FixedRowCount">Number of weeks (1–12 rows)</s:String>
+ <s:String x:Key="FixedFirstWeek">First visible week (choose any day in it)</s:String>
+ <s:String x:Key="TextScaleSetting">Text size (85%–135%)</s:String>
+ <s:String x:Key="CalendarBrightnessSetting">Brighten calendar task text (category color is unchanged)</s:String>
+ <s:String x:Key="AppearanceInvalid">Check colors, week count and first/last weeks. The range must match the row count.</s:String>
+ <s:String x:Key="TodoSaveChangeType">Save and change type…</s:String>
+ <s:String x:Key="ShortcutSaveFailed">The shortcut setting could not be saved locally. Your input is retained; check data-folder permissions and retry.</s:String>
 </ResourceDictionary>

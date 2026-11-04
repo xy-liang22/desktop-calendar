@@ -54,6 +54,24 @@ internal static partial class StageThreeChecks
     static WeakReference WeekReference(MainWindow window) => new(window.PageHost.Children.OfType<ActivityWeekView>().Single());
     static async Task RunP9Checks(MainWindow window)
     {
+        window.RestoreNormal(false);
+        await RunInteractionChecks(window);
+        var quick = window.PlannerView!.Quick;
+        quick.Text = "20：00 任务：说明"; quick.Select(3, 2); await Idle();
+        Check("quick input visibly normalizes only planned-time colon and preserves selection", quick.Text == "20:00 任务：说明" && quick.SelectionStart == 3 && quick.SelectionLength == 2);
+        Check("punctuation normalization preserves invalid time and task content", TodoDraftRules.TimePunctuation("25：99 任务：原文") == "25:99 任务：原文" && !TodoDraftRules.Quick("25：99 任务", out _, out _) && TodoDraftRules.TimePunctuation("说明：20：00") == "说明：20：00");
+        var input = new TextBox(); var ime = new ImeInput(input); TodoDraftRules.BindTimePunctuation(input, ime);
+        var composition = new System.Windows.Input.TextComposition(System.Windows.Input.InputManager.Current, input, "：");
+        input.RaiseEvent(new System.Windows.Input.TextCompositionEventArgs(System.Windows.Input.Keyboard.PrimaryDevice, composition) { RoutedEvent = System.Windows.Input.TextCompositionManager.PreviewTextInputStartEvent });
+        input.Text = "20：00"; await Idle(); Check("time punctuation leaves IME composition untouched", input.Text == "20：00");
+        input.RaiseEvent(new System.Windows.Input.TextCompositionEventArgs(System.Windows.Input.Keyboard.PrimaryDevice, composition) { RoutedEvent = System.Windows.Input.TextCompositionManager.PreviewTextInputEvent }); await Idle();
+        Check("committed IME time punctuation normalizes without submitting", input.Text == "20:00"); quick.Clear();
+        await DriveAsync(() => window.PlannerView!.Edit(null), async sheet =>
+        {
+            var field = Field(sheet, "PlannerTime"); field.Text = "20：00"; await Idle();
+            Check("full todo editor visibly normalizes Chinese time colon", field.Text == "20:00");
+            Click(sheet.Actions.Children.OfType<Button>().First());
+        });
         var c = window.Session.Planner!; window.RestoreNormal(); var business = Digest(c.State!); var data = window.Session.Calendar; var raw = JsonSerializer.Serialize(data.Data);
         Check("calendar short lunar uses month only on first day", CalendarPresentation.ShortLunar(new(2026, 11, 9)) == "十月" && CalendarPresentation.ShortLunar(new(2026, 12, 9)) == "十一月");
         Check("calendar short lunar preserves ordinary and special day names", CalendarPresentation.ShortLunar(new(2026, 11, 10)) == "初二" && CalendarPresentation.ShortLunar(new(2026, 11, 18)) == "初十" && CalendarPresentation.ShortLunar(new(2026, 11, 28)) == "二十" && CalendarPresentation.ShortLunar(new(2026, 12, 8)) == "三十");

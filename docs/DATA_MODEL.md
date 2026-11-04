@@ -1,6 +1,6 @@
 # 数据与服务接口：P2基础与P3–P8集成
 
-状态：应用与Core为0.8.1，真实待办、周期、Activity与P6周目标/统计/总结界面已接入。纯C# Core使用.NET10标准库，无WPF/数据库/第三方依赖；仅用户主动的历法更新入口可联网，业务schema3不变。图片/备注呈现及偏好位于WPF层，实体/JSON仍不含WPF对象；P7/P8已授权并接入，见末节。
+状态：应用与Core为0.8.2，真实待办、周期、Activity与P6周目标/统计/总结界面已接入。纯C# Core使用.NET10标准库，无WPF/数据库/第三方依赖；仅用户主动的历法更新入口可联网，业务schema3不变。图片/备注呈现及偏好位于WPF层，实体/JSON仍不含WPF对象；P7/P8已授权并接入，见末节。
 
 ## 实体和身份
 
@@ -71,7 +71,7 @@ schema3严格校验来源、快照作用域、Guard与关联。v2先验旧校验
 - `ReorderTodos(Siblings, DisplayDate = null, AsOf = null)`调用方应传实际Today；查询未来视图时不能把DisplayDate误用为asOf，造成未显示的持续兄弟进入排序集合。保留时间/手动模式及完成分组；虚拟实例仅在需要持久修改时物化。
 - UI `RecurrenceFields`共用验证/字段，`PlannerRecurrenceDialogs`提供规则/取消/顺延，重要确认仍模态。普通编辑Window用受控外部保存；编辑器提交期间禁用整窗，完成意图按类型/Scope判断，不依赖暂时的IsEnabled。
 
-P4继续编码schema3，无读写迁移。测试中实际引用旧`bin/P31/.../DesktopCalendar.Core.dll`（0.3.1）解码P4混合图，再Encode与原字节一致；这证明格式/既有校验器兼容，不表示旧GUI具有P4管理入口。尚不提供普通与系列之间的原地类型转换；复制生成普通树，新增时明确选类型。界面支持单次/系列不同作用域，不能从UI直接改底层数组。
+P4继续编码schema3，无读写迁移。测试中实际引用旧`bin/P31/.../DesktopCalendar.Core.dll`（0.3.1）解码P4混合图，再Encode与原字节一致；这证明格式/既有校验器兼容，不表示旧GUI具有P4管理入口。P4当时未提供类型转换；0.8.2增补显式ConvertTodo，见末节。复制仍生成普通树，新增时明确选类型。界面支持单次/系列不同作用域，不能从UI直接改底层数组。
 
 ## P5显示查询、编辑与图片边界
 
@@ -119,3 +119,11 @@ Windows PowerShell：`powershell -NoProfile -ExecutionPolicy Bypass -File .\Test
 - ZIP带全部完成写入的本地图片，包括当前孤儿；不删除旧安全图片/恢复点。manifest哈希不是签名或加密。恢复不建立系统Startup入口；入口属本机用户主动选择，更新脚本只跟随原已启用项。
 - 自启动不写注册表，托盘/单实例/Explorer未就绪安全回退继续沿用旧模块，未更换owner技术方案。
 P9仅在展示层简写农历/过滤通用Sunday，Core.On、完整Lunar、官方包、JSON/关联/统计均未更改；候选包与用户级入口版本一致性另见TESTING。
+
+## 0.8.2 现有待办类型转换与显示偏好
+
+ConvertTodo(TodoRef, TodoKind, EffectiveDate, Rule?)复用原事务/原子存储与Undo/Redo。普通/持续互转保留ID和关联；持续转普通的显示日可选。涉及系列只允许根，指定生效日；新模板/发生使用新身份，旧完成历史保留，生效日起的未完成发生取消。对应未完成引用迁移到后继/新首个发生；无映射的旧关联留在保留的取消记录，保持可解析。新周期模板包括原结构但重置完成；系列转单一后继只带未完成子树。没有无限预生成；没有schema变化。
+
+窗口偏好schema2兼容追加：CollapseCompletedChildren、RevealHotkey、FixedWeekRows（默认6）、FixedWeekStart、TextScale（默认1）、CalendarTextBrightness（默认0.2）。旧字段FixedSixRows仍表示启用固定行数，确保读取旧设置；缺少新字段采用默认值。每父已完成分支的临时展开覆盖只保留会话，不写入业务实体。
+
+彩色emoji为系统字体派生的运行时字形缓存，不属于个人图片资产、不写JSON/ZIP。Markdown只读预览使用带原Unicode标记的内联图形，复制回文本保留原Unicode；编辑源码和业务正文保持原字符串。

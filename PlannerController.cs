@@ -34,6 +34,14 @@ internal sealed class PlannerController
     internal CalendarTextMode TextMode { get; private set; }
     internal DayOfWeek WeekStart { get; private set; }
     internal WeekPlanLayout WeekLayout { get; private set; }
+    internal bool CollapseCompletedChildren { get; private set; }
+    internal int ChildDisplayRevision { get; private set; }
+    readonly System.Collections.Generic.Dictionary<Guid, bool> completedChildren = new();
+    internal bool CompletedCollapsed(Guid parent) => completedChildren.TryGetValue(parent, out bool value) ? value : CollapseCompletedChildren;
+    internal void ToggleCompletedChildren(Guid parent) { completedChildren[parent] = !CompletedCollapsed(parent); ChildDisplayRevision++; Changed?.Invoke(); }
+    internal void SetCompletedChildren(bool collapse) { CollapseCompletedChildren = collapse; completedChildren.Clear(); ChildDisplayRevision++; Changed?.Invoke(); PreferencesChanged?.Invoke(); }
+    internal int CompletedChildCount(TodoDateNode node) => node.Children.Count(c => c.Value.Status == TodoStatus.Completed && !c.ContextOnly);
+    internal TodoDateNode[] DisplayChildren(TodoDateNode node) => node.Children.Where(c => !CompletedCollapsed(node.Value.Id) || c.Value.Status != TodoStatus.Completed || c.ContextOnly).ToArray();
     PlannerOptions Options => new() { TimeZoneId = TimeZoneInfo.Local.Id, WeekStart = WeekStart, Language = Localization.English ? "en" : "zh-CN" };
     internal WeekKey Week(DateOnly? date = null) => PlannerTime.Week(date ?? SelectedDate, WeekStart, State?.Options.TimeZoneId ?? TimeZoneInfo.Local.Id);
     internal void SetWeekLayout(WeekPlanLayout layout) { if (!Enum.IsDefined(layout) || WeekLayout == layout) return; WeekLayout = layout; Changed?.Invoke(); PreferencesChanged?.Invoke(); }
@@ -57,7 +65,7 @@ internal sealed class PlannerController
     internal event Action? PreferencesChanged;
     internal PlannerController(string path, WindowPreferences preferences, StoreOptions? options = null, bool maintenanceBlocked = false)
     {
-        this.maintenanceBlocked = maintenanceBlocked; store = new(path, options); lastToday = Today; WeekStart = preferences.WeekStart; WeekLayout = preferences.WeekPlanLayout;
+        this.maintenanceBlocked = maintenanceBlocked; store = new(path, options); lastToday = Today; WeekStart = preferences.WeekStart; WeekLayout = preferences.WeekPlanLayout; CollapseCompletedChildren = preferences.CollapseCompletedChildren;
         SelectedDate = preferences.PlannerDate ?? Today;
         Month = preferences.PlannerMonth ?? new(SelectedDate.Year, SelectedDate.Month, 1);
         Month = new(Month.Year, Month.Month, 1); ColorBackground = preferences.CalendarColorBackground; TextMode = preferences.CalendarTextMode;
@@ -165,7 +173,7 @@ internal sealed class PlannerController
     }
     internal async Task RestorePreferencesAsync(WindowPreferences p)
     {
-        WeekStart = p.WeekStart; WeekLayout = p.WeekPlanLayout; TextMode = p.CalendarTextMode; ColorBackground = p.CalendarColorBackground;
+        WeekStart = p.WeekStart; WeekLayout = p.WeekPlanLayout; TextMode = p.CalendarTextMode; ColorBackground = p.CalendarColorBackground; CollapseCompletedChildren = p.CollapseCompletedChildren; completedChildren.Clear();
         SelectedDate = p.PlannerDate ?? Today; Month = p.PlannerMonth ?? new(SelectedDate.Year, SelectedDate.Month, 1);
         await ReloadAsync();
     }

@@ -1,3 +1,4 @@
+using TextBlock = DesktopCalendar.EmojiTextBlock;
 using System;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -17,9 +18,9 @@ internal static class MarkdownNotes
     static readonly Regex Inline = new(@"!\[([^\]]*)\]\(([^)]+)\)|\[([^\]]+)\]\(([^)]+)\)|`([^`]+)`|\*\*(.+?)\*\*|\*(.+?)\*", RegexOptions.NonBacktracking);
     internal static FlowDocument Render(string text, NoteFormat format, LocalImages images)
     {
-        var doc = new FlowDocument { Foreground = ThemeColors.Brush("#EDF2F5"), Background = Brushes.Transparent, FontSize = 12, PagePadding = new Thickness(8), FontFamily = new FontFamily("Segoe UI, Microsoft YaHei UI"), ColumnWidth = 10000 };
+        var doc = new FlowDocument { Foreground = ThemeColors.Brush("#EDF2F5"), Background = Brushes.Transparent, FontSize = FontPreferences.Size(12), PagePadding = new Thickness(8), FontFamily = new FontFamily("Segoe UI, Microsoft YaHei UI"), ColumnWidth = 10000 };
         if (text.Length > 100000) text = text[..100000] + "\n… " + MainWindow.Text("ActivityPreviewTruncated");
-        if (format == NoteFormat.PlainText) { doc.Blocks.Add(new Paragraph(new Run(text))); return doc; }
+        if (format == NoteFormat.PlainText) { doc.Blocks.Add(new Paragraph(new Run(text))); return EmojiDocument.Colorize(doc); }
         var lines = text.Replace("\r", "").Split('\n'); bool fence = false; var code = new System.Text.StringBuilder();
         for (int i = 0; i < lines.Length; i++)
         {
@@ -39,14 +40,14 @@ internal static class MarkdownNotes
             var heading = Regex.Match(line, @"^(#{1,6})\s+(.+)$"); var bullet = Regex.Match(line, @"^\s*(?:[-+*]|\d+[.)])\s+(.+)$");
             var paragraph = new Paragraph { Margin = new Thickness(0, 2, 0, 7) };
             string content = line;
-            if (heading.Success) { paragraph.FontSize = Math.Max(13, 23 - heading.Groups[1].Length * 2); paragraph.FontWeight = FontWeights.SemiBold; content = heading.Groups[2].Value; }
+            if (heading.Success) { paragraph.FontSize = FontPreferences.Size(Math.Max(13, 23 - heading.Groups[1].Length * 2)); paragraph.FontWeight = FontWeights.SemiBold; content = heading.Groups[2].Value; }
             else if (line.TrimStart().StartsWith('>')) { paragraph.BorderBrush = ThemeColors.Brush("#A3D9C4"); paragraph.BorderThickness = new Thickness(2, 0, 0, 0); paragraph.Padding = new Thickness(8, 0, 0, 0); content = line.TrimStart()[1..].TrimStart(); }
             else if (bullet.Success) { paragraph.Margin = new Thickness(10, 2, 0, 4); content = "• " + bullet.Groups[1].Value; }
             Fill(paragraph.Inlines, content, images); doc.Blocks.Add(paragraph);
         }
-        if (code.Length > 0) doc.Blocks.Add(Code(code.ToString())); return doc;
+        if (code.Length > 0) doc.Blocks.Add(Code(code.ToString())); return EmojiDocument.Colorize(doc);
     }
-    static Paragraph Code(string text) => new(new Run(text)) { FontFamily = new FontFamily("Consolas"), Background = ThemeColors.Brush("#16212D"), Padding = new Thickness(8), FontSize = 11 };
+    static Paragraph Code(string text) => new(new Run(text)) { FontFamily = new FontFamily("Consolas"), Background = ThemeColors.Brush("#16212D"), Padding = new Thickness(8), FontSize = FontPreferences.Size(11) };
     static void Fill(InlineCollection output, string text, LocalImages images)
     {
         int position = 0;

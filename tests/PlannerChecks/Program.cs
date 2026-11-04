@@ -20,7 +20,7 @@ internal static partial class Checks
         if (args.Length > 0 && args[0] is "--read" or "--verify") return await ReadChild(args);
         string output = args.Length > 0 ? Path.GetFullPath(args[0]) : Path.GetFullPath("artifacts/p2-checks");
         Directory.CreateDirectory(output);
-        try { ModelChecks(); await StorageChecks(output); await ServiceChecks(output); await BoundaryChecks(output); await CompletionChecks(output); await P4Checks(output); await P5Checks(output); await P6Checks(output); await P7Checks(output); await P8Checks(output); }
+        try { ModelChecks(); await StorageChecks(output); await ServiceChecks(output); await BoundaryChecks(output); await CompletionChecks(output); await P4Checks(output); await P5Checks(output); await P6Checks(output); await P7Checks(output); await P8Checks(output); await ConversionChecks(output); }
         catch (Exception e) { Results.Add("FAIL unhandled " + e); }
         File.WriteAllLines(Path.Combine(output, "checks.txt"), Results);
         int failures = Results.Count(s => s.StartsWith("FAIL "));

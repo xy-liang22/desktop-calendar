@@ -1,3 +1,4 @@
+using TextBlock = DesktopCalendar.EmojiTextBlock;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -37,6 +38,7 @@ internal sealed class PlannerView : Grid
     PlannerState? rendered;
     DateOnly renderedMonth;
     bool renderedColors;
+    int renderedChildDisplay;
     CalendarTextMode renderedTextMode;
     DateOnly renderedToday;
     Point dragStart;
@@ -58,10 +60,11 @@ internal sealed class PlannerView : Grid
         this.owner = owner; Controller = controller;
         Quick.Text = controller.QuickDraft; Quick.TextChanged += (_, _) => controller.QuickDraft = Quick.Text;
         var quickIme = new ImeInput(Quick);
+        TodoDraftRules.BindTimePunctuation(Quick, quickIme);
         foreach (var pair in new[] { (5.2, 340d), (0d, 0d), (2.7, 200d), (0d, 0d), (2.9, 220d) }) ColumnDefinitions.Add(new() { Width = pair.Item1 == 0 ? new GridLength(8) : new GridLength(pair.Item1, GridUnitType.Star), MinWidth = pair.Item2 });
         var calendar = RowGrid(GridLength.Auto, new GridLength(28), new GridLength(1, GridUnitType.Star), GridLength.Auto);
         var nav = new DockPanel { Margin = new Thickness(0, 0, 0, 10) };
-        navButtons.Children.Add(Button("‹", () => NavigateCalendar(-1), T("CalendarPreviousPage"))); navButtons.Children.Add(Button(T("PlannerToday"), () => { owner.ApplyAppearance(owner.Appearance with { FixedWeekOffset = 0 }); Controller.Select(Controller.Today, true); })); navButtons.Children.Add(Button("›", () => NavigateCalendar(1), T("CalendarNextPage")));
+        navButtons.Children.Add(Button("‹", () => NavigateCalendar(-1), T("CalendarPreviousPage"))); navButtons.Children.Add(Button(T("PlannerToday"), () => { owner.ApplyAppearance(owner.Appearance with { FixedWeekOffset = 0, FixedWeekStart = CalendarViewport.TodayAnchor(Controller.Today, owner.Appearance.FixedWeekRows) }); Controller.Select(Controller.Today, true); })); navButtons.Children.Add(Button("›", () => NavigateCalendar(1), T("CalendarNextPage")));
         navButtons.Children.Add(Button("⌄", () => ApplicationSettings.ChooseMonth(owner), T("CalendarChooseMonth")));
         var previousRow = Button("↑", () => ShiftWeeks(-1), T("CalendarPreviousRow")); previousRow.Tag = "fixed-row-nav"; var nextRow = Button("↓", () => ShiftWeeks(1), T("CalendarNextRow")); nextRow.Tag = "fixed-row-nav"; navButtons.Children.Add(previousRow); navButtons.Children.Add(nextRow);
         DockPanel.SetDock(navButtons, Dock.Right); nav.Children.Add(navButtons);
@@ -105,7 +108,7 @@ internal sealed class PlannerView : Grid
         string raw = Quick.Text; string title = ""; TimeOnly? time = null;
         if (raw.Trim().Length > 0 && !PlannerController.QuickInput(raw, out title, out time)) { notice.Text = T("PlannerQuickInvalid"); return; }
         var draft = Controller.NewTodo(title) with { PlannedTime = time, CategoryId = QuickAppearance.CategoryId, Color = QuickAppearance.Color.Value };
-        if (PlannerDialogs.Edit(owner, Controller, null, newDraft: draft) && Controller.State!.Todos.Any(t => t.Id == draft.Id) && Quick.Text == raw) Quick.Clear();
+        if (PlannerDialogs.Edit(owner, Controller, null, newDraft: draft) && Controller.State!.Todos.Any(t => t.Id == draft.Id) && TodoDraftRules.TimePunctuation(Quick.Text) == TodoDraftRules.TimePunctuation(raw)) Quick.Clear();
     }
     internal void FocusDate(DateOnly date) { Controller.Select(date); owner.ShowPlannerMonth(); Quick.Focus(); }
     internal void Refresh()
@@ -118,8 +121,8 @@ internal sealed class PlannerView : Grid
         if (Controller.State != null && renderedCategories != Controller.State.Categories) { QuickAppearance.Refresh(); renderedCategories = Controller.State.Categories; }
         undo.IsEnabled = Controller.CanUndo; redo.IsEnabled = Controller.CanRedo;
         reload.IsEnabled = !Controller.Busy; recover.IsEnabled = !Controller.Busy && Controller.Storage?.Status != StoreStatus.NewerSchema && Controller.Storage?.Candidates.Length > 0;
-        if (rendered != Controller.State || renderedMonth != Controller.Month || renderedColors != Controller.ColorBackground || renderedToday != Controller.Today || renderedInline != Controller.Inline || renderedTextMode != Controller.TextMode || renderedWeekStart != Controller.WeekStart || renderedWeekLayout != Controller.WeekLayout)
-        { BuildCalendar(); rendered = Controller.State; renderedMonth = Controller.Month; renderedColors = Controller.ColorBackground; renderedToday = Controller.Today; renderedInline = Controller.Inline; renderedTextMode = Controller.TextMode; renderedWeekStart = Controller.WeekStart; renderedWeekLayout = Controller.WeekLayout; }
+        if (renderedChildDisplay != Controller.ChildDisplayRevision || rendered != Controller.State || renderedMonth != Controller.Month || renderedColors != Controller.ColorBackground || renderedToday != Controller.Today || renderedInline != Controller.Inline || renderedTextMode != Controller.TextMode || renderedWeekStart != Controller.WeekStart || renderedWeekLayout != Controller.WeekLayout)
+        { BuildCalendar(); renderedChildDisplay = Controller.ChildDisplayRevision; rendered = Controller.State; renderedMonth = Controller.Month; renderedColors = Controller.ColorBackground; renderedToday = Controller.Today; renderedInline = Controller.Inline; renderedTextMode = Controller.TextMode; renderedWeekStart = Controller.WeekStart; renderedWeekLayout = Controller.WeekLayout; }
         foreach (var day in days) day.Value.BorderBrush = PrototypeViews.Brush(day.Key == Controller.SelectedDate ? ThemeColors.Accent(owner.Appearance.AccentColor) : day.Key == Controller.Today ? "#607C9DB0" : "#00FFFFFF");
         Items.Children.Clear(); var rows = Controller.Tree(Controller.SelectedDate); empty.Visibility = rows.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         empty.Text = Controller.Storage?.CanWrite == true ? T("PlannerEmpty") : T(Controller.NoticeKey);
@@ -136,14 +139,15 @@ internal sealed class PlannerView : Grid
     internal void InvalidateCalendar() { renderedMonth = default; Refresh(); }
     internal void ShiftWeeks(int weeks)
     {
-        var dates = MonthDates(Controller.Month, Controller.WeekStart); int start = dates.First(d => d != null)!.Value.DayNumber - Array.FindIndex(dates, d => d != null); int offset = owner.Appearance.FixedWeekOffset + weeks;
-        long day = start + (long)offset * 7; if (day < 0 || day > DateOnly.MaxValue.DayNumber - 41) return;
+        var dates = CalendarViewport.Fixed(Controller.Month, Controller.WeekStart, owner.Appearance.FixedWeekRows, owner.Appearance.FixedWeekStart, owner.Appearance.FixedWeekOffset);
+        int start = dates.First(d => d != null)!.Value.DayNumber - Array.FindIndex(dates, d => d != null); int offset = owner.Appearance.FixedWeekOffset + weeks;
+        long day = start + (long)weeks * 7; if (day < -6 || day > DateOnly.MaxValue.DayNumber - owner.Appearance.FixedWeekRows * 7 + 1 || offset is < -520000 or > 520000) return;
         owner.ApplyAppearance(owner.Appearance with { FixedWeekOffset = offset });
     }
-    void NavigateCalendar(int direction) { if (owner.Appearance.FixedSixRows) ShiftWeeks(direction * 6); else Controller.Navigate(direction); }
+    void NavigateCalendar(int direction) { if (owner.Appearance.FixedSixRows) ShiftWeeks(direction * owner.Appearance.FixedWeekRows); else Controller.Navigate(direction); }
     void BuildCalendar()
     {
-        calendarHost.Children.Clear(); days.Clear(); var dates = MonthDates(Controller.Month, Controller.WeekStart); if (owner.Appearance.FixedSixRows) { int start = dates.First(d => d != null)!.Value.DayNumber - Array.FindIndex(dates, d => d != null) + owner.Appearance.FixedWeekOffset * 7; start = Math.Clamp(start, -6, DateOnly.MaxValue.DayNumber - 35); dates = Enumerable.Range(0, 42).Select(i => start + i >= 0 && start + i <= DateOnly.MaxValue.DayNumber ? (DateOnly?)DateOnly.FromDayNumber(start + i) : null).ToArray(); monthTitle.Text = dates.First(d => d != null)!.Value.ToString("yyyy-MM-dd") + " – " + dates.Last(d => d != null)!.Value.ToString("MM-dd"); } var grid = new Grid(); renderedWeekSide = Controller.WeekLayout == WeekPlanLayout.SideColumn && calendarHost.ActualWidth >= 430;
+        calendarHost.Children.Clear(); days.Clear(); var dates = MonthDates(Controller.Month, Controller.WeekStart); if (owner.Appearance.FixedSixRows) { dates = CalendarViewport.Fixed(Controller.Month, Controller.WeekStart, owner.Appearance.FixedWeekRows, owner.Appearance.FixedWeekStart, owner.Appearance.FixedWeekOffset); monthTitle.Text = dates.First(d => d != null)!.Value.ToString("yyyy-MM-dd") + " – " + dates.Last(d => d != null)!.Value.ToString("MM-dd"); } var grid = new Grid(); renderedWeekSide = Controller.WeekLayout == WeekPlanLayout.SideColumn && calendarHost.ActualWidth >= 430;
         weekdayHost.Children.Clear(); weekdayHost.ColumnDefinitions.Clear();
         string[] names = ["PlannerSun", "PlannerMon", "PlannerTue", "PlannerWed", "PlannerThu", "PlannerFri", "PlannerSat"];
         for (int i = 0; i < 7; i++) { grid.ColumnDefinitions.Add(new()); weekdayHost.ColumnDefinitions.Add(new()); var label = Text(T(names[((int)Controller.WeekStart + i) % 7]), 11, "#A2AFBC"); label.HorizontalAlignment = HorizontalAlignment.Center; At(weekdayHost, label, 0, i); }
@@ -156,18 +160,18 @@ internal sealed class PlannerView : Grid
             var entries = new List<CalendarTodoEntry>();
             void AddCalendar(TodoDateNode node, int depth)
             {
-                if (node.ContextOnly) { foreach (var child in node.Children) AddCalendar(child, depth); return; }
+                if (node.ContextOnly) { foreach (var child in Controller.DisplayChildren(node)) AddCalendar(child, depth); return; }
                 var t = node.Value;
                 entries.Add(new(t.Title, Prefix(t), t.Status == TodoStatus.Completed, Controller.Color(t), t.Important || t.Urgent,
                     async () => { if (Controller.Writable) await Controller.ExecuteAsync(new SetTodoCompleted(TodoRef.Of(t), t.Status != TodoStatus.Completed)); },
                     t.Id, t.ParentId, depth, node.Children.Length > 0, calendarExpanded.Contains(t.Id),
                     () => { if (!calendarExpanded.Add(t.Id)) calendarExpanded.Remove(t.Id); renderedMonth = default; Refresh(); },
                     t.Status != TodoStatus.Cancelled ? () => Controller.BeginInline(t, date) : null,
-                    Controller.Inline?.Id == t.Id && Controller.Inline.DisplayDate == date ? Controller.Inline : null, Controller, Controller.Writable, KindMark(t)));
-                if (calendarExpanded.Contains(t.Id)) foreach (var child in node.Children) AddCalendar(child, depth + 1);
+                    Controller.Inline?.Id == t.Id && Controller.Inline.DisplayDate == date ? Controller.Inline : null, Controller, Controller.Writable, KindMark(t) + (Controller.CompletedCollapsed(t.Id) && Controller.CompletedChildCount(node) > 0 ? " ✓" + Controller.CompletedChildCount(node) : "")));
+                if (calendarExpanded.Contains(t.Id)) foreach (var child in Controller.DisplayChildren(node)) AddCalendar(child, depth + 1);
             }
             foreach (var node in Controller.Tree(date)) AddCalendar(node, 0);
-            var cell = new CalendarPreviewCell(date, entries.ToArray(), date.Month == Controller.Month.Month, Controller.ColorBackground, () => FocusDate(date), Controller.TextMode);
+            var cell = new CalendarPreviewCell(date, entries.ToArray(), date.Month == Controller.Month.Month, Controller.ColorBackground, () => FocusDate(date), Controller.TextMode, owner.Appearance.CalendarTextBrightness);
             cell.AddKnowledge(owner.Session.Calendar, date);
             string? decoration = Controller.State?.Decorations.FirstOrDefault(d => d.Date == date)?.Color ?? (date.DayOfWeek == DayOfWeek.Saturday ? owner.Appearance.SaturdayColor : date.DayOfWeek == DayOfWeek.Sunday ? owner.Appearance.SundayColor : null);
             var button = new Button { Content = cell, Tag = date, Padding = new Thickness(0), Margin = new Thickness(2), BorderThickness = new Thickness(1), Background = PrototypeViews.Brush(decoration == null ? date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday ? "#162A3D48" : "#0BFFFFFF" : "#38" + decoration.TrimStart('#')[^6..]), HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Stretch, ClipToBounds = true, ToolTip = date.ToString("yyyy-MM-dd") + "\n" + string.Join("\n", tasks.Select(t => Prefix(t) + t.Title)) };
@@ -216,6 +220,7 @@ internal sealed class PlannerView : Grid
         void Action(string key, Action handler, bool enabled = true) { var item = new MenuItem { Header = T(key), IsEnabled = enabled && Controller.Writable }; item.Click += (_, _) => handler(); menu.Items.Add(item); }
         bool active = task.Status != TodoStatus.Cancelled;
         Action("PlannerEdit", () => Edit(task), active);
+        if (task.ParentId == null || task.Origin == null) Action("TodoChangeType", () => PlannerDialogs.ChangeType(owner, Controller, task), active);
         Action("PlannerAddChild", () => Edit(null, task.Id), active && !node.ContextOnly);
         Action("PlannerCopy", () => PlannerDialogs.Copy(owner, Controller, task), active);
         Action("ActivityFromTodo", () => ActivityDialogs.Edit(owner, Controller, draft: ActivityDialogs.Draft(Controller, todo: task)), active);
@@ -239,7 +244,16 @@ internal sealed class PlannerView : Grid
         outer.DragOver += (_, e) => { bool valid = CanDrop(e, task, out var ignored); e.Effects = valid ? DragDropEffects.Move : DragDropEffects.None; outer.BorderThickness = new Thickness(0, e.GetPosition(outer).Y < outer.ActualHeight / 2 ? 2 : 0, 0, e.GetPosition(outer).Y >= outer.ActualHeight / 2 ? 2 : 0); outer.BorderBrush = valid ? PrototypeViews.Brush("#A3D9C4") : Brushes.Transparent; e.Handled = true; };
         outer.DragLeave += (_, _) => ResetDrop(outer);
         outer.Drop += async (_, e) => { e.Handled = true; ResetDrop(outer); if (CanDrop(e, task, out var source)) await DropAsync(source!, task, e.GetPosition(outer).Y >= outer.ActualHeight / 2); };
-        if (!collapsed.Contains(task.Id)) foreach (var child in node.Children) AddNode(parent, child, depth + 1);
+        if (!collapsed.Contains(task.Id))
+        {
+            foreach (var child in Controller.DisplayChildren(node)) AddNode(parent, child, depth + 1);
+            int done = Controller.CompletedChildCount(node);
+            if (done > 0)
+            {
+                var toggle = Button(string.Format(Localization.Culture, T(Controller.CompletedCollapsed(task.Id) ? "ChildrenShowDone" : "ChildrenHideDone"), done), () => Controller.ToggleCompletedChildren(task.Id));
+                toggle.Tag = task.Id; toggle.HorizontalAlignment = HorizontalAlignment.Left; toggle.Margin = new Thickness(Math.Min(depth + 1, 6) * 12, 0, 0, 5); toggle.FontSize = 10; parent.Children.Add(toggle);
+            }
+        }
     }
     static void ResetDrop(Border row) { row.BorderThickness = new Thickness(1); row.BorderBrush = ThemeColors.Brush("#304352"); }
     bool CanDrop(DragEventArgs e, Todo target, out Todo? source)

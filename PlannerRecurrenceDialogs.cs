@@ -7,6 +7,46 @@ using DesktopCalendar.Core;
 namespace DesktopCalendar;
 internal static partial class PlannerDialogs
 {
+    internal static void ChangeType(MainWindow owner, PlannerController controller, Todo task)
+    {
+        if (!controller.Writable || task.Status == TodoStatus.Cancelled || task.Origin != null && task.ParentId != null) return;
+        var sheet = new Sheet(T("TodoChangeType"), 490);
+        var kinds = new[] { TodoKind.Once, TodoKind.CarryHistory, TodoKind.CarryLatest, TodoKind.SeriesTemplate };
+        int current = task.Origin != null ? 3 : Array.IndexOf(kinds, task.Kind);
+        var labels = new[] { T("RepeatOnce"), T("RepeatCarryHistory"), T("RepeatCarryLatest"), T("RepeatPeriodic") };
+        var type = new ComboBox { ItemsSource = labels.Select((label, i) => new ComboBoxItem { Content = label, IsEnabled = i != 3 || task.ParentId == null }).ToArray(), SelectedIndex = current };
+        sheet.Field("RepeatType", type);
+        var date = new DatePicker { SelectedDate = (task.Origin?.Date ?? (task.Kind is TodoKind.CarryHistory or TodoKind.CarryLatest ? PlannerQueries.CarryEnd(task, controller.Today) : task.PlannedDate)).ToDateTime(TimeOnly.MinValue) };
+        sheet.Field("TodoConversionDate", date);
+        var rule = new RecurrenceFields(new RecurrenceRule { Start = DateOnly.FromDateTime(date.SelectedDate!.Value), Weekdays = [task.PlannedDate.DayOfWeek], WeekStart = controller.WeekStart, TimeZoneId = controller.State!.Options.TimeZoneId }, date);
+        sheet.Body.Children.Add(rule);
+        var hint = PlannerView.Text(T("TodoConversionHint"), 11, "#A2AFBC"); hint.TextWrapping = System.Windows.TextWrapping.Wrap; sheet.Body.Children.Add(hint);
+        void Refresh() { rule.Visibility = type.SelectedIndex == 3 && current != 3 ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed; date.IsEnabled = current == 3 || type.SelectedIndex == 3 || current is 1 or 2 && type.SelectedIndex == 0; }
+        type.SelectionChanged += (_, _) => Refresh(); Refresh();
+        sheet.Save(async () =>
+        {
+            if (type.SelectedIndex == current) return true;
+            if (!TodoDraftRules.Date(date, true, out var day)) { sheet.Error.Text = T("PlannerDateRequired"); return false; }
+            RecurrenceRule? next = null;
+            if (type.SelectedIndex == 3 && !rule.Read(out next)) { sheet.Error.Text = T("RepeatInvalid"); return false; }
+            if (JsonSerializer.Serialize(controller.FindTodo(task.Id)) != JsonSerializer.Serialize(task)) { sheet.Error.Text = T("PlannerStaleEdit"); return false; }
+            if (!Confirm(owner, T("TodoChangeType"), T("TodoConversionConfirm"))) return false;
+            var existingIds = controller.State!.Todos.Select(t => t.Id).ToHashSet();
+            bool ok = await controller.ExecuteAsync(new ConvertTodo(TodoRef.Of(task), kinds[type.SelectedIndex], next?.Start ?? day!.Value, next));
+            if (!ok) sheet.Error.Text = T(controller.NoticeKey) + " " + controller.Diagnostic;
+            else
+            {
+                DateOnly show = next == null ? day!.Value : Recurrence.Next(next, next.Start)!.Value;
+                if (kinds[type.SelectedIndex] == TodoKind.CarryLatest)
+                {
+                    var converted = task.Origin == null ? controller.FindTodo(task.Id) : controller.State!.Todos.SingleOrDefault(t => !existingIds.Contains(t.Id) && t.ParentId == null && t.CopiedFromId == task.Id);
+                    if (converted != null) show = PlannerQueries.CarryEnd(converted, controller.Today);
+                }
+                controller.Select(show, true);
+            }
+            return ok;
+        }); Show(owner, sheet);
+    }
     internal static bool CanEditSeries(PlannerState state, OccurrenceKey key)
     {
         var series = state.Series.SingleOrDefault(s => s.Id == key.SeriesId);

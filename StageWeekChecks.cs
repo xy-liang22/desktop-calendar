@@ -20,6 +20,7 @@ internal static partial class StageThreeChecks
         var category = c.State!.Categories.Single(x => x.BuiltInKey == "work"); var origin = PlannerTime.Boundary(week.Start, week.TimeZoneId);
         Activity A(string title, int from, int to) => new() { Id = Guid.NewGuid(), Title = title, CategoryId = category.Id, TimeZoneId = week.TimeZoneId, Intervals = [new(Guid.NewGuid(), origin.AddHours(from), origin.AddHours(to))] };
         var a = A("GUI P6 actual A", 8, 12); var b = A("GUI P6 actual B", 10, 15); await c.ExecuteAsync(new SaveActivity(a)); await c.ExecuteAsync(new SaveActivity(b));
+        File.WriteAllText(Path.Combine(DirectoryPath, "p6-before-editor.json"), System.Text.Json.JsonSerializer.Serialize(new { c.Writable, c.Busy, c.Stopping, c.MaintenancePending, Status = c.Storage?.Status.ToString(), c.NoticeKey, c.Diagnostic, Pending = c.Pending.Status.ToString() }));
         await DriveAsync(() => WeekGoalDialogs.Edit(window, c, week), async s =>
         {
             Field(s, "PlannerTitle").Text = "GUI P6 goal"; Choice(s, "GoalSource").SelectedIndex = (int)GoalSource.Todo; Field(s, "GoalTarget").Text = "2"; Field(s, "GoalUnit").Text = "项";

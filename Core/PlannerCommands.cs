@@ -10,6 +10,7 @@ public sealed record RenameTodo(TodoRef Todo, string Title, string ExpectedTitle
 public sealed record SetTodoCompleted(TodoRef Todo, bool Completed) : PlannerCommand;
 public sealed record MoveCarryTodo(TodoRef Todo, DateOnly Date) : PlannerCommand;
 public sealed record SetCarryMode(TodoRef Todo, bool KeepHistory) : PlannerCommand;
+public sealed record ConvertTodo(TodoRef Todo, TodoKind Kind, DateOnly EffectiveDate, RecurrenceRule? Rule = null) : PlannerCommand;
 public sealed record AddOccurrenceTodo(Todo Value, TodoRef Parent) : PlannerCommand;
 public sealed record AddSeriesTodo(Todo Value, TodoRef Parent, EditScope Scope) : PlannerCommand;
 public sealed record EditOccurrence(Todo Value, EditScope Scope) : PlannerCommand;
@@ -124,6 +125,7 @@ internal static partial class PlannerCommands
                 return new(s with { Todos = Put(s.Todos, t) }, t.Id);
             }
             case AddOccurrenceTodo c: return AddOccurrence(s, c, now);
+            case ConvertTodo c: return Convert(s, c, now);
             case AddSeriesTodo c: return AddSeriesChild(s, c, now);
             case EditOccurrence c: return EditOccurrenceFields(s, c, now);
             case ReorderTodos c:

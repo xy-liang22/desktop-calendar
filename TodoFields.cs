@@ -1,3 +1,4 @@
+using TextBlock = DesktopCalendar.EmojiTextBlock;
 using System;
 using System.Globalization;
 using System.Linq;
@@ -22,6 +23,28 @@ internal static class TodoDraftRules
         picker.SelectedDate = date.Date; value = DateOnly.FromDateTime(date); return true;
     }
     internal static bool Title(string text) => !string.IsNullOrWhiteSpace(text) && text.Trim().Length <= 10000;
+    internal static string TimePunctuation(string text)
+    {
+        // Only the leading planned-time token belongs to us; punctuation in titles is user content.
+        var match = Regex.Match(text, @"^\s*[0-9０-９]{1,2}\s*[:：﹕]");
+        return match.Success ? text[..match.Length].Replace('：', ':').Replace('﹕', ':') + text[match.Length..] : text;
+    }
+    internal static void BindTimePunctuation(TextBox field, ImeInput ime)
+    {
+        bool queued = false;
+        void Queue()
+        {
+            if (queued) return; queued = true;
+            field.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, new Action(() =>
+            {
+                queued = false; if (ime.Composing) return;
+                string normalized = TimePunctuation(field.Text); if (normalized == field.Text) return;
+                int start = field.SelectionStart, length = field.SelectionLength;
+                field.Text = normalized; field.Select(start, length);
+            }));
+        }
+        field.TextChanged += (_, _) => Queue(); ime.Completed += Queue;
+    }
     internal static bool Color(string? text) => text == null || Regex.IsMatch(text, "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$");
     internal static bool Time(string text, out TimeOnly? value)
     {
