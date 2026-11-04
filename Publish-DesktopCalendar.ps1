@@ -1,4 +1,4 @@
-param([ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]*$')][string]$Configuration = 'P117')
+param([ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]*$')][string]$Configuration = 'Release')
 $ErrorActionPreference = 'Stop'
 & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'build.ps1') -Configuration $Configuration
 if ($LASTEXITCODE -ne 0) { throw 'Build failed.' }
@@ -25,3 +25,5 @@ $version = ([xml][IO.File]::ReadAllText((Join-Path $PSScriptRoot 'DesktopCalenda
 $manifest = [ordered]@{ SchemaVersion = 1; AppId = 'desktop-calendar'; Version = $version; PackageId = $id; Architecture = 'x64'; SelfContained = $false; Files = $files }
 [IO.File]::WriteAllText((Join-Path $package 'package.json'), ($manifest | ConvertTo-Json -Depth 5), [Text.UTF8Encoding]::new($false))
 Write-Output "Package: $package (framework-dependent, Windows Desktop Runtime 10 x64 required)"
+& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'scripts\Clean-Workspace.ps1') -KeepConfiguration $Configuration -Artifacts
+if($LASTEXITCODE -ne 0){throw 'Cleanup failed.'}

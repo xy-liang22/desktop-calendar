@@ -1,7 +1,7 @@
-param([switch]$SkipBuild, [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]*$')][string]$Configuration = 'P3')
+param([switch]$SkipBuild, [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]*$')][string]$Configuration = 'Release')
 $ErrorActionPreference = 'Stop'
 if (-not $SkipBuild) { & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'build.ps1') -Configuration $Configuration; if ($LASTEXITCODE -ne 0) { throw 'Build failed.' } }
-$root = Join-Path $PSScriptRoot ('artifacts\p3-checks\run-' + [Guid]::NewGuid().ToString('N'))
+$root = Join-Path $PSScriptRoot ('artifacts\checks\wpf\run-' + [Guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($root) | Out-Null
 $exe = Join-Path $PSScriptRoot "bin\$Configuration\net10.0-windows\DesktopCalendar.exe"
 function Run($phase, $directory) {
@@ -24,3 +24,5 @@ $checks = @(Get-ChildItem -LiteralPath $root -Filter 'checks-*.txt' -Recurse | F
 Write-Output ('PASS: ' + @($checks | Where-Object { $_ -match '^PASS ' }).Count)
 $checks | Where-Object { $_ -match '^FAIL ' }
 Write-Output "Reports: $root"
+& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'scripts\Clean-Workspace.ps1') -KeepConfiguration $Configuration -Artifacts
+if($LASTEXITCODE -ne 0){throw 'Cleanup failed.'}

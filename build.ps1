@@ -14,10 +14,10 @@ if ($LASTEXITCODE -ne 0) { throw 'Offline restore failed.' }
 & $dotnetExe build $project --no-restore -c $Configuration
 if ($LASTEXITCODE -ne 0) { throw 'Build failed.' }
 $shortcutShell = New-Object -ComObject WScript.Shell
-$shortcut = $shortcutShell.CreateShortcut((Join-Path $PSScriptRoot 'Desktop Calendar P1.lnk'))
+$shortcut = $shortcutShell.CreateShortcut((Join-Path $PSScriptRoot 'Desktop Calendar.lnk'))
 $shortcut.TargetPath = Join-Path $PSScriptRoot "bin\$Configuration\net10.0-windows\DesktopCalendar.exe"
 $shortcut.WorkingDirectory = $PSScriptRoot
-$shortcut.Description = 'Desktop Calendar P1'
+$shortcut.Description = 'Desktop Calendar'
 $shortcut.IconLocation = $shortcut.TargetPath + ',0'
 $shortcut.Save()
 if ($Test) {
@@ -31,3 +31,5 @@ if ($Test) {
     $checks | Select-String -Pattern '^FAIL |^Failures:'
     if ($testProcess.ExitCode -ne 0 -or ($checks | Select-String -Pattern '^FAIL ' -Quiet)) { throw 'P1 checks failed. See artifacts/p1-checks.txt.' }
 }
+& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'scripts\Clean-Workspace.ps1') -KeepConfiguration $Configuration
+if ($LASTEXITCODE -ne 0) { throw 'Workspace cleanup failed; no processes were stopped.' }

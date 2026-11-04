@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$FixtureRoot, [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]*$')][string]$Configuration='P9', [ValidateRange(180,86400)][int]$DurationSeconds=180)
+param([Parameter(Mandatory=$true)][string]$FixtureRoot, [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]*$')][string]$Configuration='Release', [ValidateRange(180,86400)][int]$DurationSeconds=180)
 $ErrorActionPreference='Stop'
 $allowed=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot 'artifacts'))+'\'
 $FixtureRoot=[IO.Path]::GetFullPath($FixtureRoot)

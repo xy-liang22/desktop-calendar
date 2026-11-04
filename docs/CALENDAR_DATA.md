@@ -22,9 +22,9 @@ P7 将个人业务文件与知识资料分离。程序内置 `Core/calendar.json
 窗口与脚本共用 Core.CalendarKnowledge，不存在另一套PS解析器：
 
 ```powershell
-.\Update-CalendarData.ps1 -Action Status -Configuration P8
-.\Update-CalendarData.ps1 -Action Update -Online -Configuration P8
-.\Update-CalendarData.ps1 -Action Import -PackagePath C:\trusted\calendar.json -Configuration P8
+.\Update-CalendarData.ps1 -Action Status
+.\Update-CalendarData.ps1 -Action Update -Online
+.\Update-CalendarData.ps1 -Action Import -PackagePath C:\trusted\calendar.json
 ```
 
 默认Status离线；Update必须显式Online；只写知识文件及其备份，不读写 planner-data.json。格式含SchemaVersion、UpdatedAt、各资料覆盖年份、带Date/Kind/Zh/En/Source的Events。24节气/每年17个具名HK假期、年份、重复、可信来源和体积均校验；同目录临时文件刷盘再替换，旧文件保留.bak。较新schema拒绝覆盖；损坏本机文件可从.bak或内置包继续显示，但导入/更新不悄悄覆盖损坏原件。

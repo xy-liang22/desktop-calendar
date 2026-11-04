@@ -1,4 +1,4 @@
-param([ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]*$')][string]$Configuration='P9')
+param([ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]*$')][string]$Configuration='Release')
 $ErrorActionPreference='Stop'
 $project=Split-Path $PSScriptRoot -Parent
 $output=Join-Path $project ('artifacts\entry-checks-'+[Guid]::NewGuid().ToString('N'));[IO.Directory]::CreateDirectory($output)|Out-Null

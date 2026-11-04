@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
 $package = Join-Path $projectRoot 'artifacts\package'
-$testRoot = Join-Path $projectRoot ('artifacts\install-checks\' + [Guid]::NewGuid().ToString('N'))
+$testRoot = Join-Path $projectRoot ('artifacts\checks\install\run-' + [Guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($testRoot) | Out-Null
 $results = [Collections.Generic.List[string]]::new()
 $installer = Join-Path $projectRoot 'Install-DesktopCalendar.ps1'
@@ -125,3 +125,5 @@ $failed = @($results | Where-Object { $_ -like 'FAIL *' }).Count
 Write-Output ('Install checks PASS=' + @($results | Where-Object { $_ -like 'PASS *' }).Count + ' FAIL=' + $failed)
 $results | Where-Object { $_ -like 'FAIL *' }
 if ($failed -gt 0) { throw "Install checks failed: $testRoot" }
+& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'Clean-Workspace.ps1') -Artifacts
+if($LASTEXITCODE -ne 0){throw 'Cleanup failed.'}

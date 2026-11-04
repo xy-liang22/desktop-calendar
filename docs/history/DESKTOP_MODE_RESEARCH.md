@@ -1,6 +1,10 @@
+# 历史桌面路线研究（归档）
+
+以下为实验当时的记录，旧命令和已移除实验不作为当前入口。实验源码见 Git 310a87b；当前方案、状态及操作见 [README](../../README.md) 和 [TESTING](../TESTING.md)。
+
 # P1.1-2：桌面宿主实验与测试平台修复
 
-2026-10-30 P1.1-3 修订说明：本次仅修复完整/折叠恢复、待办时间与完成分组，保留已验收的 O 方案；没有新增桌面候选或重开 A–F。正常 owner 模式的八次真实进程重启检查与隔离普通窗口的实际 GUI 恢复观察分别记录，不能互相冒充。当前详细结果见 [TESTING](TESTING.md)，长期规则见根目录 AGENTS.md。
+2026-10-30 P1.1-3 修订说明：本次仅修复完整/折叠恢复、待办时间与完成分组，保留已验收的 O 方案；没有新增桌面候选或重开 A–F。正常 owner 模式的八次真实进程重启检查与隔离普通窗口的实际 GUI 恢复观察分别记录，不能互相冒充。当前详细结果见 [TESTING](../TESTING.md)，长期规则见根目录 AGENTS.md。
 
 ## 最新决定：O 核心人工验收通过，批准 P1.1-3 整合（2026-10-30）
 
@@ -8,7 +12,7 @@
 
 用户接受置顶回 O 后实验控制台偶尔需再次点击才覆盖的现象，不要求继续研究。主程序整合先脱离 owner，清除 WPF/原生 TOPMOST，再恢复 owner；自动检查三次往返后 TOPMOST=false。没有叠加候选 2、WinEventHook、失焦压底、SetParent、WS_CHILD、私有消息或持续 Z-order 操作。
 
-P1.1-3 增量提取独立 `DesktopWindowMode`，托盘管理器独立于组件 HWND，保留普通工具窗口安全回退；加入今日待办模拟折叠与窗口偏好。主程序 123 项回归通过；电脑工具启动后不能选择 owner 工具窗口，进程存活/响应不等于视觉验收。**当前主程序仍待用户验收，不进入下一子阶段。** 详见 [TESTING](TESTING.md) 与 [DECISIONS](DECISIONS.md)。Win10、混合 DPI、Explorer 重启、休眠暂缓但保留后续门槛。
+P1.1-3 增量提取独立 `DesktopWindowMode`，托盘管理器独立于组件 HWND，保留普通工具窗口安全回退；加入今日待办模拟折叠与窗口偏好。主程序 123 项回归通过；电脑工具启动后不能选择 owner 工具窗口，进程存活/响应不等于视觉验收。**当前主程序仍待用户验收，不进入下一子阶段。** 详见 [TESTING](../TESTING.md) 与 [DECISIONS](../DECISIONS.md)。Win10、混合 DPI、Explorer 重启、休眠暂缓但保留后续门槛。
 
 ---
 
@@ -419,7 +423,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\experiments\DesktopHostPro
 5. Explorer 重启、休眠、混合 DPI 由用户手动做：先保留控制台；需要重启 Explorer 时在任务管理器选择“Windows 资源管理器 → 重新启动”。不要求自动重新嵌入，但必须能找回和退出。没有相应环境则记未测。
 6. **“退出整个实验”**结束控制台及其组件；组件“退出组件”只关自身，控制台仍可找回。
 
-若普通组件再次不可见，请反馈控制台 PID、HWND、Loaded/ContentRendered、模式、cloaked、矩形、遮挡采样和最后命令 ACK/错误；不要提供或提交私人输入、桌面截图、凭证。详细记录见 [TESTING](TESTING.md)。
+若普通组件再次不可见，请反馈控制台 PID、HWND、Loaded/ContentRendered、模式、cloaked、矩形、遮挡采样和最后命令 ACK/错误；不要提供或提交私人输入、桌面截图、凭证。详细记录见 [TESTING](../TESTING.md)。
 
 ## 自动证据与人工边界
 

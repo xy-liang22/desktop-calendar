@@ -15,16 +15,13 @@
     <!-- WPF owns the process DPI manifest; WinForms is used only for NotifyIcon/Screen. -->
     <NoWarn>$(NoWarn);WFO0003</NoWarn>
   </PropertyGroup>
-  <!-- Keep the independently runnable desktop experiment out of the P1 application. -->
+  <!-- WPF checks share this assembly's internal UI APIs; Core checks are a separate project. -->
   <ItemGroup>
     <ProjectReference Include="Core\DesktopCalendar.Core.csproj" />
     <Resource Include="assets\branding\DesktopCalendar.ico" />
     <Resource Include="assets\branding\logo-64.png" />
-    <Compile Remove="experiments\**\*.cs" />
     <Compile Remove="Core\**\*.cs" />
     <Compile Remove="tests\**\*.cs" />
-    <Page Remove="experiments\**\*.xaml" />
-    <EmbeddedResource Remove="experiments\**\*" />
-    <None Remove="experiments\**\*" />
+    <Compile Include="tests\WpfChecks\*.cs" />
   </ItemGroup>
 </Project>
