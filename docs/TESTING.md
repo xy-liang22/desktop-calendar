@@ -10,6 +10,8 @@
 
 ### 本轮实际执行
 
+收尾补充：用户确认从托盘退出后，代理核实没有DesktopCalendar进程，执行同一清理脚本，移除原先保留的bin/InteractionFix。**PASS**：bin仅剩Release，Release EXE清理前后SHA256一致；未改个人数据或main，无需重跑功能回归。上文PID45220及目录保留描述为清理前状态。
+
 | 验证 | 结果 | 当前证据（均为忽略产物） |
 |---|---|---|
 | 离线Release重建 | **PASS，0警告/0错误** | bin/Release/net10.0-windows |
