@@ -270,17 +270,25 @@ internal static partial class PlannerDialogs
     internal static void ManageCategories(MainWindow owner, PlannerController controller)
     {
         var sheet = new Sheet(T("PlannerManageCategories"));
-        var list = new ListBox { Height = 110, DisplayMemberPath = nameof(Category.Name) }; var name = Input(); var color = new ColorField("#A3D9C4", false); Category? selected = null;
-        void Refresh() { list.ItemsSource = controller.State!.Categories.Where(c => !c.Archived).ToArray(); }
-        Refresh(); sheet.Body.Children.Add(list); sheet.Field("PlannerCategoryName", name); sheet.Field("PlannerCategoryColor", color);
-        list.SelectionChanged += (_, _) => { selected = list.SelectedItem as Category; name.Text = selected?.Name ?? ""; color.Value = selected?.Color ?? "#A3D9C4"; };
+        var name = Input(); var color = new ColorField("#A3D9C4", false); Category? selected = null; bool refreshing = false; CategoryOrderList list = null!;
+        void Refresh(bool keepDraft = false)
+        {
+            var id = selected?.Id; refreshing = true; list.ItemsSource = PlannerQueries.OrderedCategories(controller.State!); selected = controller.State!.Categories.FirstOrDefault(c => c.Id == id && !c.Archived); list.SelectedItem = selected; refreshing = false;
+            if (!keepDraft) { name.Text = selected?.Name ?? ""; color.Value = selected?.Color ?? "#A3D9C4"; }
+        }
+        list = new CategoryOrderList(controller, () => Refresh(true), key => sheet.Error.Text = T(key));
+        Refresh(); sheet.Body.Children.Add(list); var hint = PlannerView.Text(T("CategoryOrderHint"), 10, "#A2AFBC"); hint.TextWrapping = TextWrapping.Wrap; sheet.Body.Children.Add(hint);
+        var move = new StackPanel { Orientation = Orientation.Horizontal }; move.Children.Add(PlannerView.Button(T("CategoryMoveUp"), async () => await list.MoveSelectedAsync(-1))); move.Children.Add(PlannerView.Button(T("CategoryMoveDown"), async () => await list.MoveSelectedAsync(1))); sheet.Body.Children.Add(move);
+        sheet.Field("PlannerCategoryName", name); sheet.Field("PlannerCategoryColor", color);
+        list.SelectionChanged += (_, _) => { if (refreshing) return; selected = list.SelectedItem as Category; name.Text = selected?.Name ?? ""; color.Value = selected?.Color ?? "#A3D9C4"; };
         sheet.Body.Children.Add(PlannerView.Button(T("PlannerNewCategory"), () => { list.SelectedIndex = -1; selected = null; name.Clear(); color.Value = "#A3D9C4"; name.Focus(); }));
         sheet.Body.Children.Add(PlannerView.Button(T("PlannerArchiveCategory"), async () => { if (selected == null || !Confirm(owner, T("PlannerArchiveCategory"), T("PlannerArchiveHint"))) return; if (await controller.ExecuteAsync(new ArchiveCategory(selected.Id))) Refresh(); else sheet.Error.Text = T(controller.NoticeKey); }));
         sheet.Body.Children.Add(PlannerView.Button(T("PlannerDefaultCategories"), async () => { if (await controller.ExecuteAsync(new InitializeCategories())) Refresh(); else sheet.Error.Text = T(controller.NoticeKey); }));
         sheet.Save(async () =>
         {
             if (string.IsNullOrWhiteSpace(name.Text) || !System.Text.RegularExpressions.Regex.IsMatch(color.Value ?? "", "^#[0-9a-fA-F]{6}$")) { sheet.Error.Text = T("PlannerCategoryInvalid"); return false; }
-            bool ok = await controller.ExecuteAsync(new SaveCategory((selected ?? new Category()) with { Name = name.Text.Trim(), Color = color.Value! })); if (!ok) sheet.Error.Text = T(controller.NoticeKey); return ok;
+            var basis = selected == null ? new Category { SortKey = controller.State!.Categories.Select(c => c.SortKey).DefaultIfEmpty(-1024).Max() + 1024 } : controller.State!.Categories.Single(c => c.Id == selected.Id);
+            bool ok = await controller.ExecuteAsync(new SaveCategory(basis with { Name = name.Text.Trim(), Color = color.Value! })); if (!ok) sheet.Error.Text = T(controller.NoticeKey); return ok;
         }); Show(owner, sheet);
     }
     internal static void Decoration(MainWindow owner, PlannerController controller, DateOnly date)

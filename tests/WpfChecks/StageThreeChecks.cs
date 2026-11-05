@@ -68,6 +68,7 @@ internal static partial class StageThreeChecks
                 Check("fresh WPF process restores collapsed view with real today items", window.Mode == DisplayMode.Compact && window.CompactRealList.Children.OfType<CheckBox>().Any());
                 Check("startup has no visible default full layout", !window.VisibleBeforePrepared && window.StartupVisible.All(v => v.Mode == DisplayMode.Compact));
                 Check("manual sibling mode survives actual app restart", controller.State!.TodoOrderings.Any(o => o.Mode == TodoSort.Manual));
+                Check("category order survives independent WPF restart", PlannerQueries.OrderedCategories(controller.State!).Select(c => c.Id.ToString()).SequenceEqual(File.ReadAllLines(Path.Combine(DirectoryPath, "category-order-ids.txt"))));
                 Check("calendar wrapping preference survives independent app restart", controller.TextMode == CalendarTextMode.Full);
                 var p4Ids = File.ReadAllLines(Path.Combine(DirectoryPath, "p4-ids.txt")).Select(Guid.Parse).ToArray();
                 Check("P4 series status, materialized occurrence and carry move survive independent restart", controller.State!.Series.Single(s => s.Id == p4Ids[0]).Archived && controller.State.Todos.Any(t => t.Id == p4Ids[1] && t.Origin != null) && controller.State.Todos.Single(t => t.Id == p4Ids[2]) is Todo carry && carry.Kind == TodoKind.CarryLatest && carry.Moves.Length == 1);

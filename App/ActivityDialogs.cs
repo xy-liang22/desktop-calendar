@@ -67,13 +67,8 @@ internal static class ActivityDialogs
         if (!c.Writable) return false; var value = original ?? draft ?? Draft(c); var sheet = new PlannerDialogs.Sheet(T(original == null ? "ActivityNew" : "ActivityEdit"), 740);
         TextBox Field(string key, string text, bool multiline = false) { var input = new TextBox { Text = text, MinHeight = 28, Padding = new Thickness(5), AcceptsReturn = multiline, TextWrapping = multiline ? TextWrapping.Wrap : TextWrapping.NoWrap, Height = multiline ? 50 : double.NaN }; sheet.Field(key, input); return input; }
         var title = Field("PlannerTitle", value.Title); var summary = Field("ActivitySummary", value.Summary, true);
-        ComboBox Emoji(string key, string current, string[] items)
-        {
-            var label = new FrameworkElementFactory(typeof(TextBlock)); label.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding());
-            var combo = new ComboBox { IsEditable = true, ItemsSource = items, Text = current, MinHeight = 28, ItemTemplate = new DataTemplate { VisualTree = label } }; sheet.Field(key, combo); return combo;
-        }
-        var emoji = Emoji("ActivityEmoji", value.Emoji, ["", "💼", "📚", "💻", "🏃", "🍽️", "😴", "🎨", "🎯", "☕"]);
-        var reaction = Emoji("ActivityReaction", value.Reaction, ["", "😊", "😌", "🤔", "😴", "😣", "🔥", "❤️", "👍"]);
+        var emoji = new EmojiPicker(value.Emoji); sheet.Field("ActivityEmoji", emoji);
+        var reaction = new EmojiPicker(value.Reaction, true); sheet.Field("ActivityReaction", reaction);
         var appearance = new TodoAppearance(c, value.CategoryId, value.Color); sheet.Field("PlannerCategory", appearance);
         var zone = Field("ActivityZone", value.TimeZoneId); var hint = PlannerView.Text(T("ActivityTimeHint"), 10, "#A2AFBC"); hint.TextWrapping = TextWrapping.Wrap; sheet.Body.Children.Add(hint);
         var periods = new StackPanel(); sheet.Field("ActivityPeriods", periods); var rows = new List<PeriodFields>();

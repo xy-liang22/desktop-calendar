@@ -212,7 +212,9 @@ internal sealed class PlannerView : Grid
         string meta = string.Join(" · ", new[] { task.CategoryId == null ? null : Localization.Category(Controller.State?.Categories.FirstOrDefault(c => c.Id == task.CategoryId)), task.Important ? T("PlannerImportant") : null, task.Urgent ? T("PlannerUrgent") : null, task.Kind switch { TodoKind.Occurrence => T("RepeatPeriodicMark"), TodoKind.CarryHistory => T("RepeatHistoryMark"), TodoKind.CarryLatest => T("RepeatLatestMark"), _ => null } }.Where(s => !string.IsNullOrWhiteSpace(s)));
         if (task.CompletionIntent == CompletionIntent.ManualIncomplete && node.Children.Length > 0) meta += (meta.Length > 0 ? " · " : "") + T("ParentPendingOverride");
         if (task.CompletionSnapshotInvalidated) meta += (meta.Length > 0 ? " · " : "") + T("ParentSnapshotInvalidated");
-        if (meta.Length > 0) content.Children.Add(Text(meta, 10, "#A2AFBC"));
+        string description = (task.Description ?? "").Replace('\r', ' ').Replace('\n', ' ').Trim();
+        if (description.Length > 0) meta += (meta.Length > 0 ? " · " : "") + description;
+        if (meta.Length > 0) { var info = Text(meta, 10, "#A2AFBC"); info.TextTrimming = TextTrimming.CharacterEllipsis; info.ToolTip = string.IsNullOrWhiteSpace(task.Description) ? meta : task.Description; content.Children.Add(info); }
         decimal progress = Controller.State == null ? 0 : PlannerQueries.Progress(Controller.State, TodoRef.Of(task));
         if (progress > 0 || node.Children.Length > 0) { content.Children.Add(new ProgressBar { Minimum = 0, Maximum = 100, Value = (double)progress, Height = 3, Margin = new Thickness(0, 5, 0, 3), Foreground = PrototypeViews.Brush("#A3D9C4"), Background = PrototypeViews.Brush("#263B45"), BorderThickness = new Thickness(0) }); content.Children.Add(Text(progress.ToString("0.#", CultureInfo.CurrentCulture) + "%", 10, "#A2AFBC")); }
         At(row, content, 0, 2);

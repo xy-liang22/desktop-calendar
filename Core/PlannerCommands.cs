@@ -30,6 +30,7 @@ public sealed record SaveReview(WeeklyReview Value) : PlannerCommand;
 public sealed record DeleteReview(Guid Id) : PlannerCommand;
 public sealed record AppendStatistics(Guid ReviewId, string Markdown) : PlannerCommand;
 public sealed record SaveCategory(Category Value) : PlannerCommand;
+public sealed record ReorderCategories(ImmutableArray<Guid> Ids) : PlannerCommand;
 public sealed record ArchiveCategory(Guid Id) : PlannerCommand;
 public sealed record InitializeCategories : PlannerCommand;
 public sealed record SaveAsset(LocalAsset Value) : PlannerCommand;
@@ -224,12 +225,19 @@ internal static partial class PlannerCommands
             case SaveCategory c:
             {
                 var v = Stamp(c.Value, s.Categories.SingleOrDefault(x => x.Id == c.Value.Id), now);
-                return new(s with { Categories = Put(s.Categories, v) }, v.Id);
+                return new(s with { Categories = s.Categories.Any(x => x.Id == v.Id) ? [.. s.Categories.Select(x => x.Id == v.Id ? v : x)] : s.Categories.Add(v) }, v.Id);
+            }
+            case ReorderCategories c:
+            {
+                var active = s.Categories.Where(x => !x.Archived).Select(x => x.Id).ToHashSet();
+                if (c.Ids.IsDefault || c.Ids.Length != active.Count || c.Ids.Distinct().Count() != c.Ids.Length || c.Ids.Any(id => !active.Contains(id))) throw new PlannerException("InvalidCategoryOrder");
+                var order = c.Ids.Select((id, index) => (id, key: index * 1024m)).ToDictionary(x => x.id, x => x.key);
+                return new(s with { Categories = [.. s.Categories.Select(x => order.TryGetValue(x.Id, out var key) && x.SortKey != key ? x with { SortKey = key, ModifiedAt = now } : x)] });
             }
             case InitializeCategories:
             {
                 foreach (var v in PlannerDefaults.Categories(s.Options.Language, now))
-                    if (!s.Categories.Any(x => x.BuiltInKey == v.BuiltInKey)) s = s with { Categories = s.Categories.Add(v) };
+                    if (!s.Categories.Any(x => x.BuiltInKey == v.BuiltInKey)) s = s with { Categories = s.Categories.Add(v with { SortKey = s.Categories.Select(x => x.SortKey).DefaultIfEmpty(-1024).Max() + 1024 }) };
                 return new(s);
             }
             case ArchiveCategory c:

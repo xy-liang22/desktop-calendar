@@ -29,7 +29,9 @@ internal static partial class StageThreeChecks
             Choice(s, "ActivityEmoji").Text = "😴"; Choice(s, "ActivityReaction").Text = "😊";
             var period = Children<PeriodFields>(s).Single(); period.Start.Text = "2027-01-05 23:00"; period.End.Text = "2027-01-06 07:00"; period.StartOffset.Text = period.EndOffset.Text = "+00:00";
             Click(Children<Button>(s).Single(b => Equals(b.Content, MainWindow.Text("ActivityAddPeriod")))); await Idle(); var second = Children<PeriodFields>(s).Last(); second.Start.Text = "2027-01-06 14:00"; second.End.Text = "2027-01-06 16:00"; second.StartOffset.Text = second.EndOffset.Text = "+00:00";
-            Children<Expander>(s).Single(e => Equals(e.Header, MainWindow.Text("ActivityGoal"))).IsExpanded = true; await Idle();
+            Children<Expander>(s).Single(e => Equals(e.Header, MainWindow.Text("ActivityGoal"))).IsExpanded = true; s.UpdateLayout();
+            await Eventually(() => Children<CheckBox>(s).Any(b => b.Content?.ToString()?.Contains(goal.Title) == true));
+            File.WriteAllText(Path.Combine(DirectoryPath, "p5-goal-selection-diagnostic.json"), System.Text.Json.JsonSerializer.Serialize(new { c.SelectedDate, Week = c.Week(), Goal = goal.Week, Captions = Children<CheckBox>(s).Select(b => b.Content?.ToString()) }));
             Children<CheckBox>(s).Single(b => b.Content?.ToString()?.Contains(goal.Title) == true).IsChecked = true;
             var notes = Children<NoteEditor>(s).Single(); notes.Format.SelectedIndex = (int)NoteFormat.Markdown;
             notes.Source.Text = "# Created with notes\n- item\n> quote\n```cs\nvar x = 1;\n```\n| A | B |\n| --- | --- |\n| 1 | 2 |\n[link](https://example.invalid)\n![remote](https://example.invalid/a.png)\n<script>alert(1)</script>\n";

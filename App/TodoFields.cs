@@ -76,7 +76,7 @@ internal sealed class TodoAppearance : Grid
 {
     readonly PlannerController controller;
     readonly bool keepHistorical;
-    readonly ComboBox category = new() { MinHeight = 28, SelectedValuePath = nameof(CategoryOption.Id), Margin = new Thickness(0, 0, 5, 0) };
+    readonly ChoicePicker category = new() { SelectedValuePath = nameof(CategoryOption.Id), Margin = new Thickness(0, 0, 5, 0) };
     internal ColorField Color { get; }
     bool loading;
     internal Guid? CategoryId => (category.SelectedItem as CategoryOption)?.Id;
@@ -88,7 +88,8 @@ internal sealed class TodoAppearance : Grid
         Color = new ColorField(color, true, compact); SetColumn(Color, 1); Children.Add(category); Children.Add(Color);
         var row = new FrameworkElementFactory(typeof(StackPanel)); row.SetValue(StackPanel.OrientationProperty, Orientation.Horizontal);
         var dot = new FrameworkElementFactory(typeof(Ellipse)); dot.SetValue(Ellipse.WidthProperty, 8d); dot.SetValue(Ellipse.HeightProperty, 8d); dot.SetValue(Ellipse.MarginProperty, new Thickness(0, 0, 6, 0)); dot.SetBinding(Shape.FillProperty, new Binding(nameof(CategoryOption.Swatch))); row.AppendChild(dot);
-        var label = new FrameworkElementFactory(typeof(TextBlock)); label.SetBinding(TextBlock.TextProperty, new Binding(nameof(CategoryOption.Name))); label.SetValue(TextBlock.ForegroundProperty, ThemeColors.Brush("#EDF2F5")); row.AppendChild(label); category.ItemTemplate = new DataTemplate { VisualTree = row };
+        var label = new FrameworkElementFactory(typeof(TextBlock)); label.SetBinding(TextBlock.TextProperty, new Binding(nameof(CategoryOption.Name))); label.SetValue(TextBlock.ForegroundProperty, ThemeColors.Brush("#EDF2F5")); label.SetValue(TextBlock.MaxWidthProperty, 160d); label.SetValue(TextBlock.TextTrimmingProperty, TextTrimming.CharacterEllipsis); label.SetBinding(TextBlock.ToolTipProperty, new Binding(nameof(CategoryOption.Name))); row.AppendChild(label); category.ItemTemplate = new DataTemplate { VisualTree = row };
+        category.SizeChanged += (_, _) => category.PopupWidth = Math.Clamp(category.ActualWidth, 260, 400);
         AutomationProperties.SetName(category, MainWindow.Text("PlannerCategory")); Refresh(id);
         category.SelectionChanged += (_, _) => { UpdateDefault(); if (!loading) { Color.Value = null; Changed?.Invoke(); } };
         Color.Changed += () => { if (!loading) Changed?.Invoke(); };
@@ -97,7 +98,7 @@ internal sealed class TodoAppearance : Grid
     internal void Refresh(Guid? selected = null)
     {
         var wanted = selected ?? CategoryId; var raw = Color.Value; loading = true;
-        category.ItemsSource = new[] { new CategoryOption(null, MainWindow.Text("PlannerUnclassified"), "#A3D9C4") }.Concat((controller.State?.Categories ?? []).Where(c => !c.Archived && !PlannerDefaults.LegacyPriority(c) || keepHistorical && c.Id == wanted).Select(c => new CategoryOption(c.Id, Localization.Category(c) + (PlannerDefaults.LegacyPriority(c) ? " · " + MainWindow.Text("LegacyCategory") : ""), c.Color))).ToArray();
+        category.ItemsSource = new[] { new CategoryOption(null, MainWindow.Text("PlannerUnclassified"), "#A3D9C4") }.Concat((controller.State == null ? [] : PlannerQueries.OrderedCategories(controller.State, true)).Where(c => !c.Archived && !PlannerDefaults.LegacyPriority(c) || keepHistorical && c.Id == wanted).Select(c => new CategoryOption(c.Id, Localization.Category(c) + (PlannerDefaults.LegacyPriority(c) ? " · " + MainWindow.Text("LegacyCategory") : ""), c.Color))).ToArray();
         category.SelectedValue = wanted; if (category.SelectedIndex < 0) category.SelectedIndex = 0;
         UpdateDefault(); Color.Value = raw; loading = false;
     }

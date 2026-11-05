@@ -35,4 +35,7 @@
  <s:String x:Key="CalendarLabel">月历 · 演示日期</s:String><s:String x:Key="SplitTip">拖动调整栏宽</s:String>
  <s:String x:Key="TimelineTip">示例时间块 · P1 不支持日程编辑</s:String>
  <s:String x:Key="TimelineZoomTip">滚轮滚动 · Ctrl + 滚轮缩放时间轴</s:String>
+ <s:String x:Key="PickerAll">全部表情</s:String><s:String x:Key="PickerSearch">搜索表情、常用词或直接输入自定义表情</s:String><s:String x:Key="PickerNoResults">没有匹配；仍可在上方直接输入</s:String><s:String x:Key="PickerClear">清除表情</s:String>
+ <s:String x:Key="EmojiFaces">笑脸与心情</s:String><s:String x:Key="EmojiPeople">人物与手势</s:String><s:String x:Key="EmojiNature">动物与自然</s:String><s:String x:Key="EmojiFood">食物与饮料</s:String><s:String x:Key="EmojiTravel">旅行与地点</s:String><s:String x:Key="EmojiActivities">活动与运动</s:String><s:String x:Key="EmojiObjects">物品与办公</s:String><s:String x:Key="EmojiSymbols">爱心与符号</s:String>
+ <s:String x:Key="CategoryOrderHint">拖动分类调整顺序，绿色线表示插入位置；排序立即保存，可撤销。也可选中后上下移动。</s:String><s:String x:Key="CategoryMoveUp">↑ 上移</s:String><s:String x:Key="CategoryMoveDown">↓ 下移</s:String>
 </ResourceDictionary>

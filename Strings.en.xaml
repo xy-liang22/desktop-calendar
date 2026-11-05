@@ -366,4 +366,7 @@
  <s:String x:Key="AppearanceInvalid">Check colors, week count and first/last weeks. The range must match the row count.</s:String>
  <s:String x:Key="TodoSaveChangeType">Save and change type…</s:String>
  <s:String x:Key="ShortcutSaveFailed">The shortcut setting could not be saved locally. Your input is retained; check data-folder permissions and retry.</s:String>
+ <s:String x:Key="PickerAll">All emoji</s:String><s:String x:Key="PickerSearch">Search emoji or common words; custom emoji can be typed above</s:String><s:String x:Key="PickerNoResults">No matches; you can still type a custom emoji above</s:String><s:String x:Key="PickerClear">Clear emoji</s:String>
+ <s:String x:Key="EmojiFaces">Faces and mood</s:String><s:String x:Key="EmojiPeople">People and gestures</s:String><s:String x:Key="EmojiNature">Animals and nature</s:String><s:String x:Key="EmojiFood">Food and drink</s:String><s:String x:Key="EmojiTravel">Travel and places</s:String><s:String x:Key="EmojiActivities">Activities and sport</s:String><s:String x:Key="EmojiObjects">Objects and office</s:String><s:String x:Key="EmojiSymbols">Hearts and symbols</s:String>
+ <s:String x:Key="CategoryOrderHint">Drag categories; the green line marks insertion. Order saves immediately and supports undo. You can also select a category and move it up or down.</s:String><s:String x:Key="CategoryMoveUp">↑ Move up</s:String><s:String x:Key="CategoryMoveDown">↓ Move down</s:String>
 </ResourceDictionary>

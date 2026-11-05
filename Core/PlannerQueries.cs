@@ -9,6 +9,8 @@ public sealed record TodoDateNode(Todo Value, bool ContextOnly, ImmutableArray<T
 
 public static class PlannerQueries
 {
+    public static ImmutableArray<Category> OrderedCategories(PlannerState state, bool includeArchived = false) =>
+        [.. state.Categories.Where(c => includeArchived || !c.Archived).OrderBy(c => c.SortKey)];
     public static string AssetReference(Guid id) => id != Guid.Empty ? "asset://" + id.ToString("D") : throw new PlannerException("InvalidAssetReference");
     public static LocalAsset ResolveAsset(PlannerState state, string reference)
     {

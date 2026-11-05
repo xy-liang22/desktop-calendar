@@ -7,6 +7,7 @@
 P3.2：新用户五分类工作/家务/个人/家庭/健康，旧分类不自动迁移或重分类；仅用户明确初始化补齐缺失内置键。NewTodo子草稿捕获父分类/覆盖色，此后独立；不是Core每次Save自动继承。UI换行模式在独立窗口偏好，业务schema仍3。
 
 - `PlannerState` 是不可变快照，文档 ID、递增 Revision 和实体数组；`Entity` 含 GUID 与 UTC 创建/修改时间。分类共享，归档保留历史引用。排序键 decimal，完成状态仅决定分组，不改基础键。
+- 分类显示通过`OrderedCategories`按既有SortKey稳定排序。`ReorderCategories`接收全部活动分类ID且不能遗漏/重复/夹带归档或未知ID，一次事务设置排序键，Undo/Redo及JSON恢复沿用原服务；归档记录、分类颜色和待办/日程引用不变。旧同键项保留原数组相对顺序，编辑分类不将其移到数组尾，主动补齐缺失内置分类追加到已有分类之后。schema仍3。
 - `TodoOrdering` 记录根组的日期或子组的父ID，以及Manual/PlannedTime模式；默认时间优先，手动混排模式和键同时存JSON，重启不悄悄切回时间排序。`SetTodoOrderMode`恢复时间排序时仍保留原手动键。`DayDecoration`记录每天手选底色，单日期唯一；真实历法/假日由独立知识模块提供，不写个人payload。
 - `Todo`：一次性、持续或物化周期实例；计划日期DateOnly、可选TimeOnly、优先级/描述/分类/颜色、父节点、进度、完成时间。`ProgressMode.Default`递归平均直接子分支，叶用ManualProgress；显式Manual不派生进度。完成来源规则如下，不依据“进度100%”直接决定完成。
 - 周期使用 `TodoSeries -> RuleVersion -> Templates`。模板树按版本保存；实例身份是系列 ID＋节点 ID＋**原始出现日期**的稳定 SHA256 派生 GUID，不受系统文化、移动日期或重启影响。不预生成无限任务；查询按日期生成，只有修改/完成/建立关联时物化，并物化祖先。删除节点保留RetiredNodeIds墓碑，保护已完成实例的身份有效性。
