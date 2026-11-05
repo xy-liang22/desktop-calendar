@@ -1,5 +1,9 @@
 # 阶段验证记录
 
+## 2026-11-05：main 合并核验
+
+**PASS**：合并前工作区干净；fetch后确认远程无分叉（origin/main...dev/p7-p8=0/32），本地/远程main均为d0e76d5。已执行git switch main及git merge --ff-only dev/p7-p8，main到达3817716；git diff --exit-code dev/p7-p8 HEAD为空，功能代码与已测版本完全一致。随后仅追加README/PRD/DECISIONS/TESTING的基线说明，无产品代码改动，不重复运行功能测试。下节自动/渲染结果及NOT VERIFIED仍适用；合并不等于新的GUI验收，不创建正式Release。
+
 ## 2026-11-05：0.8.3 表情网格、分类标签/排序与待办说明
 
 ### 已实现与实际验证
