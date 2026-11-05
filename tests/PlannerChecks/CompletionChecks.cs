@@ -48,7 +48,7 @@ internal static partial class Checks
         await Run(w, new SetTodoCompleted(Ref(parent), true)); await Run(w, new SetTodoCompleted(Ref(parent), false)); await Run(w, new SetTodoCompleted(Ref(added), false));
         Check("nested snapshots restore without recursive update loops", Node(added).Status == TodoStatus.Pending && Node(branch).Status == TodoStatus.Completed);
         var stored = PlannerCodec.Encode(w.Snapshot!); var reloaded = PlannerCodec.Decode(stored, Utc).State;
-        Check("schema3 preserves source and invalidation flags", reloaded.Todos.Single(t => t.Id == added).CompletionIntent == CompletionIntent.ManualIncomplete && PlannerCodec.CurrentSchema == 3);
+        Check("current schema preserves source and invalidation flags", reloaded.Todos.Single(t => t.Id == added).CompletionIntent == CompletionIntent.ManualIncomplete && PlannerCodec.CurrentSchema == 4);
         var old = PlannerState.Empty("UTC") with { Todos = [Todo("legacy", day) with { Status = TodoStatus.Completed, CompletedAt = Now, CompletionIntent = CompletionIntent.ManualComplete }] };
         var legacy = PlannerCodec.Decode(PlannerCodec.EncodeLegacyV2ForMigration(old), Utc);
         Check("actual schema2 missing new completion fields migrates preserving identity/status", legacy.Migrated && legacy.State.Id == old.Id && legacy.State.Todos[0].Status == TodoStatus.Completed && legacy.State.Todos[0].CompletionIntent == CompletionIntent.ManualComplete && legacy.State.Todos[0].CompletionSnapshot == null);

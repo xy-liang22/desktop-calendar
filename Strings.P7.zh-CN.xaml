@@ -22,7 +22,7 @@
  <s:String x:Key="CalendarNoCN">内地放假调休：此年尚无已核验资料</s:String>
  <s:String x:Key="CalendarNoHK">香港公众假期：此年尚无已核验资料</s:String>
  <s:String x:Key="CalendarSources">资料来源：香港天文台、香港特区政府1823、国务院办公厅；数据权利归原提供者。DATA.GOV.HK 开放资料使用条款。</s:String>
- <s:String x:Key="CalendarAlmanac">黄历宜忌暂无已获授权来源，未启用。</s:String>
+ <s:String x:Key="CalendarAlmanac">黄历：lunar-csharp 1.6.8（MIT），1901–2100，传统历法参考；不替代官方假日。</s:String>
  <s:String x:Key="CalendarStatus">农历：1901-02-19—2101-01-28；节气：{0}；内地：{1}；香港：{2}；资料时间：{3}</s:String>
  <s:String x:Key="CalendarCN">内地假期安排</s:String><s:String x:Key="CalendarWork">内地补班</s:String><s:String x:Key="CalendarHK">香港公众假期</s:String><s:String x:Key="CalendarTerm">节气</s:String><s:String x:Key="CalendarFestival">传统节日</s:String>
  <s:String x:Key="SettingsBusy">请先完成或取消当前编辑，再更改设置。</s:String>
@@ -62,4 +62,25 @@
  <s:String x:Key="AppearanceInvalid">请检查颜色、显示周数和起止周；结束周须与行数一致。</s:String>
  <s:String x:Key="TodoSaveChangeType">保存并更改类型…</s:String>
  <s:String x:Key="ShortcutSaveFailed">快捷键设置无法写入本地文件，输入已保留。请检查数据目录权限后重试。</s:String>
+ <s:String x:Key="CategoryEditHint">名称和颜色请点保存；保存后可继续编辑。排序即时保存。关闭时仅放弃当前未保存的输入。</s:String>
+ <s:String x:Key="CategorySaved">已保存，可继续编辑其他分类。</s:String>
+ <s:String x:Key="ActivityTodoDate">选择待办日期</s:String>
+ <s:String x:Key="ActivityExistingLink">已关联（不在所选日期）</s:String>
+ <s:String x:Key="ActivityFormerTodo">原待办</s:String>
+ <s:String x:Key="DisplayTimeZone">显示时区</s:String>
+ <s:String x:Key="PlannerBusy">正在保存其他修改，请稍后重试。</s:String>
+ <s:String x:Key="SystemTimeZone">跟随系统时区</s:String>
+ <s:String x:Key="DisplayTimeZoneHint">日程与有来源时区的待办按此时区显示；原始时间不变。旧版无时区待办及无时间待办保留原日期。历史周目标/总结保留创建时的周与时区。</s:String>
+ <s:String x:Key="TodoTimeZone">计划时间所属时区</s:String>
+ <s:String x:Key="FloatingTodoTime">浮动时间（保留日期和时间）</s:String>
+ <s:String x:Key="TodoTimeOffset">重复小时的 UTC 偏移（通常留空）</s:String>
+ <s:String x:Key="TodoTimeZoneHint">仅编辑器显示时区。夏令时跳过的时间不可保存；重复小时需填 +08:00 / -04:00 等偏移。周期规则未来遇到无效或不明确的时间时保留原计划并提示，不猜测换算。</s:String>
+ <s:String x:Key="TodoTimeUnresolved">计划时间需确认，尚未换算；请在编辑器检查夏令时重复/缺失时间。</s:String>
+ <s:String x:Key="AlmanacReference">黄历 · 传统历法参考（lunar-csharp 1.6.8）</s:String>
+ <s:String x:Key="AlmanacSuitable">宜</s:String>
+ <s:String x:Key="AlmanacAvoid">忌</s:String>
+ <s:String x:Key="AlmanacUnsupported">黄历资料范围：1901–2100。此日期未覆盖。</s:String>
+ <s:String x:Key="AlmanacTerms">中文宜忌使用原文</s:String>
+ <s:String x:Key="CalendarDateDetails">日期详情 / 黄历</s:String>
+ <s:String x:Key="CategoryDone">完成</s:String>
 </ResourceDictionary>

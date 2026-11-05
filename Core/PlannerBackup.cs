@@ -94,7 +94,7 @@ public sealed class PlannerBackup
         }
         if (manifestBytes == null) throw new InvalidDataException("MissingManifest");
         var m = JsonSerializer.Deserialize<BackupManifest>(manifestBytes) ?? throw new InvalidDataException("ManifestEmpty");
-        if (m.Version != 1 || m.AppId != "desktop-calendar" || m.PlannerSchema is < 1 or > 3 || m.PlannerSchema != Schema(files) || m.CreatedAt == default || m.Files == null || m.Files.Any(e => e == null || string.IsNullOrEmpty(e.Path) || e.Sha256 == null || e.Length < 0 || e.Length > MaximumFile) || m.Files.Length != files.Count || m.Files.Select(e => e.Path).Distinct(StringComparer.OrdinalIgnoreCase).Count() != files.Count) throw new InvalidDataException("BackupVersionOrManifest");
+        if (m.Version != 1 || m.AppId != "desktop-calendar" || (m.PlannerSchema < 1 || m.PlannerSchema > PlannerCodec.CurrentSchema) || m.PlannerSchema != Schema(files) || m.CreatedAt == default || m.Files == null || m.Files.Any(e => e == null || string.IsNullOrEmpty(e.Path) || e.Sha256 == null || e.Length < 0 || e.Length > MaximumFile) || m.Files.Length != files.Count || m.Files.Select(e => e.Path).Distinct(StringComparer.OrdinalIgnoreCase).Count() != files.Count) throw new InvalidDataException("BackupVersionOrManifest");
         foreach (var entry in m.Files) if (!files.TryGetValue(entry.Path, out var bytes) || bytes.LongLength != entry.Length || Hash(bytes) != entry.Sha256) throw new InvalidDataException("BackupChecksumMismatch");
         ValidateFiles(files); return (new(m, fingerprint), files);
     }

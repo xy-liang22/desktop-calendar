@@ -1,5 +1,38 @@
 # 阶段验证记录
 
+## 2026-11-05：0.8.4 时区、日程关联/排版、分类连续编辑与离线黄历
+
+基于main a3b3092，在dev/activity-timezone增量实现；用户明确批准旧Todo浮动时间兼容规则、lunar-csharp 1.6.8 MIT离线依赖，以及验收后同步main。没有修改桌面owner方案、启动项配置或真实planner/图片，未启用多电脑同步。详细语义见PRD/DECISIONS/DATA_MODEL/CALENDAR_DATA。
+
+| 检查 | 最终结果 | 隔离证据 |
+|---|---|---|
+| 数据/原子JSON/迁移/关联/DST/备份恢复 | **367 PASS / 0 FAIL / 1 NOT VERIFIED** | artifacts/checks/data/run-5e2508438cdb47e6848b674eca17efdc |
+| WPF控件与独立进程恢复/损坏/未来schema | **451 PASS / 0 FAIL**（432+12+5+2） | artifacts/checks/wpf/run-f80f74da7ce64b219d237c9760195f38 |
+| 窗口/owner/托盘/恢复/缩放回归 | **374 PASS / 0 FAIL** | artifacts/p1-checks.txt；正常Windows桌面会话执行 |
+| 隔离安装/更新/卸载/数据保护 | **20 PASS / 0 FAIL** | artifacts/install-checks.txt；含新增缺库/许可证拒绝 |
+| 实际安装/开发包/开始菜单一致性 | **11 PASS / 0 FAIL** | artifacts/entry-checks-67e8fe0a6b8a4c169be7557bb8b8f885；7文件哈希相同，隔离启动实际安装EXE成功 |
+| 构建与框架依赖发布 | **PASS，0警告/0错误** | artifacts/package，0.8.4，7文件清单 |
+
+新增重点证据：跨时区换日与来源时间不变；旧浮动/日期任务不移日；周期邻日查询与发生ID；持续日期规则；手动/显示时间排序；DST空洞/歧义拒绝；旧schema3真实字段迁移后完成快照Guard和混合子任务恢复；显示偏好不写业务JSON。黄历1901–2100每年月末共2400样本及闰日/越界检查通过，不代表传统宜忌科学有效性。
+
+控件检查覆盖两页真实Activity换算、标题心情与时间摘要同行、Todo展示无时区、编辑保留来源墙钟并选中换算日、按日期/层级筛关联及保留跨日已有链接、备注内外ScrollViewer实际偏移、草稿/取消不丢内容、分类连续保存/只读失败重试/关闭弃未保存内容、时区偏好保存与重新建Controller、UTC−12/UTC+14的折叠标题及恢复今天、无效时区拒绝不污染Pending。完整既有P3–P8检查也执行。
+
+逐张查看实际WPF控件渲染输出：revision-activity-inline、revision-category-batch、revision-activity-notes-scroll、revision-timezone-settings、revision-almanac-zh-CN/en。确认摘要与时间同一文本流、心情在标题后、分类深色可读、保存后可继续编辑、中英黄历全文与来源可读。短日程块仍由实际时长约束，长摘要可能被裁剪，详情/悬停可读全文；设置中的平台时区名称随Windows语言。渲染图位于上述隔离目录，**不是电脑控制工具的实际桌面截图或真实鼠标操作证据**。
+
+### 本轮发现的问题与修复
+
+1. 新测试初次编译访问错误测试路径接口、返回ID误用Value，已修正；不计为产品回归。schema4第一次备份测试暴露读取上限硬编码3，已改为统一CurrentSchema并完整重跑367项。schema3迁移还显式保护手动0进度与原完成快照，不重复执行v2语义迁移。
+2. 新增分类后，原重启测试的期望ID文件在新增前生成，造成一次顺序断言失败；期望改在全部操作结束后保存，保留排序断言。窗口旧“仅平台/Core”依赖断言失败，按用户批准扩大为唯一lunar 1.6.8.0白名单，同时检测应用/Core引用，未放开其他库。
+3. 本地化遍历发现空s:String资源触发XAML构造异常；改为非空中文说明并为英文词表保留换行，全部上游宜忌术语英语覆盖通过。长黄历全文原会挤占中栏，改为明确的日期详情入口和悬停。编辑当前分类草稿后清除之前的“已保存”提示，避免误导。
+4. 跨日测试曾使用不存在的Windows ID UTC-12，改为本机Dateline Standard Time；同时修复无效时区调用先拒绝再设置Pending，避免退出时重抛失败请求。折叠进入/恢复原有两处系统日期改为显示时区日期，UTC−12/+14验证通过。
+5. 跨日Todo编辑测试误将保存前的旧实体作为original，正确触发陈旧编辑保护；改取保存后的实体，保留保护逻辑，验证成功保存/关闭并选中显示日期。没有通过删断言或跳过失败来通过。
+
+### NOT VERIFIED 与最少人工体验
+
+computer-use原生管道返回unavailable/os error2，不能选择窗口或获取真实桌面像素；未反复请求审批、未自造输入工具绕过限制。备注的真实鼠标滚轮手感、原生时区/关联下拉点击仍 **NOT VERIFIED**；仅需更新后在日程编辑器试一次选日期关联与备注滚动，日常查看简洁时间即可，不必重新验收Win+D/任务栏/Alt+Tab。Win10、混合DPI、Explorer真实重启、休眠、隔夜运行及历史Samoa2011时区资料缺口保持原限制。
+
+现有用户级安装入口已更新到0.8.4（v591230526448c787），运行中的旧实例未结束；用户从旧版托盘退出再从开始菜单启动即可。安装脚本不读写真实个人JSON和图片；安装版测试继续注入隔离目录。
+
 ## 2026-11-05：main 合并核验
 
 **PASS**：合并前工作区干净；fetch后确认远程无分叉（origin/main...dev/p7-p8=0/32），本地/远程main均为d0e76d5。已执行git switch main及git merge --ff-only dev/p7-p8，main到达3817716；git diff --exit-code dev/p7-p8 HEAD为空，功能代码与已测版本完全一致。随后仅追加README/PRD/DECISIONS/TESTING的基线说明，无产品代码改动，不重复运行功能测试。下节自动/渲染结果及NOT VERIFIED仍适用；合并不等于新的GUI验收，不创建正式Release。

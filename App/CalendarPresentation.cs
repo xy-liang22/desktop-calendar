@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using DesktopCalendar.Core;
 
@@ -6,6 +7,13 @@ namespace DesktopCalendar;
 internal static class CalendarPresentation
 {
     static string T(string key) => MainWindow.Text(key);
+    static System.Collections.Generic.Dictionary<string, string>? almanacEnglish;
+    internal static string AlmanacTerm(string term)
+    {
+        if (!Localization.English) return term;
+        almanacEnglish ??= T("AlmanacTerms").Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim().Split('=', 2)).Where(x => x.Length == 2).ToDictionary(x => x[0], x => x[1]);
+        return almanacEnglish.GetValueOrDefault(term, term);
+    }
     // Display-only abbreviation; the full lunar calculation and detail text stay intact.
     internal static string ShortLunar(DateOnly date)
     {
@@ -18,13 +26,19 @@ internal static class CalendarPresentation
     internal static int Priority(CalendarEvent e) => e.Kind switch { "Term" => 0, "Festival" => 1, "HK" => 2, "CNWork" => 3, _ => 4 };
     internal static string EventColor(string kind) => kind switch { "HK" => "#BBA8DE", "CN" or "CNWork" => "#E0B17C", "Term" => "#A3D9C4", _ => "#E3BF89" };
     internal static string Label(CalendarEvent e) => T(e.Kind switch { "CN" => "CalendarCN", "CNWork" => "CalendarWork", "HK" => "CalendarHK", "Term" => "CalendarTerm", _ => "CalendarFestival" }) + ": " + (Localization.English ? e.En : e.Zh);
-    internal static string Detail(CalendarKnowledge data, DateOnly date)
+    internal static string Detail(CalendarKnowledge data, DateOnly date, bool includeAlmanac = true)
     {
         string lunar = CalendarKnowledge.Lunar(date); var lines = new[] { date.ToString("D", Localization.Culture), lunar.Length == 0 ? T("CalendarUnsupported") : lunar }
             .Concat(data.On(date).Concat(CalendarKnowledge.Festivals(date)).Select(Label));
         if (!data.Data.TermYears.Contains(date.Year)) lines = lines.Append(T("CalendarNoTerms"));
         if (!data.Data.MainlandYears.Contains(date.Year)) lines = lines.Append(T("CalendarNoCN"));
         if (!data.Data.HongKongYears.Contains(date.Year)) lines = lines.Append(T("CalendarNoHK"));
+        if (includeAlmanac)
+        {
+            var almanac = Almanac.On(date);
+            if (almanac != null) lines = lines.Append(T("AlmanacReference")).Append(T("AlmanacSuitable") + ": " + string.Join(Localization.English ? ", " : "、", almanac.Suitable.Select(AlmanacTerm))).Append(T("AlmanacAvoid") + ": " + string.Join(Localization.English ? ", " : "、", almanac.Avoid.Select(AlmanacTerm)));
+            else lines = lines.Append(T("AlmanacUnsupported"));
+        }
         return string.Join("\n", lines);
     }
     internal static string Status(CalendarKnowledge data) => string.Format(Localization.Culture, T("CalendarStatus"), string.Join(",", data.Data.TermYears), string.Join(",", data.Data.MainlandYears), string.Join(",", data.Data.HongKongYears), data.Data.UpdatedAt.ToLocalTime().ToString("g", Localization.Culture)) + "\n" + T("CalendarSources") + "\n" + T("CalendarAlmanac") + (data.Diagnostic.Length == 0 ? "" : "\n" + T("CalendarUpdateFailed"));

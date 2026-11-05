@@ -45,29 +45,39 @@ public static class PlannerQueries
     {
         var rows = state.Todos.Where(t => t.Status != TodoStatus.Cancelled && (t.Kind switch
         {
-            TodoKind.Once or TodoKind.Occurrence => t.PlannedDate == date,
+            TodoKind.Once or TodoKind.Occurrence => TodoTime.Display(state, t).Date == date,
             TodoKind.CarryHistory => date >= t.PlannedDate && date <= CarryEnd(t, asOf),
             TodoKind.CarryLatest => date == CarryEnd(t, asOf), _ => false
         })).ToList();
         foreach (var series in state.Series)
         {
-            var version = Version(series, date);
+            // Source and display zones may differ by up to 28 hours. Query a bounded
+            // neighborhood, retaining original occurrence keys and saved exceptions.
+            for (int day = Math.Max(0, date.DayNumber - 2); day <= Math.Min(DateOnly.MaxValue.DayNumber, date.DayNumber + 2); day++)
+            {
+            var sourceDate = DateOnly.FromDayNumber(day);
+            var version = Version(series, sourceDate);
             if (version == null) continue;
             foreach (var node in version.Templates)
             {
-                var key = new OccurrenceKey(series.Id, node.Id, date);
+                var key = new OccurrenceKey(series.Id, node.Id, sourceDate);
                 if (state.Todos.Any(t => t.Origin == key)) continue; // moved/completed override wins on every query date
-                try { rows.Add(Resolve(state, TodoRef.For(key))); }
+                try { var item = Resolve(state, TodoRef.For(key)); if (TodoTime.Display(state, item).Date == date) rows.Add(item); }
                 catch (PlannerException e) when (e.Code is "OccurrenceNotFound") { }
+            }
             }
         }
         // Flat results retain ParentId; a UI can request/sort each sibling group.
-        return [.. rows.GroupBy(t => t.ParentId).SelectMany(g => Order(g, sort ?? Ordering(state, g.Key, date)))];
+        return [.. rows.GroupBy(t => t.ParentId).SelectMany(g => DisplayOrder(state, g, sort ?? Ordering(state, g.Key, date), date))];
     }
     public static TodoSort Ordering(PlannerState state, Guid? parent, DateOnly date) => state.TodoOrderings.SingleOrDefault(o => o.ParentId == parent && (parent != null || o.Date == date))?.Mode ?? state.Options.TodoSort;
     public static IOrderedEnumerable<Todo> Order(IEnumerable<Todo> siblings, TodoSort sort) => siblings
         .OrderBy(t => t.Status == TodoStatus.Completed)
         .ThenBy(t => sort == TodoSort.PlannedTime ? t.PlannedTime?.Ticks ?? long.MaxValue : 0)
+        .ThenBy(t => t.SortKey).ThenBy(t => t.Id);
+    public static IOrderedEnumerable<Todo> DisplayOrder(PlannerState state, IEnumerable<Todo> siblings, TodoSort sort, DateOnly date) => siblings
+        .OrderBy(t => t.Status == TodoStatus.Completed)
+        .ThenBy(t => sort == TodoSort.PlannedTime ? TodoTime.Display(state, t, date).Time?.Ticks ?? long.MaxValue : 0)
         .ThenBy(t => t.SortKey).ThenBy(t => t.Id);
     // Context ancestors keep completed children reachable when a series/parent is cancelled
     // or the child's planned day differs. They are not additional tasks counted for that day.
@@ -90,8 +100,8 @@ public static class PlannerQueries
                 t = parent ?? throw new PlannerException("ParentNotFound"); map.Add(t.Id, t);
             }
         }
-        TodoDateNode Node(Todo t) => new(t, !originals.Contains(t.Id), [.. Order(map.Values.Where(x => x.ParentId == t.Id), sort ?? Ordering(state, t.Id, date)).Select(Node)]);
-        return [.. Order(map.Values.Where(x => x.ParentId == null), sort ?? Ordering(state, null, date)).Select(Node)];
+        TodoDateNode Node(Todo t) => new(t, !originals.Contains(t.Id), [.. DisplayOrder(state, map.Values.Where(x => x.ParentId == t.Id), sort ?? Ordering(state, t.Id, date), date).Select(Node)]);
+        return [.. DisplayOrder(state, map.Values.Where(x => x.ParentId == null), sort ?? Ordering(state, null, date), date).Select(Node)];
     }
     public static decimal Progress(PlannerState state, TodoRef reference)
     {

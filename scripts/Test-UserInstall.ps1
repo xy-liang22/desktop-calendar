@@ -85,6 +85,14 @@ try {
     [IO.File]::WriteAllText((Join-Path $missingCore 'package.json'), ($coreManifest | ConvertTo-Json -Depth 6))
     Install 'Update' $missingCore $testRoot $true
     Check 'P3 manifest cannot omit required Core dependency' ($shell.CreateShortcut($link).TargetPath -eq $secondTarget)
+    foreach ($required in @('lunar.dll', 'THIRD-PARTY-NOTICES.txt')) {
+        $missing = ClonePackage ('package-missing-' + $required) $false
+        $manifest = Get-Content -Encoding UTF8 (Join-Path $missing 'package.json') -Raw | ConvertFrom-Json
+        $manifest.Files = @($manifest.Files | Where-Object { $_.Name -ne $required })
+        [IO.File]::WriteAllText((Join-Path $missing 'package.json'), ($manifest | ConvertTo-Json -Depth 6))
+        Install 'Update' $missing $testRoot $true
+        Check ('0.8.4 manifest cannot omit ' + $required) ($shell.CreateShortcut($link).TargetPath -eq $secondTarget)
+    }
     $holdRoot = Join-Path $testRoot 'hold-check'
     $hold = Child $secondTarget 'hold' $holdRoot
     try {

@@ -36,6 +36,7 @@ public static partial class PlannerIntegrity
         void Task(Todo t, bool template)
         {
             Title(t.Title); Color(t.Color); Category(t.CategoryId);
+            TodoTime.Validate(t, template);
             Require(t.Description != null && t.Description.Length <= 4_000_000 && Enum.IsDefined(t.Kind) && Enum.IsDefined(t.Status) && Enum.IsDefined(t.ProgressMode) && Enum.IsDefined(t.CompletionIntent) && !t.Moves.IsDefault && t.ManualProgress is >= 0 and <= 100, "InvalidTodo");
             Require((t.Status == TodoStatus.Completed) == (t.CompletedAt != null), "InvalidCompletion");
             Require(template == (t.Kind == TodoKind.SeriesTemplate), "InvalidTemplateKind");

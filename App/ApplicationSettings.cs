@@ -86,6 +86,26 @@ internal static class ApplicationSettings
         s.Body.Children.Add(PlannerView.Button(T("DataFolder"), () => { Directory.CreateDirectory(c.DataDirectory); System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(c.DataDirectory) { UseShellExecute = true }); }));
         s.Actions.Children.Add(PlannerView.Button(T("CloseSettings"), s.Close)); PlannerDialogs.Show(owner, s);
     }
+    internal static void TimeZone(MainWindow owner)
+    {
+        var c = owner.Session.Planner; if (c == null || c.Busy) return;
+        var s = new PlannerDialogs.Sheet(T("DisplayTimeZone"), 600);
+        var choice = TimeZoneChoices.Create(c.DisplayTimeZoneId, "SystemTimeZone"); s.Field("DisplayTimeZone", choice);
+        var hint = PlannerView.Text(T("DisplayTimeZoneHint"), 11); hint.TextWrapping = TextWrapping.Wrap; s.Body.Children.Add(hint);
+        s.Save(async () =>
+        {
+            if (c.Busy) { s.Error.Text = T("PlannerBusy"); return false; }
+            var old = c.DisplayTimeZoneId; string next = TimeZoneChoices.Value(choice);
+            try { if (next.Length > 0) _ = PlannerTime.Zone(next); await c.SetTimeZoneAsync(next); if (owner.Session.Save()) return true; await c.SetTimeZoneAsync(old); s.Error.Text = T("PlannerSaveFailed"); return false; }
+            catch (PlannerException) { s.Error.Text = T("ActivityInvalidTime"); return false; }
+        }); PlannerDialogs.Show(owner, s);
+    }
+    internal static void DateDetails(MainWindow owner, DateOnly date)
+    {
+        var s = new PlannerDialogs.Sheet(T("CalendarDateDetails"), 560);
+        var text = PlannerView.Text(CalendarPresentation.Detail(owner.Session.Calendar, date), 13); text.TextWrapping = TextWrapping.Wrap; s.Body.Children.Add(text);
+        s.Actions.Children.Add(PlannerView.Button(T("CategoryDone"), s.Close)); PlannerDialogs.Show(owner, s);
+    }
     internal static void Appearance(MainWindow owner)
     {
         var before = owner.SnapshotPreferences(); var s = new PlannerDialogs.Sheet(T("AppearanceSetting"), 510);

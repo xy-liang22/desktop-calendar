@@ -40,7 +40,7 @@ internal sealed class ActivityDetailCard
     void Refresh()
     {
         if (!IsOpen) return; var a = controller.State?.Activities.FirstOrDefault(x => x.Id == ActivityId); if (a == null) { Hide(); return; }
-        string token = JsonSerializer.Serialize(a) + controller.Writable + string.Join(',', controller.State!.Goals.Where(g => g.Activities.Contains(a.Id)).Select(g => g.Id));
+        string token = JsonSerializer.Serialize(a) + controller.DisplayZone + controller.Writable + string.Join(',', controller.State!.Goals.Where(g => g.Activities.Contains(a.Id)).Select(g => g.Id));
         if (token != contentToken) { contentToken = token; Build(a); }
         _ = owner.Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(Position));
     }
@@ -78,7 +78,7 @@ internal sealed class ActivityDetailCard
     void Build(Activity a)
     {
         string T(string key) => MainWindow.Text(key); var root = new DockPanel(); var header = new DockPanel { Background = Brushes.Transparent, Cursor = Cursors.SizeAll };
-        var close = PlannerView.Button("×", Hide); DockPanel.SetDock(close, Dock.Right); header.Children.Add(close); var title = PlannerView.Text(a.Emoji + " " + a.Title, 17); title.TextWrapping = TextWrapping.Wrap; header.Children.Add(title); DockPanel.SetDock(header, Dock.Top); root.Children.Add(header);
+        var close = PlannerView.Button("×", Hide); DockPanel.SetDock(close, Dock.Right); header.Children.Add(close); var title = PlannerView.Text(a.Emoji + " " + a.Title + (a.Reaction.Length > 0 ? " · " + a.Reaction : ""), 17); title.TextWrapping = TextWrapping.Wrap; header.Children.Add(title); DockPanel.SetDock(header, Dock.Top); root.Children.Add(header);
         header.PreviewMouseLeftButtonDown += (_, e) => { if (Within(e.OriginalSource as DependencyObject, close)) return; e.Handled = true; drag = e.GetPosition(layer); beforeDrag = offset; header.CaptureMouse(); };
         header.MouseMove += (_, e) => { if (drag is Point start && e.LeftButton == MouseButtonState.Pressed) { offset = beforeDrag + (e.GetPosition(layer) - start); var saved = drag; drag = null; Position(); drag = saved; } };
         header.MouseLeftButtonUp += (_, e) => { drag = null; header.ReleaseMouseCapture(); e.Handled = true; }; header.LostMouseCapture += (_, _) => drag = null;
@@ -89,8 +89,8 @@ internal sealed class ActivityDetailCard
         Action("ActivityDeletePeriod", async () => { if (!PlannerDialogs.Confirm(owner, T("ActivityDeletePeriod"), T("ActivityDeletePeriodConfirm"))) return; var current = controller.State!.Activities.FirstOrDefault(x => x.Id == a.Id); if (JsonSerializer.Serialize(current) != JsonSerializer.Serialize(a)) controller.Report("ActivityStale"); else await controller.ExecuteAsync(new SaveActivity(a with { Intervals = [.. a.Intervals.Where(p => p.Id != periodId)] }, false)); }, a.Intervals.Length > 1);
         Action("ActivityCopy", () => ActivityDialogs.Edit(owner, controller, draft: a with { Id = Guid.NewGuid(), Intervals = [.. a.Intervals.Select(p => p with { Id = Guid.NewGuid() })] }));
         var body = new StackPanel(); void Line(string text) { var t = PlannerView.Text(text, 11); t.TextWrapping = TextWrapping.Wrap; t.Margin = new Thickness(0, 4, 0, 4); body.Children.Add(t); }
-        Line(a.Summary + "  " + a.Reaction); Line(a.CategoryId == null ? "" : Localization.Category(controller.State!.Categories.FirstOrDefault(c => c.Id == a.CategoryId)));
-        foreach (var p in a.Intervals) Line(TimeZoneInfo.ConvertTime(p.Start, PlannerTime.Zone(a.TimeZoneId)).ToString("MM-dd HH:mm zzz") + " → " + TimeZoneInfo.ConvertTime(p.End, PlannerTime.Zone(a.TimeZoneId)).ToString("MM-dd HH:mm zzz"));
+        Line(a.CategoryId == null ? "" : Localization.Category(controller.State!.Categories.FirstOrDefault(c => c.Id == a.CategoryId)));
+        foreach (var p in a.Intervals) Line(TimeZoneInfo.ConvertTime(p.Start, PlannerTime.Zone(controller.DisplayZone)).ToString("MM-dd HH:mm") + " → " + TimeZoneInfo.ConvertTime(p.End, PlannerTime.Zone(controller.DisplayZone)).ToString("MM-dd HH:mm") + (a.Summary.Length > 0 ? " · " + a.Summary.ReplaceLineEndings(" ") : ""));
         if (a.Todo != null) { try { Line(T("ActivityTodo") + " · " + PlannerQueries.Resolve(controller.State!, a.Todo).Title); } catch (PlannerException) { Line(a.FormerTodoTitle ?? ""); } }
         foreach (var goal in controller.State!.Goals.Where(g => g.Activities.Contains(a.Id))) Line(T("ActivityGoal") + " · " + goal.Title);
         body.Children.Add(new FlowDocumentScrollViewer { Document = MarkdownNotes.Render(a.Notes.Text, a.Notes.Format, new(controller.DataDirectory, () => controller.State)), IsToolBarVisible = false, MaxHeight = 270, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });

@@ -166,7 +166,7 @@ internal static partial class PlannerCommands
                 Guid? Parent(Todo t) { if (t.Id == root.Id) return null; var p = t.ParentId; while (p is Guid id && !ids.ContainsKey(id)) p = all[id].ParentId; return p is Guid included ? ids[included] : null; }
                 decimal next = s.Todos.Where(t => t.ParentId == null && t.PlannedDate == c.TargetDate).Select(t => t.SortKey).DefaultIfEmpty(-1024).Max() + 1024;
                 var copies = source.Select(t => t with { Id = ids[t.Id], ParentId = Parent(t), Kind = TodoKind.Once, Origin = null, SeriesId = null, CarryDate = null, FrozenCarryDate = null, Moves = [],
-                    PlannedDate = t.PlannedDate.AddDays(c.TargetDate.DayNumber - root.PlannedDate.DayNumber), SortKey = t.Id == root.Id ? next : t.SortKey,
+                    PlannedDate = t.PlannedDate.AddDays(c.TargetDate.DayNumber - root.PlannedDate.DayNumber), PlannedTimeZoneId = TodoTime.SourceZone(s, t), SortKey = t.Id == root.Id ? next : t.SortKey,
                     Status = TodoStatus.Pending, CompletedAt = null, CompletionIntent = CompletionIntent.Automatic, CompletionSnapshot = null, CompletionSnapshotInvalidated = false, ManualProgress = 0, CopiedFromId = t.Id, CreatedAt = now, ModifiedAt = now }).ToArray();
                 var ordering = s.TodoOrderings.Where(o => o.ParentId is Guid parent && tree.Contains(parent)).Select(o => o with { Id = Guid.NewGuid(), ParentId = ids[o.ParentId!.Value], CreatedAt = now, ModifiedAt = now });
                 return new(s with { Todos = s.Todos.AddRange(copies), TodoOrderings = s.TodoOrderings.AddRange(ordering) }, ids[root.Id]);

@@ -56,12 +56,13 @@ function ReadPackage($path) {
     if ((Get-Item -LiteralPath $path).Length -gt 65536) { throw 'Package manifest too large.' }
     $m = [IO.File]::ReadAllText($path) | ConvertFrom-Json
     $required = @('DesktopCalendar.exe', 'DesktopCalendar.dll', 'DesktopCalendar.deps.json', 'DesktopCalendar.runtimeconfig.json')
-    $allowed = $required + @('DesktopCalendar.Core.dll') # Keep existing four-file P1.1 installations manageable.
-    if ($m.SchemaVersion -ne 1 -or $m.AppId -ne $appId -or $m.Architecture -ne 'x64' -or $m.SelfContained -ne $false -or $m.PackageId -notmatch '^[a-f0-9]{64}$' -or @($m.Files).Count -notin @(4,5)) { throw 'Invalid package manifest.' }
+    $allowed = $required + @('DesktopCalendar.Core.dll', 'lunar.dll', 'THIRD-PARTY-NOTICES.txt') # Retain old package support.
+    if ($m.SchemaVersion -ne 1 -or $m.AppId -ne $appId -or $m.Architecture -ne 'x64' -or $m.SelfContained -ne $false -or $m.PackageId -notmatch '^[a-f0-9]{64}$' -or @($m.Files).Count -notin @(4,5,7)) { throw 'Invalid package manifest.' }
     if (@($m.Files.Name | Sort-Object -Unique).Count -ne @($m.Files).Count -or @($required | Where-Object { $_ -notin $m.Files.Name }).Count -ne 0) { throw 'Duplicate or missing package paths.' }
     $packageVersion = $null
     if (-not [Version]::TryParse([string]$m.Version, [ref]$packageVersion)) { throw 'Invalid program version.' }
     if ($packageVersion -ge [Version]'0.3.0' -and 'DesktopCalendar.Core.dll' -notin $m.Files.Name) { throw 'Required planner Core dependency missing.' }
+    if ($packageVersion -ge [Version]'0.8.4' -and @(@('lunar.dll', 'THIRD-PARTY-NOTICES.txt') | Where-Object { $_ -notin $m.Files.Name }).Count) { throw 'Required almanac dependency or license missing.' }
     foreach ($file in $m.Files) {
         if ($file.Name -notin $allowed -or $file.Sha256 -notmatch '^[a-f0-9]{64}$' -or $file.Length -le 0) { throw 'Invalid package entry.' }
     }

@@ -70,6 +70,7 @@ internal static class ActivityDialogs
         var emoji = new EmojiPicker(value.Emoji); sheet.Field("ActivityEmoji", emoji);
         var reaction = new EmojiPicker(value.Reaction, true); sheet.Field("ActivityReaction", reaction);
         var appearance = new TodoAppearance(c, value.CategoryId, value.Color); sheet.Field("PlannerCategory", appearance);
+        sheet.Body.Children.Add(PlannerView.Button(T("PlannerManageCategories"), () => { using var hold = sheet.HoldOpen(); PlannerDialogs.ManageCategories(owner, c); appearance.Refresh(); }));
         var zone = Field("ActivityZone", value.TimeZoneId); var hint = PlannerView.Text(T("ActivityTimeHint"), 10, "#A2AFBC"); hint.TextWrapping = TextWrapping.Wrap; sheet.Body.Children.Add(hint);
         var periods = new StackPanel(); sheet.Field("ActivityPeriods", periods); var rows = new List<PeriodFields>();
         void Add(ActivityPeriod p)
@@ -78,10 +79,7 @@ internal static class ActivityDialogs
         }
         foreach (var p in value.Intervals) Add(p);
         sheet.Body.Children.Add(PlannerView.Button(T("ActivityAddPeriod"), () => { try { var last = rows.Last().Read(zone.Text.Trim()); Add(new(Guid.NewGuid(), last.End.AddHours(1), last.End.AddHours(2))); } catch (Exception ex) when (ex is PlannerException or ArgumentOutOfRangeException) { sheet.Error.Text = T("ActivityInvalidTime"); } }));
-        var todos = c.State!.Todos.Concat(c.On(c.SelectedDate)).Concat(c.On(c.Today)).DistinctBy(t => t.Id).Where(t => t.Status != TodoStatus.Cancelled).ToList();
-        if (value.Todo != null && !todos.Any(t => t.Id == value.Todo.Id)) { try { todos.Add(PlannerQueries.Resolve(c.State, value.Todo)); } catch (PlannerException) { } }
-        var choices = new[] { new TodoChoice(null, T("ActivityNoLink")) }.Concat(todos.Select(t => new TodoChoice(TodoRef.Of(t), t.PlannedDate.ToString("yyyy-MM-dd") + " · " + t.Title))).ToArray();
-        var linked = new ComboBox { ItemsSource = choices, DisplayMemberPath = nameof(TodoChoice.Name), SelectedItem = choices.FirstOrDefault(x => x.Reference == value.Todo) ?? choices[0], MinHeight = 28 }; sheet.Field("ActivityTodo", linked);
+        var linked = ActivityTodoChoices.Add(sheet, c, value);
         linked.SelectionChanged += (_, _) => { if ((linked.SelectedItem as TodoChoice)?.Reference is TodoRef r) { try { var t = PlannerQueries.Resolve(c.State!, r); if (appearance.CategoryId == null) appearance.Refresh(t.CategoryId); } catch (PlannerException) { } } };
         var goals = new GoalLinks(owner, c, activity: value.Id); sheet.Body.Children.Add(new Expander { Header = T("ActivityGoal"), Content = goals });
         var notes = new NoteEditor(c, value.Notes, sheet); sheet.Field("ActivityNotes", notes);

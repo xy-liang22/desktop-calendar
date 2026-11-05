@@ -9,8 +9,8 @@ if($state.AppId -ne 'desktop-calendar' -or $state.Current -notmatch '^versions\\
 $installed=[IO.Path]::GetFullPath((Join-Path $root $state.Current)); if(-not $installed.StartsWith([IO.Path]::GetFullPath($root)+'\',[StringComparison]::OrdinalIgnoreCase)){throw 'Install path escaped.'}
 $results=[Collections.Generic.List[string]]::new()
 function Check($name,$ok){$results.Add($(if($ok){'PASS '}else{'FAIL '})+$name)}
-$names=@('DesktopCalendar.exe','DesktopCalendar.dll','DesktopCalendar.Core.dll','DesktopCalendar.deps.json','DesktopCalendar.runtimeconfig.json')
-if($package.Files.Count -ne 5 -or @($package.Files | Where-Object {$_.Name -notin $names}).Count){throw 'Unexpected package manifest.'}
+$names=@('DesktopCalendar.exe','DesktopCalendar.dll','DesktopCalendar.Core.dll','lunar.dll','THIRD-PARTY-NOTICES.txt','DesktopCalendar.deps.json','DesktopCalendar.runtimeconfig.json')
+if($package.Files.Count -ne 7 -or @($package.Files | Where-Object {$_.Name -notin $names}).Count){throw 'Unexpected package manifest.'}
 foreach($file in $package.Files){$dev=Join-Path $project "bin\$Configuration\net10.0-windows\$($file.Name)";$deployed=Join-Path $installed $file.Name
  Check ('identical developer/package/installed bytes '+$file.Name) ((Get-FileHash -LiteralPath $dev -Algorithm SHA256).Hash -eq $file.Sha256 -and (Get-FileHash -LiteralPath $deployed -Algorithm SHA256).Hash -eq $file.Sha256)}
 Check 'candidate and installed versions match' ($state.Version -eq $package.Version -and ([version](Get-Item (Join-Path $installed 'DesktopCalendar.dll')).VersionInfo.FileVersion).ToString(3) -eq $package.Version)

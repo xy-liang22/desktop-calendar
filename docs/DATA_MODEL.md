@@ -1,6 +1,15 @@
 # 数据与服务接口：P2基础与P3–P8集成
 
-状态：应用与Core为0.8.2，真实待办、周期、Activity与P6周目标/统计/总结界面已接入。纯C# Core使用.NET10标准库，无WPF/数据库/第三方依赖；仅用户主动的历法更新入口可联网，业务schema3不变。图片/备注呈现及偏好位于WPF层，实体/JSON仍不含WPF对象；P7/P8已授权并接入，见末节。
+状态：应用与Core为0.8.4，真实待办、周期、Activity与P6周目标/统计/总结界面已接入。纯C# Core不依赖WPF或数据库；唯一获批第三方库lunar-csharp 1.6.8只用于离线宜忌，首次开发恢复需显式联网。业务schema4，图片/备注呈现及偏好位于WPF层，实体/JSON仍不含WPF对象。下方原schema3阶段记录按本节最新约定解释。
+
+## 0.8.4 来源时区与兼容迁移
+
+- Todo新增可空`PlannedTimeZoneId`、`PlannedOffset`。普通旧任务null为浮动本地墙钟，不猜它创建时的系统时区；无时间任务保持日期。新UI有时间任务捕获填写时区。周期未设覆盖时从有效RuleVersion继承规则时区，实例仍以原始发生日生成ID。
+- `TodoTime.Display(state,todo,carryDay)`返回展示日期/时刻/可选诊断，不修改实体。普通与周期可跨日；持续历史/仅最新仍按原日期工作流，只转换该显示日的时刻。DST空洞或缺少歧义偏移不任意猜测，编辑时拒绝，未来周期查询返回诊断。
+- `TodosOn/TodoTreeOn`检索显示日的真实事项及必要祖先；周期只查±2个来源日，已物化例外优先。`DisplayOrder`保持完成分组，自动时间排序使用转换后的时刻，手动排序键不变。
+- 偏好`DisplayTimeZoneId`空值表示系统，影响运行时`PlannerOptions.TimeZoneId`、今日、日/周边界和统计；更改仅保存偏好，不重写JSON。历史WeekKey含原时区，保留原目标/总结身份。Activity原始DateTimeOffset/TimeZoneId不变，两页共享显示区间。
+- schema2/3先校验原校验和，schema1按旧无校验和合同验证，再填新字段null；仅v1/v2执行旧完成语义迁移，v3不改CompletionIntent/快照/显式手动进度。首次正常业务写入采用schema4，旧文件仍按Store备份机制保留。较新schema拒绝覆盖，ZIP读取使用统一CurrentSchema上限。
+- Todo来源/可选歧义偏移仅在编辑器配置，普通展示只显示HH:mm；显示层不能把转换后的日期/时刻回写为来源值。图片和关联ID无变更。
 
 ## 实体和身份
 
@@ -100,7 +109,7 @@ P4继续编码schema3，无读写迁移。测试中实际引用旧`bin/P31/.../D
 
 默认 `%LOCALAPPDATA%\DesktopCalendar\planner-data.json`；窗口偏好仍是独立 `window-preferences.json`，兼容旧schema2。`PlannerOptions`作为调用上下文传入，不写入业务JSON。P3正常启动读取真实业务文件；只有主/备份/残留都不存在才允许首次初始化，现有P2其他实体与关联保留。
 
-业务schema3：`schemaVersion/documentId/revision/payload/payloadSha256`，DTO不存WPF对象，严格字段/枚举/重复键/关联检查；未知同版本字段拒绝。v1为早期迁移合同（documentId/data，无revision/校验和），不是P1.1真实业务文件；兼容v1/v2读取迁移，下一次明确成功保存才写3并备份旧文件。
+当前业务schema4：`schemaVersion/documentId/revision/payload/payloadSha256`，DTO不存WPF对象，严格字段/枚举/重复键/关联检查；未知同版本字段拒绝。v1为早期迁移合同（documentId/data，无revision/校验和），不是P1.1真实业务文件；兼容v1/v2/v3读取迁移，下一次明确成功保存才写4并备份旧文件。
 
 同目录唯一临时文件，完整写入、Flush(true)、重新解码校验、File.Replace 保留 `.bak`；首次创建用同卷 Move。每个工作区串行队列＋跨进程排他锁文件＋文件指纹/Revision，防晚写覆盖和旧快照。旧锁文件不是持锁，进程退出由系统释放句柄。写入失败返回诊断；提交后异常先核实实际结果，不盲目重试。
 

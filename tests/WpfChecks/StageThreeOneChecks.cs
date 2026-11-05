@@ -108,7 +108,7 @@ internal static partial class StageThreeChecks
         });
         await DriveAsync(() => v.Edit(root), async s =>
         {
-            var choices = Children<ComboBox>(s).Single(); choices.IsDropDownOpen = true; await Idle();
+            var choices = Children<ChoicePicker>(Children<TodoAppearance>(s).Single()).Single(); choices.IsDropDownOpen = true; await Idle();
             var choicePopup = (System.Windows.Controls.Primitives.Popup)choices.Template.FindName("PART_Popup", choices); Image((FrameworkElement)choicePopup.Child, "p31-category-popup.png");
             Check("category popup renders colored names instead of object descriptions", Children<TextBlock>(choicePopup.Child).Any(x => x.Text == work.Name) && Children<TextBlock>(choicePopup.Child).All(x => !x.Text.Contains("CategoryOption {")));
             choices.IsDropDownOpen = false;
@@ -134,7 +134,7 @@ internal static partial class StageThreeChecks
         await c.ExecuteAsync(new SaveTodo(c.State!.Todos.Single(x => x.Id == root.Id) with { CategoryId = oldPriority.Id }));
         await DriveAsync(() => v.Edit(c.State!.Todos.Single(x => x.Id == root.Id)), s =>
         {
-            Check("old category reference can still be retained in editor", Children<ComboBox>(s).Single().SelectedValue is Guid id && id == oldPriority.Id);
+            Check("old category reference can still be retained in editor", Children<ChoicePicker>(Children<TodoAppearance>(s).Single()).Single().SelectedValue is Guid id && id == oldPriority.Id);
             Click(s.Actions.Children.OfType<Button>().First()); return Task.CompletedTask;
         });
         foreach (string name in new[] { "P31 child A", "P31 child B" }) await c.ExecuteAsync(new SaveTodo(c.NewTodo(name, root.Id)));

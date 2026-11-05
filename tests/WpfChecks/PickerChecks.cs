@@ -82,8 +82,11 @@ internal static partial class StageThreeChecks
             Check("category keyboard alternative moves selected item down", await list.MoveSelectedAsync(1)); await Idle();
             Check("category manager uses scoped dark list theme", list.Background.ToString() == "#FF17232F" && list.BorderBrush.ToString() == "#FF465968");
             Image(sheet, "picker-category-management.png");
-            var order = PlannerQueries.OrderedCategories(c.State!).Select(x => x.Id).ToArray(); await sheet.SaveAndCloseAsync(false);
+            var order = PlannerQueries.OrderedCategories(c.State!).Select(x => x.Id).ToArray(); Click(Children<Button>(sheet.Body).Single(b => Equals(b.Content, MainWindow.Text("PlannerSave")))); await c.Pending; await Idle();
             Check("saving category metadata cannot restore stale sort key", PlannerQueries.OrderedCategories(c.State!).Select(x => x.Id).SequenceEqual(order) && c.State!.Categories.Single(x => x.Id == sortCategory.Id).Name == "Draft retained after reorder");
+            Check("saving category does not close batch editor", sheet.IsVisible);
+            Field(sheet, "PlannerCategoryName").Text = "unsaved close draft"; sheet.Close();
+            Check("category close discards only unsaved edit", c.State!.Categories.Single(x => x.Id == sortCategory.Id).Name == "Draft retained after reorder");
         });
         File.WriteAllLines(Path.Combine(DirectoryPath, "category-order-ids.txt"), PlannerQueries.OrderedCategories(c.State!).Select(x => x.Id.ToString()));
     }

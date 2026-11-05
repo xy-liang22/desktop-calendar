@@ -27,7 +27,9 @@ internal sealed class PlannerController
     internal bool Writable => !Busy && !Stopping && !MaintenancePending && Storage?.CanWrite == true;
     internal bool CanUndo => Writable && workspace?.CanUndo == true;
     internal bool CanRedo => Writable && workspace?.CanRedo == true;
-    internal DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
+    internal string DisplayTimeZoneId { get; private set; } = "";
+    internal string DisplayZone => TimeZoneChoices.Resolve(DisplayTimeZoneId);
+    internal DateOnly Today => PlannerTime.LocalDate(DateTimeOffset.Now, DisplayZone);
     internal DateOnly SelectedDate { get; private set; }
     internal DateOnly Month { get; private set; }
     internal bool ColorBackground { get; private set; }
@@ -42,7 +44,15 @@ internal sealed class PlannerController
     internal void SetCompletedChildren(bool collapse) { CollapseCompletedChildren = collapse; completedChildren.Clear(); ChildDisplayRevision++; Changed?.Invoke(); PreferencesChanged?.Invoke(); }
     internal int CompletedChildCount(TodoDateNode node) => node.Children.Count(c => c.Value.Status == TodoStatus.Completed && !c.ContextOnly);
     internal TodoDateNode[] DisplayChildren(TodoDateNode node) => node.Children.Where(c => !CompletedCollapsed(node.Value.Id) || c.Value.Status != TodoStatus.Completed || c.ContextOnly).ToArray();
-    PlannerOptions Options => new() { TimeZoneId = TimeZoneInfo.Local.Id, WeekStart = WeekStart, Language = Localization.English ? "en" : "zh-CN" };
+    PlannerOptions Options => new() { TimeZoneId = DisplayZone, WeekStart = WeekStart, Language = Localization.English ? "en" : "zh-CN" };
+    internal Task SetTimeZoneAsync(string id)
+    { if (Busy || DisplayTimeZoneId == id) return Task.CompletedTask; if (id.Length > 0) _ = PlannerTime.Zone(id); return Pending = ChangeTimeZone(id); }
+    async Task ChangeTimeZone(string id)
+    {
+        Busy = true;
+        try { if (workspace != null) await workspace.ConfigureAsync(Options with { TimeZoneId = TimeZoneChoices.Resolve(id) }); DisplayTimeZoneId = id; lastToday = Today; }
+        finally { Busy = false; Changed?.Invoke(); PreferencesChanged?.Invoke(); }
+    }
     internal WeekKey Week(DateOnly? date = null) => PlannerTime.Week(date ?? SelectedDate, WeekStart, State?.Options.TimeZoneId ?? TimeZoneInfo.Local.Id);
     internal void SetWeekLayout(WeekPlanLayout layout) { if (!Enum.IsDefined(layout) || WeekLayout == layout) return; WeekLayout = layout; Changed?.Invoke(); PreferencesChanged?.Invoke(); }
     internal Task SetWeekStartAsync(DayOfWeek day)
@@ -65,11 +75,15 @@ internal sealed class PlannerController
     internal event Action? PreferencesChanged;
     internal PlannerController(string path, WindowPreferences preferences, StoreOptions? options = null, bool maintenanceBlocked = false)
     {
-        this.maintenanceBlocked = maintenanceBlocked; store = new(path, options); lastToday = Today; WeekStart = preferences.WeekStart; WeekLayout = preferences.WeekPlanLayout; CollapseCompletedChildren = preferences.CollapseCompletedChildren;
+        this.maintenanceBlocked = maintenanceBlocked; store = new(path, options); DisplayTimeZoneId = preferences.DisplayTimeZoneId; lastToday = Today; WeekStart = preferences.WeekStart; WeekLayout = preferences.WeekPlanLayout; CollapseCompletedChildren = preferences.CollapseCompletedChildren;
         SelectedDate = preferences.PlannerDate ?? Today;
         Month = preferences.PlannerMonth ?? new(SelectedDate.Year, SelectedDate.Month, 1);
         Month = new(Month.Year, Month.Month, 1); ColorBackground = preferences.CalendarColorBackground; TextMode = preferences.CalendarTextMode;
-        todayTimer.Tick += (_, _) => { if (lastToday != Today) { lastToday = Today; Changed?.Invoke(); } };
+        todayTimer.Tick += async (_, _) =>
+        {
+            if (!Busy && !Stopping && workspace != null && State?.Options.TimeZoneId != DisplayZone) { Pending = ChangeTimeZone(DisplayTimeZoneId); await Pending; }
+            if (lastToday != Today) { lastToday = Today; Changed?.Invoke(); }
+        };
     }
     internal Task InitializeAsync() => Pending = InitializeCore();
     async Task InitializeCore()
@@ -173,7 +187,7 @@ internal sealed class PlannerController
     }
     internal async Task RestorePreferencesAsync(WindowPreferences p)
     {
-        WeekStart = p.WeekStart; WeekLayout = p.WeekPlanLayout; TextMode = p.CalendarTextMode; ColorBackground = p.CalendarColorBackground; CollapseCompletedChildren = p.CollapseCompletedChildren; completedChildren.Clear();
+        DisplayTimeZoneId = p.DisplayTimeZoneId; WeekStart = p.WeekStart; WeekLayout = p.WeekPlanLayout; TextMode = p.CalendarTextMode; ColorBackground = p.CalendarColorBackground; CollapseCompletedChildren = p.CollapseCompletedChildren; completedChildren.Clear();
         SelectedDate = p.PlannerDate ?? Today; Month = p.PlannerMonth ?? new(SelectedDate.Year, SelectedDate.Month, 1);
         await ReloadAsync();
     }
@@ -183,7 +197,7 @@ internal sealed class PlannerController
     internal Todo NewTodo(string title, Guid? parent = null)
     {
         var ancestor = parent == null ? null : FindTodo(parent.Value);
-        return new() { Id = Guid.NewGuid(), Title = title.Trim(), PlannedDate = SelectedDate, ParentId = parent, CategoryId = ancestor?.CategoryId, Color = ancestor?.Color,
+        return new() { Id = Guid.NewGuid(), Title = title.Trim(), PlannedDate = SelectedDate, PlannedTimeZoneId = DisplayZone, ParentId = parent, CategoryId = ancestor?.CategoryId, Color = ancestor?.Color,
             SortKey = (ancestor != null && State != null ? PlannerQueries.Children(State, ancestor).Select(t => t.SortKey).DefaultIfEmpty(-1024).Max() : State?.Todos.Where(t => t.ParentId == parent && t.PlannedDate == SelectedDate).Select(t => t.SortKey).DefaultIfEmpty(-1024).Max() ?? -1024) + 1024 };
     }
     internal static bool QuickInput(string value, out string title, out TimeOnly? time)

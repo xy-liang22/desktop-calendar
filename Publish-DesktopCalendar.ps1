@@ -13,7 +13,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Offline framework-dependent publish failed.' }
 $package = Join-Path $PSScriptRoot 'artifacts\package'
 [IO.Directory]::CreateDirectory($package) | Out-Null
 $files = @()
-foreach ($name in @('DesktopCalendar.exe', 'DesktopCalendar.dll', 'DesktopCalendar.Core.dll', 'DesktopCalendar.deps.json', 'DesktopCalendar.runtimeconfig.json')) {
+foreach ($name in @('DesktopCalendar.exe', 'DesktopCalendar.dll', 'DesktopCalendar.Core.dll', 'lunar.dll', 'THIRD-PARTY-NOTICES.txt', 'DesktopCalendar.deps.json', 'DesktopCalendar.runtimeconfig.json')) {
     Copy-Item -LiteralPath (Join-Path $staging $name) -Destination (Join-Path $package $name) -Force
     $item = Get-Item -LiteralPath (Join-Path $package $name)
     $files += [pscustomobject][ordered]@{ Name = $name; Length = $item.Length; Sha256 = (Get-FileHash -LiteralPath $item.FullName -Algorithm SHA256).Hash.ToLowerInvariant() }

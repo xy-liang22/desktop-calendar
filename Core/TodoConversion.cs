@@ -38,7 +38,7 @@ internal static partial class PlannerCommands
             return parent is Guid id ? ids[id] : null;
         }
         var replacement = selected.Select(t => t with { Id = ids[t.Id], ParentId = Parent(t), PlannedDate = first,
-            Kind = toSeries ? TodoKind.Once : c.Kind, Origin = null, SeriesId = null, Status = TodoStatus.Pending, CompletedAt = null,
+            Kind = toSeries ? TodoKind.Once : c.Kind, PlannedTimeZoneId = toSeries ? null : TodoTime.SourceZone(s, t), Origin = null, SeriesId = null, Status = TodoStatus.Pending, CompletedAt = null,
             CompletionIntent = CompletionIntent.Automatic, CompletionSnapshot = null, CompletionSnapshotInvalidated = false,
             CarryDate = null, FrozenCarryDate = null, Moves = [], ManualProgress = 0, CopiedFromId = t.Id, CreatedAt = now, ModifiedAt = now }).ToArray();
         Guid seriesId = Guid.NewGuid();

@@ -34,7 +34,7 @@ internal static partial class StageThreeChecks
             Field(s, "PlannerTitle").Text = " "; Check("outside dismissal keeps invalid draft", !await s.OutsideCloseAsync() && s.IsVisible && s.Error.Text.Length > 0);
             foreach (var kind in new[] { 0, 1, 2 })
             {
-                var combo = Children<ComboBox>(s).Single(); var date = Children<DatePicker>(s).Single(); var color = Children<ColorField>(s).Single();
+                var combo = Children<ChoicePicker>(Children<TodoAppearance>(s).Single()).Single(); var date = Children<DatePicker>(s).Single(); var color = Children<ColorField>(s).Single();
                 Field(s, "PlannerTitle").Text = "must not auto save via auxiliary popup";
                 if (kind == 0) combo.IsDropDownOpen = true; else if (kind == 1) date.IsDropDownOpen = true; else color.Popup.IsOpen = true;
                 await Idle(); Check("auxiliary popup is inside editor dismissal boundary " + kind, s.HasAuxiliary && !await s.OutsideCloseAsync() && s.IsVisible);

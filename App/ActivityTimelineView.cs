@@ -89,10 +89,12 @@ internal sealed partial class TimelineView
             foreach (var slot in slots)
             {
                 var a = planner.State.Activities.Single(a => a.Id == slot.Segment!.ActivityId); string color = a.Color ?? planner.State.Categories.FirstOrDefault(c => c.Id == a.CategoryId)?.Color ?? "#62A9E8";
-                var body = new StackPanel { ClipToBounds = true }; var title = Text((a.Emoji.Length > 0 ? a.Emoji + " " : "") + a.Title, days.Length == 1 ? 12 : 10, ThemeColors.Foreground(ThemeColors.Soft(color))); title.FontWeight = FontWeights.SemiBold; body.Children.Add(title);
-                string time = slot.Segment!.Start.ToOffset(slot.Segment.Offset).ToString("HH:mm zzz") + "–" + slot.Segment.End.ToOffset(slot.Segment.Offset).ToString("HH:mm");
-                body.Children.Add(Text(time, 9, "#C3CDD5")); if (days.Length == 1 && a.Summary.Length > 0) body.Children.Add(Text(a.Summary, 10, "#C3CDD5"));
+                var body = new StackPanel { ClipToBounds = true }; var title = Text((a.Emoji.Length > 0 ? a.Emoji + " " : "") + a.Title + (a.Reaction.Length > 0 ? " · " + a.Reaction : ""), days.Length == 1 ? 12 : 10, ThemeColors.Foreground(ThemeColors.Soft(color))); title.FontWeight = FontWeights.SemiBold; body.Children.Add(title);
+                string time = BlockTime(slot.Segment!);
+                var caption = Text(time + (string.IsNullOrWhiteSpace(a.Summary) ? "" : " · " + a.Summary.ReplaceLineEndings(" ")), 10, "#C3CDD5"); caption.TextWrapping = TextWrapping.Wrap; body.Children.Add(caption);
                 var card = new Border { Tag = slot.Segment, Child = body, Background = ThemeColors.Brush(ThemeColors.Soft(color)), BorderBrush = ThemeColors.Brush(ThemeColors.Accent(color)), BorderThickness = new Thickness(2, 0, 0, 0), CornerRadius = new CornerRadius(5), Padding = new Thickness(4, 3, 2, 2), ClipToBounds = true, ToolTip = a.Emoji + " " + a.Title + "\n" + time + "\n" + a.Summary + "\n" + MainWindow.Text("ActivityHint") };
+                // Offset is useful for repeated DST hours, but belongs in the detail/tooltip only.
+                card.ToolTip += "\n" + planner.State.Options.TimeZoneId + " " + PeriodFields.Offset(slot.Segment!.Offset);
                 card.MouseMove += (_, e) => { double y = e.GetPosition(card).Y; card.Cursor = card.ActualHeight >= 14 && (y < 5 || y > card.ActualHeight - 5) ? Cursors.SizeNS : Cursors.Hand; };
                 Cards.Add((card, slot)); days[i].Children.Add(card);
             }
@@ -100,6 +102,7 @@ internal sealed partial class TimelineView
         }
         PositionCards();
     }
+    internal static string BlockTime(ActivitySegment s) => s.Start.ToOffset(s.Offset).ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture) + "-" + (s.EndHour == 24 ? "24:00" : s.End.ToOffset(s.Offset).ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture));
     internal static Slot[] LayoutActivities(PlannerState state, DateOnly date, string zone, int day)
     {
         var result = new List<Slot>(); var group = new List<Slot>(); var ends = new List<double>(); double groupEnd = -1;

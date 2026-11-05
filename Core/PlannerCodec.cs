@@ -17,7 +17,7 @@ public sealed record DecodedPlanner(PlannerState State, bool Migrated);
 
 public static class PlannerCodec
 {
-    public const int CurrentSchema = 3;
+    public const int CurrentSchema = 4;
     internal static readonly JsonSerializerOptions Json = MakeOptions();
     static JsonSerializerOptions MakeOptions()
     {
@@ -79,7 +79,7 @@ public static class PlannerCodec
                 foreach (var row in series) if (row != null) row["retiredNodeIds"] ??= new System.Text.Json.Nodes.JsonArray();
             payload = legacy.Deserialize<PlannerPayloadDto>(Json) ?? throw new PlannerException("InvalidPayload");
         }
-        else if (version is 2 or CurrentSchema)
+        else if (version is 2 or 3 or CurrentSchema)
         {
             var dto = root.Deserialize<PlannerEnvelopeDto>(Json) ?? throw new PlannerException("InvalidEnvelope");
             if (!string.Equals(dto.PayloadSha256, Hash(dto.Payload), StringComparison.Ordinal)) throw new PlannerException("ChecksumMismatch");
@@ -92,10 +92,15 @@ public static class PlannerCodec
             void Upgrade(System.Text.Json.Nodes.JsonNode? todo)
             {
                 if (todo == null) return;
-                todo["completionIntent"] ??= todo["status"]!.GetValue<string>() == "Completed" ? "ManualComplete" : "Automatic";
-                if (!todo.AsObject().ContainsKey("completionSnapshot")) todo["completionSnapshot"] = null;
-                todo["completionSnapshotInvalidated"] ??= false;
-                if (todo["progressMode"]!.GetValue<string>() == "Manual" && todo["manualProgress"]!.GetValue<decimal>() == 0) todo["progressMode"] = "Default";
+                if (version < 3)
+                {
+                    todo["completionIntent"] ??= todo["status"]!.GetValue<string>() == "Completed" ? "ManualComplete" : "Automatic";
+                    if (!todo.AsObject().ContainsKey("completionSnapshot")) todo["completionSnapshot"] = null;
+                    todo["completionSnapshotInvalidated"] ??= false;
+                    if (todo["progressMode"]!.GetValue<string>() == "Manual" && todo["manualProgress"]!.GetValue<decimal>() == 0) todo["progressMode"] = "Default";
+                }
+                if (!todo.AsObject().ContainsKey("plannedTimeZoneId")) todo["plannedTimeZoneId"] = null;
+                if (!todo.AsObject().ContainsKey("plannedOffset")) todo["plannedOffset"] = null;
             }
             foreach (var t in migrated["todos"]!.AsArray()) Upgrade(t);
             foreach (var series in migrated["series"]!.AsArray()) foreach (var v in series!["versions"]!.AsArray()) foreach (var t in v!["templates"]!.AsArray()) Upgrade(t);
@@ -105,7 +110,7 @@ public static class PlannerCodec
         var state = new PlannerState { Id = id, Revision = revision, Options = options ?? new() { TimeZoneId = TimeZoneInfo.Local.Id },
             Categories = Array<Category>(payload.Categories), Todos = Array<Todo>(payload.Todos), Series = Array<TodoSeries>(payload.Series),
             Activities = Array<Activity>(payload.Activities), Goals = Array<WeekGoal>(payload.Goals), Reviews = Array<WeeklyReview>(payload.Reviews), Assets = Array<LocalAsset>(payload.Assets), Decorations = Array<DayDecoration>(payload.Decorations), TodoOrderings = Array<TodoOrdering>(payload.TodoOrderings) };
-        if (version < CurrentSchema) state = TodoCompletion.Reconcile(state, state, state.Todos.Select(t => t.ModifiedAt).DefaultIfEmpty(DateTimeOffset.UnixEpoch).Max());
+        if (version < 3) state = TodoCompletion.Reconcile(state, state, state.Todos.Select(t => t.ModifiedAt).DefaultIfEmpty(DateTimeOffset.UnixEpoch).Max());
         PlannerIntegrity.Validate(state);
         return new(state, version < CurrentSchema);
     }

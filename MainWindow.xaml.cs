@@ -83,7 +83,7 @@ public partial class MainWindow : Window
         EdgeToggle.IsChecked = preferences.EdgeAutoHide;
         OpacitySlider.Value = preferences.BackgroundOpacity;
         ApplyAppearance(preferences);
-        CompactDate.Text = DateTime.Today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+        CompactDate.Text = (Session.Planner?.Today ?? DateOnly.FromDateTime(DateTime.Today)).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
         if (session.Planner == null) CompactItems.ItemsSource = DemoTodo.View(DemoContent.Todos);
         else
         {
@@ -173,6 +173,7 @@ public partial class MainWindow : Window
         if (e.Key == Key.Y) { e.Handled = true; await Session.Planner.RedoAsync(); }
     }
     void CategorySettingsClick(object sender, RoutedEventArgs e) { if (Session.Planner?.Writable == true) PlannerDialogs.ManageCategories(this, Session.Planner); }
+    void TimeZoneSettingsClick(object sender, RoutedEventArgs e) => ApplicationSettings.TimeZone(this);
     void ShortcutClick(object sender, RoutedEventArgs e) => ApplicationSettings.Shortcut(this);
     void CompletedChildrenClick(object sender, RoutedEventArgs e) => Session.Planner?.SetCompletedChildren(CompletedChildrenToggle.IsChecked == true);
     internal string HotkeyError { get; private set; } = "ShortcutUnavailable";
@@ -206,7 +207,7 @@ public partial class MainWindow : Window
         if (rows.Length == 0) CompactRealList.Children.Add(PlannerView.Text(Text(planner.State == null ? planner.NoticeKey : "PlannerEmpty"), 12, "#A2AFBC"));
         void Row(TodoDateNode node, int depth)
         {
-            var task = node.Value; var text = PlannerView.Text(""); text.Inlines.Add(new System.Windows.Documents.Run(PlannerView.Prefix(task)) { FontWeight = FontWeights.SemiBold, Foreground = PrototypeViews.Brush("#A3D9C4") }); text.Inlines.Add(new System.Windows.Documents.Run(task.Title)); text.TextWrapping = TextWrapping.Wrap; text.TextDecorations = task.Status == TodoStatus.Completed ? TextDecorations.Strikethrough : null; text.Opacity = task.Status == TodoStatus.Completed ? .55 : 1;
+            var task = node.Value; var text = PlannerView.Text(""); text.Inlines.Add(new System.Windows.Documents.Run(PlannerView.Prefix(task, planner.State!, planner.Today)) { FontWeight = FontWeights.SemiBold, Foreground = PrototypeViews.Brush("#A3D9C4") }); text.Inlines.Add(new System.Windows.Documents.Run(task.Title)); text.TextWrapping = TextWrapping.Wrap; text.TextDecorations = task.Status == TodoStatus.Completed ? TextDecorations.Strikethrough : null; text.Opacity = task.Status == TodoStatus.Completed ? .55 : 1;
             var check = new CheckBox { Content = text, IsChecked = task.Status == TodoStatus.Completed, Margin = new Thickness(depth * 12, 0, 0, 12), IsEnabled = !node.ContextOnly };
             System.Windows.Automation.AutomationProperties.SetName(check, task.Title);
             check.Click += async (_, _) => { bool complete = check.IsChecked == true; check.IsChecked = task.Status == TodoStatus.Completed; await planner.ExecuteAsync(new SetTodoCompleted(TodoRef.Of(task), complete)); };
@@ -297,7 +298,7 @@ public partial class MainWindow : Window
             PlannerDate = Session.Planner?.SelectedDate ?? Session.Preferences.PlannerDate, PlannerMonth = Session.Planner?.Month ?? Session.Preferences.PlannerMonth,
             CalendarColorBackground = Session.Planner?.ColorBackground ?? Session.Preferences.CalendarColorBackground,
             CalendarTextMode = Session.Planner?.TextMode ?? Session.Preferences.CalendarTextMode,
-            CollapseCompletedChildren = Session.Planner?.CollapseCompletedChildren ?? Session.Preferences.CollapseCompletedChildren, WeekStart = Session.Planner?.WeekStart ?? Session.Preferences.WeekStart, WeekPlanLayout = Session.Planner?.WeekLayout ?? Session.Preferences.WeekPlanLayout };
+            DisplayTimeZoneId = Session.Planner?.DisplayTimeZoneId ?? Session.Preferences.DisplayTimeZoneId, CollapseCompletedChildren = Session.Planner?.CollapseCompletedChildren ?? Session.Preferences.CollapseCompletedChildren, WeekStart = Session.Planner?.WeekStart ?? Session.Preferences.WeekStart, WeekPlanLayout = Session.Planner?.WeekLayout ?? Session.Preferences.WeekPlanLayout };
         p.SetBounds(fullPlacement?.Bounds ?? SavedBounds);
         if (monthPage.IsVisible) p.MonthColumns = ColumnWidths(monthPage);
         if (weekPage.IsVisible) p.WeekColumns = ColumnWidths(weekPage);
@@ -473,7 +474,7 @@ public partial class MainWindow : Window
     {
         if (Mode == DisplayMode.Compact) return;
         bool wasHandle = Mode == DisplayMode.EdgeHandle;
-        CompactDate.Text = DateTime.Today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+        CompactDate.Text = (Session.Planner?.Today ?? DateOnly.FromDateTime(DateTime.Today)).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
         SaveNormalBounds();
         CapturePlacement(); changingView = true;
         SmallMode(DisplayMode.Compact);
@@ -516,7 +517,7 @@ public partial class MainWindow : Window
         ResizeHandles.Visibility = Visibility.Visible;
         RestoreButton.Visibility = Visibility.Collapsed;
         CompactContent.Visibility = Visibility.Collapsed;
-        if (fromToday) { Appearance.FixedWeekOffset = 0; Appearance.FixedWeekStart = CalendarViewport.TodayAnchor(DateOnly.FromDateTime(DateTime.Now), Appearance.FixedWeekRows); Session.Planner?.Select(DateOnly.FromDateTime(DateTime.Now), true); PlannerView?.InvalidateCalendar(); SetPage(false); }
+        if (fromToday) { var today = Session.Planner?.Today ?? DateOnly.FromDateTime(DateTime.Today); Appearance.FixedWeekOffset = 0; Appearance.FixedWeekStart = CalendarViewport.TodayAnchor(today, Appearance.FixedWeekRows); Session.Planner?.Select(today, true); PlannerView?.InvalidateCalendar(); SetPage(false); }
         SettingsPanel.Visibility = Visibility.Collapsed;
         Shell.CornerRadius = new CornerRadius(18);
         if (needsRestore)

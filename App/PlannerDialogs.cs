@@ -43,6 +43,7 @@ internal static partial class PlannerDialogs
             var root = new Grid(); root.RowDefinitions.Add(new() { Height = GridLength.Auto }); root.RowDefinitions.Add(new()); root.RowDefinitions.Add(new() { Height = GridLength.Auto });
             var heading = new DockPanel { Margin = new Thickness(0, 0, 0, 12), Background = Brushes.Transparent }; closeButton = PlannerView.Button("×", Close, T("PlannerCancel")); DockPanel.SetDock(closeButton, Dock.Right); heading.Children.Add(closeButton); heading.Children.Add(PlannerView.Text(title, 18)); WindowGestures.Header(this, heading, HoldOpen); root.Children.Add(heading);
             var scroll = new ScrollViewer { Content = Body, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, MaxHeight = 540 }; Grid.SetRow(scroll, 1); root.Children.Add(scroll);
+            ScrollChaining.Attach(scroll);
             var footer = new StackPanel { Margin = new Thickness(0, 10, 0, 0) }; Error.TextWrapping = TextWrapping.Wrap; footer.Children.Add(Error); footer.Children.Add(Actions); Grid.SetRow(footer, 2); root.Children.Add(footer);
             Content = new Border { Background = PrototypeViews.Brush("#F5202E3B"), BorderBrush = PrototypeViews.Brush("#526474"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(12), Padding = new Thickness(18), Child = root };
             ime = new ImeInput(this); ime.Completed += () => { if (outsidePending) QueueOutsideClose(); };
@@ -173,6 +174,9 @@ internal static partial class PlannerDialogs
         date.SelectedDateChanged += (_, _) => invalidDate = false;
         var time = Input(draft.PlannedTime?.ToString("HH:mm", CultureInfo.InvariantCulture) ?? ""); time.ToolTip = T("PlannerTimeHint"); Grid.SetColumn(time, 1); dateTime.Children.Add(date); dateTime.Children.Add(time); sheet.Field("PlannerDateTime", dateTime); AutomationProperties.SetName(date, T("PlannerDate")); AutomationProperties.SetName(time, T("PlannerTime"));
         TodoDraftRules.BindTimePunctuation(time, new ImeInput(time));
+        var zone = TimeZoneChoices.Create(draft.PlannedTimeZoneId ?? (draft.Origin == null ? null : TodoTime.SourceZone(controller.State!, draft)), "FloatingTodoTime"); sheet.Field("TodoTimeZone", zone);
+        var offset = Input(draft.PlannedOffset is TimeSpan o ? PeriodFields.Offset(o) : ""); sheet.Field("TodoTimeOffset", offset);
+        var zoneHint = PlannerView.Text(T("TodoTimeZoneHint"), 10); zoneHint.TextWrapping = TextWrapping.Wrap; sheet.Body.Children.Add(zoneHint);
         RecurrenceFields? repeat = null; Expander? repeatSection = null;
         if (newRoot)
         {
@@ -197,7 +201,7 @@ internal static partial class PlannerDialogs
         if (hasChildren) { var hint = PlannerView.Text(T("ParentCompletionHint"), 10, "#A2AFBC"); hint.TextWrapping = TextWrapping.Wrap; sheet.Body.Children.Add(hint); }
         if (draft.ParentId is Guid p) { var parentText = PlannerView.Text(T("PlannerParent") + " " + controller.FindTodo(p)?.Title, 10, "#A2AFBC"); sheet.Body.Children.Add(parentText); }
         var goals = new GoalLinks(owner, controller, TodoRef.Of(draft)); sheet.Body.Children.Add(new Expander { Header = T("ActivityGoal"), Content = goals });
-        string Signature() => JsonSerializer.Serialize(new { title.Text, Description = description.Text, Date = date.SelectedDate, Time = time.Text, appearance.CategoryId, Color = appearance.Color.Value, Important = important.IsChecked, Urgent = urgent.IsChecked, Progress = progress.Text, Auto = automatic.IsChecked, Complete = completed.IsChecked, Type = type?.SelectedIndex, Repeat = newRoot && type?.SelectedIndex == 3 ? repeat?.DraftSignature : null, Goals = goals.Signature });
+        string Signature() => JsonSerializer.Serialize(new { title.Text, Description = description.Text, Date = date.SelectedDate, Time = time.Text, Zone = TimeZoneChoices.Value(zone), Offset = offset.Text, appearance.CategoryId, Color = appearance.Color.Value, Important = important.IsChecked, Urgent = urgent.IsChecked, Progress = progress.Text, Auto = automatic.IsChecked, Complete = completed.IsChecked, Type = type?.SelectedIndex, Repeat = newRoot && type?.SelectedIndex == 3 ? repeat?.DraftSignature : null, Goals = goals.Signature });
         string initial = Signature();
         sheet.Save(async () =>
         {
@@ -209,6 +213,16 @@ internal static partial class PlannerDialogs
             if (!TodoDraftRules.Title(title.Text)) { sheet.Error.Text = T("PlannerTitleRequired"); return false; }
             if (invalidDate || date.SelectedDate == null) { sheet.Error.Text = T("PlannerDateRequired"); return false; }
             if (!TodoDraftRules.Time(time.Text, out var planned)) { sheet.Error.Text = T("PlannerTimeInvalid"); return false; }
+            string? sourceZone = TimeZoneChoices.Value(zone) is { Length: > 0 } z ? z : null; TimeSpan? preferredOffset = null;
+            try
+            {
+                if (planned != null && sourceZone != null)
+                {
+                    var instant = PeriodFields.Parse(DateOnly.FromDateTime(date.SelectedDate.Value).ToString("yyyy-MM-dd") + " " + planned.Value.ToString("HH:mm"), offset.Text, sourceZone);
+                    if (offset.Text.Trim().Length > 0) preferredOffset = instant.Offset;
+                }
+            }
+            catch (PlannerException) { sheet.Error.Text = T("ActivityInvalidTime"); return false; }
             if (!appearance.Color.Valid) { sheet.Error.Text = T("PlannerColorInvalid"); return false; }
             decimal percent = draft.ManualProgress;
             if ((!hasChildren || automatic.IsChecked != true) && (!decimal.TryParse(progress.Text, NumberStyles.Number, CultureInfo.InvariantCulture, out percent) || percent is < 0 or > 100)) { sheet.Error.Text = T("PlannerProgressInvalid"); return false; }
@@ -218,12 +232,13 @@ internal static partial class PlannerDialogs
                 catch (PlannerException) { sheet.Error.Text = T("PlannerStaleEdit"); return false; }
             }
             var mode = !autoTouched && automatic.IsChecked == initialAuto ? draft.ProgressMode : automatic.IsChecked == true ? ProgressMode.Children : ProgressMode.Manual;
-            var value = draft with { Title = title.Text.Trim(), Description = description.Text, PlannedDate = DateOnly.FromDateTime(date.SelectedDate.Value), PlannedTime = planned, CategoryId = appearance.CategoryId, Color = appearance.Color.Value, Important = important.IsChecked == true, Urgent = urgent.IsChecked == true, ProgressMode = mode, ManualProgress = percent };
+            var value = draft with { Title = title.Text.Trim(), Description = description.Text, PlannedDate = DateOnly.FromDateTime(date.SelectedDate.Value), PlannedTime = planned, PlannedTimeZoneId = sourceZone, PlannedOffset = preferredOffset, CategoryId = appearance.CategoryId, Color = appearance.Color.Value, Important = important.IsChecked == true, Urgent = urgent.IsChecked == true, ProgressMode = mode, ManualProgress = percent };
             var commands = new System.Collections.Generic.List<PlannerCommand>(); var selectedScope = (scope?.SelectedItem as ScopeChoice)?.Value ?? EditScope.Single;
             DateOnly showDate = value.PlannedDate; TodoRef completionRef = TodoRef.Of(value);
             if (newRoot && type?.SelectedIndex == 3)
             {
                 if (!repeat!.Read(out var rule)) { sheet.Error.Text = T("RepeatInvalid"); return false; }
+                rule = rule with { TimeZoneId = sourceZone ?? controller.DisplayZone }; value = value with { PlannedTimeZoneId = null };
                 var seriesId = Guid.NewGuid(); commands.Add(new CreateSeries(rule, [value], seriesId)); showDate = Recurrence.Next(rule, rule.Start)!.Value; completionRef = TodoRef.For(new(seriesId, value.Id, showDate));
             }
             else if (original?.Origin != null) commands.Add(new EditOccurrence(value, selectedScope));
@@ -245,9 +260,10 @@ internal static partial class PlannerDialogs
             bool ok = await controller.ExecuteAsync(new BatchCommand([.. commands]));
             if (ok)
             {
-                var saved = controller.State!.Todos.FirstOrDefault(t => t.Id == value.Id);
+                var saved = PlannerQueries.Resolve(controller.State!, completionRef);
                 if (saved?.Kind == TodoKind.CarryLatest) showDate = PlannerQueries.CarryEnd(saved, controller.Today);
                 else if (original != null && saved?.Kind == TodoKind.CarryHistory && controller.On(controller.SelectedDate).Any(t => t.Id == saved.Id)) showDate = controller.SelectedDate;
+                else if (saved?.Kind is TodoKind.Once or TodoKind.Occurrence) showDate = TodoTime.Display(controller.State!, saved).Date;
                 controller.Select(showDate, true);
             }
             else sheet.Error.Text = T(controller.NoticeKey);
@@ -284,12 +300,21 @@ internal static partial class PlannerDialogs
         sheet.Body.Children.Add(PlannerView.Button(T("PlannerNewCategory"), () => { list.SelectedIndex = -1; selected = null; name.Clear(); color.Value = "#A3D9C4"; name.Focus(); }));
         sheet.Body.Children.Add(PlannerView.Button(T("PlannerArchiveCategory"), async () => { if (selected == null || !Confirm(owner, T("PlannerArchiveCategory"), T("PlannerArchiveHint"))) return; if (await controller.ExecuteAsync(new ArchiveCategory(selected.Id))) Refresh(); else sheet.Error.Text = T(controller.NoticeKey); }));
         sheet.Body.Children.Add(PlannerView.Button(T("PlannerDefaultCategories"), async () => { if (await controller.ExecuteAsync(new InitializeCategories())) Refresh(); else sheet.Error.Text = T(controller.NoticeKey); }));
-        sheet.Save(async () =>
+        var draftHint = PlannerView.Text(T("CategoryEditHint"), 11); draftHint.TextWrapping = TextWrapping.Wrap; sheet.Body.Children.Add(draftHint);
+        void DraftChanged() { if (sheet.Error.Text == T("CategorySaved")) sheet.Error.Text = ""; }
+        name.TextChanged += (_, _) => DraftChanged(); color.Changed += DraftChanged;
+        bool saving = false; sheet.Closing += (_, e) => { if (saving) e.Cancel = true; };
+        sheet.Body.Children.Add(PlannerView.Button(T("PlannerSave"), async () =>
         {
-            if (string.IsNullOrWhiteSpace(name.Text) || !System.Text.RegularExpressions.Regex.IsMatch(color.Value ?? "", "^#[0-9a-fA-F]{6}$")) { sheet.Error.Text = T("PlannerCategoryInvalid"); return false; }
-            var basis = selected == null ? new Category { SortKey = controller.State!.Categories.Select(c => c.SortKey).DefaultIfEmpty(-1024).Max() + 1024 } : controller.State!.Categories.Single(c => c.Id == selected.Id);
-            bool ok = await controller.ExecuteAsync(new SaveCategory(basis with { Name = name.Text.Trim(), Color = color.Value! })); if (!ok) sheet.Error.Text = T(controller.NoticeKey); return ok;
-        }); Show(owner, sheet);
+            if (!controller.Writable || saving) return;
+            if (string.IsNullOrWhiteSpace(name.Text) || !System.Text.RegularExpressions.Regex.IsMatch(color.Value ?? "", "^#[0-9a-fA-F]{6}$")) { sheet.Error.Text = T("PlannerCategoryInvalid"); return; }
+            var basis = selected == null ? new Category { Id = Guid.NewGuid(), SortKey = controller.State!.Categories.Select(c => c.SortKey).DefaultIfEmpty(-1024).Max() + 1024 } : controller.State!.Categories.Single(c => c.Id == selected.Id);
+            if (selected != null && basis.Name == name.Text.Trim() && basis.Color == color.Value) { sheet.Error.Text = T("CategorySaved"); return; }
+            saving = true; sheet.Body.IsEnabled = false;
+            try { bool ok = await controller.ExecuteAsync(new SaveCategory(basis with { Name = name.Text.Trim(), Color = color.Value! })); if (ok) { selected = controller.State!.Categories.Single(c => c.Id == basis.Id); Refresh(); sheet.Error.Text = T("CategorySaved"); } else sheet.Error.Text = T(controller.NoticeKey); }
+            finally { saving = false; sheet.Body.IsEnabled = true; }
+        }));
+        sheet.Actions.Children.Add(PlannerView.Button(T("CategoryDone"), sheet.Close)); Show(owner, sheet);
     }
     internal static void Decoration(MainWindow owner, PlannerController controller, DateOnly date)
     {

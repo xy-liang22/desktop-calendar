@@ -56,6 +56,7 @@ internal static partial class StageThreeChecks
     {
         window.RestoreNormal(false);
         await RunPickerChecks(window);
+        await RunActivityRevisionChecks(window);
         await RunInteractionChecks(window);
         var quick = window.PlannerView!.Quick;
         quick.Text = "20：00 任务：说明"; quick.Select(3, 2); await Idle();

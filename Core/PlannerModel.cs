@@ -61,6 +61,9 @@ public sealed record Todo : Entity
     public bool Urgent { get; init; }
     public DateOnly PlannedDate { get; init; }
     public TimeOnly? PlannedTime { get; init; }
+    // null preserves legacy floating wall-clock plans. A zone anchors new timed plans.
+    public string? PlannedTimeZoneId { get; init; }
+    public TimeSpan? PlannedOffset { get; init; }
     public TodoKind Kind { get; init; }
     public TodoStatus Status { get; init; }
     public DateTimeOffset? CompletedAt { get; init; }

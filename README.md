@@ -4,9 +4,9 @@
 
 Windows 本地桌面日历、待办、实际日程与周复盘工具。第一页是月历、当日待办和实际时间轴，第二页是七天时间轴、周目标、分类统计和周总结。待办代表计划，Activity 代表实际时间，两者关联但完成状态独立。
 
-当前版本 **0.8.3**，已完成 P1–P8、P9 已执行范围的验收及交互修订。尚未创建正式 GitHub Release；当前验证结果和兼容性缺口见 [TESTING](docs/TESTING.md)。
+当前版本 **0.8.4**，已完成 P1–P8、P9 已执行范围的验收及交互修订，新增显示时区、日程关联/分类连续编辑和离线黄历。尚未创建正式 GitHub Release；当前验证结果和兼容性缺口见 [TESTING](docs/TESTING.md)。
 
-**当前代码基线为 main。** 2026-11-05 已将包含源码整理和0.8.3修订的开发历史快进合入main，功能代码基线为`3817716`。以后从main创建开发分支，修改、验证后再合并；合并主分支不等于创建正式Release或证明未测平台兼容性。
+**main 是稳定代码基线。** 0.8.3及此前开发历史已完整保留，本轮0.8.4在其上增量开发并获准验证后同步main。以后从main创建开发分支，修改、验证后再合并；合并主分支不等于创建正式Release或证明未测平台兼容性。
 
 ## 已实现
 
@@ -20,14 +20,14 @@ Windows 本地桌面日历、待办、实际日程与周复盘工具。第一页
 - 离线农历、节气和内地/HK 假日，主动资料更新；即时中英切换；背景、透明度、周首日、固定周区间、字号和月历文字增亮设置。
 - 原子 JSON、schema 迁移、损坏保护、ZIP 备份恢复、用户级安装更新和主动开启的自启动。
 
-没有模拟业务数据。黄历宜忌因无合适授权来源暂未启用；完整 CommonMark/Typora 编辑器、联网同步和自动清理孤儿图片不在当前实现范围。完整产品约定见 [PRD](docs/PRD.md)。
+没有模拟业务数据。“日期详情 / 黄历”和日期头悬停提供1901–2100年的离线宜忌，标注传统历法参考，不替代官方假日或科学建议。完整 CommonMark/Typora 编辑器、联网同步和自动清理孤儿图片不在当前实现范围。完整产品约定见 [PRD](docs/PRD.md)。
 
 ## 环境
 
 - 目标 Windows 10/11 x64；实际验证环境为 Windows 11 build 26200、双屏均 144 DPI。
 - 运行需要 **.NET Desktop Runtime 10 x64**；采用框架依赖发布，不捆绑或自动下载运行时。
 - 源码构建需要 .NET 10 SDK x64、Windows PowerShell；Git 用于版本管理。VS Code 可选，不需要完整 Visual Studio 或 Build Tools。
-- 无第三方 NuGet 依赖；NuGet.Config 清空包源，构建离线。默认不联网、不使用 WSL。
+- 唯一第三方依赖为已获批准的 `lunar-csharp 1.6.8`（MIT），随包附许可证。运行完全离线；首次从源码构建时显式执行 `Restore-Dependencies.ps1` 从官方NuGet取得固定包，后续构建使用缓存和空包源。默认不联网、不使用 WSL。
 
 ## 安装、更新和启动
 
@@ -37,7 +37,7 @@ Windows 本地桌面日历、待办、实际日程与周复盘工具。第一页
 powershell -NoProfile -ExecutionPolicy Bypass -File .\Install-DesktopCalendar.ps1 -Action Install
 ```
 
-脚本离线构建，部署到当前用户 `%LOCALAPPDATA%\Programs\DesktopCalendar\versions\v<包指纹>`，并创建唯一的开始菜单 `Desktop Calendar` 入口。不要求管理员、不创建桌面快捷方式、不改 PATH 或注册表。搜索未收录时可以直接打开当前用户开始菜单中的同名快捷方式。
+从源码安装前须先按上文恢复一次批准的依赖；已有发布包无需下载依赖。脚本离线构建，部署到当前用户 `%LOCALAPPDATA%\Programs\DesktopCalendar\versions\v<包指纹>`，并创建唯一的开始菜单 `Desktop Calendar` 入口。不要求管理员、不创建桌面快捷方式、不改 PATH 或注册表。搜索未收录时可以直接打开当前用户开始菜单中的同名快捷方式。
 
 ```powershell
 # 更新到当前源码
@@ -62,6 +62,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\Install-DesktopCalendar.ps
 - “—”切换今日待办折叠视图；恢复时选中今天。开启贴边后拖到当前工作区左右边缘，移开稍等收起，悬停展开；折叠/托盘隐藏不参与贴边。
 - 时间轴普通滚轮滚动，**Ctrl+滚轮**缩放。拖空白创建、拖块移动、拖上下边调整；先预览后提交，Esc/右键取消，Shift 使用 1 分钟网格。单击显示详情，双击完整编辑。
 - 日程可包含多个跨日时间段；实际记录不会自动完成关联待办。精确时间输入和时区/UTC 偏移处理保留，非法时间不静默纠正。日程块用分类的柔和背景，文字与色条用强调色。
+- 设置 → 显示时区，默认跟随系统；两页日程显示 `10:05-10:45 · 摘要`，标题后显示心情。待办卡片/月历/折叠视图只显示换算后的 `HH:mm`，不显示时区或UTC偏移。旧版无来源时区待办保留原墙钟，新有时间待办记录填写时区；编辑器可调整来源。跨时区普通/周期任务可能换日；无时间和持续任务的日期展示规则不变。夏令时重复小时需在编辑器明确偏移，无效时间不能静默猜测。
+- 日程编辑器可直接管理分类；关联待办先选日期（默认日程当地日期），再按当天同级顺序和缩进选择。原有其他日期的关联单独保留，避免误清空。备注内部滚至边界后，滚轮继续滚动整个编辑器。
+- 分类管理中的“保存”提交当前分类并留在管理页；排序即时保存。可连续编辑多项，最后点“完成”。关闭只丢弃当前尚未保存的名称/颜色草稿，已保存的分类与顺序保留。
 - 日程 emoji 和心情使用离线分组网格，含笑脸、手势、自然、食物、旅行、活动、物品与符号；可按分组/常用中英文词搜索、清除或直接输入自定义 Unicode 表情。Esc 在表情网格内只关闭选择面板，附属面板不触发编辑器外部保存。候选不等于字体保证支持，实际彩色字形仍取决于系统字体。
 - Markdown 图片仅加载允许的本地资产；可点击进入适应/100%/滚轮缩放/平移。远程图不自动加载，链接只复制地址，不执行脚本。
 - 第二页管理周目标与总结；每个目标只用一种自动来源，实际时长只统计 Activity。同类重叠去重，不同类独立累计，百分比之和可超过 100%。周总结正文不会被重算的统计覆盖。
@@ -72,7 +75,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\Install-DesktopCalendar.ps
 
 个人数据默认位于 `%LOCALAPPDATA%\DesktopCalendar`，与源码和安装目录分离：
 
-- planner-data.json：业务数据，schema 3；ID、关联、排序和状态持久化。
+- planner-data.json：业务数据，schema 4；ID、关联、排序和状态持久化。旧schema1–3校验后迁移，保留原备份；旧程序不能降级覆盖schema4。
 - window-preferences.json：独立偏好，兼容 schema 2。
 - assets/images/：Markdown 相对路径图片；可选 calendar-knowledge.json 保存主动更新的历法资料。
 
@@ -85,6 +88,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\Install-DesktopCalendar.ps
 默认统一使用 Release，不再按开发阶段创建 P3/P4/P9 等输出目录：
 
 ```powershell
+.\Restore-Dependencies.ps1          # 首次开发：显式联网下载获批的固定MIT依赖
 .\build.ps1 -Test                    # 构建及窗口回归
 .\Start-DesktopCalendar.ps1          # 启动开发版
 .\Test-Planner.ps1                   # 数据与可靠性测试
@@ -124,6 +128,8 @@ artifacts/checks/         最新隔离测试数据与报告，不提交
 脚本保护 Git 跟踪文件、正在运行的程序目录和未知 artifacts 内容，拒绝重解析路径，不结束进程；默认保留 Release、当前包和最新报告。结束的 DesktopHostProbe 实验源码仍可在 Git 提交 310a87b 找回，日常工作区不再保留。历史文件按 [归档索引](docs/history/TESTING_P1_P9.md) 查询。
 
 Git 保存源码历史，旧 bin 不是回退依据；源码可用独立分支回看旧提交，但个人 JSON/图片必须靠备份，不能靠 Git 恢复。不需要删除历史或开发分支来保持工作区简洁。
+
+两台电脑暂不支持自动合并。建议一台完成编辑后导出完整ZIP，经自行选择的私人传输方式交给另一台，再确认恢复；一次只在一台编辑。不要让文件同步工具同时覆盖两份正在写入的JSON/图片目录。详见 [备份迁移](docs/BACKUP.md)。本程序不会自动上传私人数据。
 
 ## 已知限制与故障恢复
 

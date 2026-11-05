@@ -24,7 +24,7 @@ internal static partial class PlannerCommands
         return next with { Cancelled = [.. exclusions] };
     }
     static Todo Editable(Todo target, Todo fields) => target with { Title = fields.Title, Description = fields.Description, CategoryId = fields.CategoryId, Color = fields.Color,
-        Important = fields.Important, Urgent = fields.Urgent, PlannedTime = fields.PlannedTime, ManualProgress = fields.ManualProgress, ProgressMode = fields.ProgressMode };
+        Important = fields.Important, Urgent = fields.Urgent, PlannedTime = fields.PlannedTime, PlannedTimeZoneId = fields.PlannedTimeZoneId, PlannedOffset = fields.PlannedOffset, ManualProgress = fields.ManualProgress, ProgressMode = fields.ProgressMode };
     static CommandChange EditOccurrenceFields(PlannerState s, EditOccurrence c, DateTimeOffset now)
     {
         var original = Get(s, TodoRef.Of(c.Value));
@@ -70,6 +70,8 @@ internal static partial class PlannerCommands
             Important = before.Important != next.Important ? next.Important : value.Important,
             Urgent = before.Urgent != next.Urgent ? next.Urgent : value.Urgent,
             PlannedTime = before.PlannedTime != next.PlannedTime ? next.PlannedTime : value.PlannedTime,
+            PlannedTimeZoneId = before.PlannedTimeZoneId != next.PlannedTimeZoneId ? next.PlannedTimeZoneId : value.PlannedTimeZoneId,
+            PlannedOffset = before.PlannedOffset != next.PlannedOffset ? next.PlannedOffset : value.PlannedOffset,
             ProgressMode = before.ProgressMode != next.ProgressMode ? next.ProgressMode : value.ProgressMode,
             ManualProgress = before.ManualProgress != next.ManualProgress ? next.ManualProgress : value.ManualProgress,
             ModifiedAt = now
