@@ -146,11 +146,14 @@ internal static partial class PlannerDialogs
         var parentTodo = original == null && draft.ParentId is Guid parentId ? controller.FindTodo(parentId) : null;
         var occurrence = original?.Origin ?? parentTodo?.Origin;
         var sheet = new Sheet(original == null ? T("PlannerNew") : T("PlannerEdit"));
-        ComboBox? type = null, scope = null;
-        bool newRoot = original == null && draft.ParentId == null, carry = original?.Kind is TodoKind.CarryHistory or TodoKind.CarryLatest;
-        if (newRoot || carry)
+        ComboBox? type = null, scope = null; FrameworkElement? scopeLabel = null;
+        bool isNew = original == null, newRoot = isNew && draft.ParentId == null, carry = original?.Kind is TodoKind.CarryHistory or TodoKind.CarryLatest;
+        bool newChild = isNew && parentTodo != null, canFollow = newChild && parentTodo!.Origin is OccurrenceKey parentKey && CanEditSeries(controller.State!, parentKey);
+        if (isNew || carry)
         {
-            type = new ComboBox { MinHeight = 28, ItemsSource = newRoot ? new[] { T("RepeatOnce"), T("RepeatCarryHistory"), T("RepeatCarryLatest"), T("RepeatPeriodic") } : new[] { T("RepeatCarryHistory"), T("RepeatCarryLatest") }, SelectedIndex = newRoot || original!.Kind == TodoKind.CarryHistory ? 0 : 1 }; sheet.Field("RepeatType", type);
+            var names = new[] { T("RepeatOnce"), T("RepeatCarryHistory"), T("RepeatCarryLatest") };
+            type = new ComboBox { MinHeight = 28, ItemsSource = isNew ? (newRoot || canFollow ? names.Append(T(newRoot ? "RepeatPeriodic" : "ChildFollowParent")).ToArray() : names) : new[] { T("RepeatCarryHistory"), T("RepeatCarryLatest") }, SelectedIndex = isNew ? canFollow ? 3 : draft.Kind == TodoKind.CarryHistory ? 1 : draft.Kind == TodoKind.CarryLatest ? 2 : 0 : original!.Kind == TodoKind.CarryHistory ? 0 : 1 }; sheet.Field("RepeatType", type);
+            if (newChild) { var hint = PlannerView.Text(T(parentTodo!.Origin != null ? "ChildInstanceHint" : "ChildTypeHint"), 11); hint.TextWrapping = TextWrapping.Wrap; sheet.Body.Children.Add(hint); }
         }
         if (original != null && (original.ParentId == null || original.Origin == null))
             sheet.Body.Children.Add(PlannerView.Button(T("TodoSaveChangeType"), async () =>
@@ -159,9 +162,10 @@ internal static partial class PlannerDialogs
             }));
         if (occurrence != null)
         {
-            scope = RecurrenceFields.Scopes(true, occurrence.Date);
+            scope = RecurrenceFields.Scopes(!newChild, occurrence.Date);
             if (!CanEditSeries(controller.State!, occurrence)) scope.ItemsSource = new[] { new ScopeChoice(EditScope.Single, T("RepeatSingle")) };
             scope.SelectedIndex = 0; sheet.Field("RepeatScope", scope);
+            scopeLabel = (FrameworkElement)sheet.Body.Children[sheet.Body.Children.Count - 2];
             var context = PlannerView.Text(T("RepeatInstanceContext") + " " + occurrence.Date.ToString("yyyy-MM-dd"), 11, "#A3D9C4"); context.TextWrapping = TextWrapping.Wrap; sheet.Body.Children.Add(context);
         }
         var title = Input(draft.Title); title.MaxLength = 10000; sheet.Field("PlannerTitle", title);
@@ -190,12 +194,21 @@ internal static partial class PlannerDialogs
         bool hasChildren = original != null && PlannerQueries.Children(controller.State!, original).Length > 0;
         var automatic = new CheckBox { Content = T("PlannerDerivedProgress"), IsChecked = initialAuto, Margin = new Thickness(0, 5, 0, 5) }; var progress = Input(draft.ManualProgress.ToString(CultureInfo.InvariantCulture)); sheet.Field("PlannerProgress", progress); sheet.Body.Children.Add(automatic); automatic.Click += (_, _) => { autoTouched = true; progress.IsEnabled = !hasChildren || automatic.IsChecked != true; }; progress.IsEnabled = !hasChildren || automatic.IsChecked != true;
         var completed = new CheckBox { Content = T("PlannerCompleted"), IsChecked = draft.Status == TodoStatus.Completed, Margin = new Thickness(0, 6, 0, 6) }; sheet.Body.Children.Add(completed);
+        bool wasFollowing = false; DateTime? childDate = date.SelectedDate;
         void KindChanged()
         {
-            bool periodic = newRoot && type?.SelectedIndex == 3, single = scope == null || (scope.SelectedItem as ScopeChoice)?.Value == EditScope.Single;
+            bool following = newChild && type?.SelectedIndex == 3;
+            bool periodic = newRoot && type?.SelectedIndex == 3, single = newChild && !following || scope == null || (scope.SelectedItem as ScopeChoice)?.Value == EditScope.Single;
             if (repeatSection != null) repeatSection.Visibility = periodic ? Visibility.Visible : Visibility.Collapsed;
-            completed.IsEnabled = !periodic && single; if (periodic) completed.IsChecked = false;
+            completed.IsEnabled = !periodic && !following && single; if (periodic || following) completed.IsChecked = false;
+            if (newChild && scope != null) { scope.Visibility = following ? Visibility.Visible : Visibility.Collapsed; scopeLabel!.Visibility = scope.Visibility; }
             if (occurrence != null) date.IsEnabled = single;
+            if (newChild && occurrence != null)
+            {
+                if (following && !wasFollowing) { childDate = date.SelectedDate; date.SelectedDate = occurrence.Date.ToDateTime(TimeOnly.MinValue); }
+                else if (!following && wasFollowing) date.SelectedDate = childDate;
+                wasFollowing = following;
+            }
         }
         if (type != null) type.SelectionChanged += (_, _) => KindChanged(); if (scope != null) scope.SelectionChanged += (_, _) => KindChanged(); KindChanged();
         if (hasChildren) { var hint = PlannerView.Text(T("ParentCompletionHint"), 10, "#A2AFBC"); hint.TextWrapping = TextWrapping.Wrap; sheet.Body.Children.Add(hint); }
@@ -233,7 +246,8 @@ internal static partial class PlannerDialogs
             }
             var mode = !autoTouched && automatic.IsChecked == initialAuto ? draft.ProgressMode : automatic.IsChecked == true ? ProgressMode.Children : ProgressMode.Manual;
             var value = draft with { Title = title.Text.Trim(), Description = description.Text, PlannedDate = DateOnly.FromDateTime(date.SelectedDate.Value), PlannedTime = planned, PlannedTimeZoneId = sourceZone, PlannedOffset = preferredOffset, CategoryId = appearance.CategoryId, Color = appearance.Color.Value, Important = important.IsChecked == true, Urgent = urgent.IsChecked == true, ProgressMode = mode, ManualProgress = percent };
-            var commands = new System.Collections.Generic.List<PlannerCommand>(); var selectedScope = (scope?.SelectedItem as ScopeChoice)?.Value ?? EditScope.Single;
+            var commands = new System.Collections.Generic.List<PlannerCommand>(); bool following = newChild && type?.SelectedIndex == 3;
+            var selectedScope = newChild && !following ? EditScope.Single : (scope?.SelectedItem as ScopeChoice)?.Value ?? EditScope.Single;
             DateOnly showDate = value.PlannedDate; TodoRef completionRef = TodoRef.Of(value);
             if (newRoot && type?.SelectedIndex == 3)
             {
@@ -242,15 +256,16 @@ internal static partial class PlannerDialogs
                 var seriesId = Guid.NewGuid(); commands.Add(new CreateSeries(rule, [value], seriesId)); showDate = Recurrence.Next(rule, rule.Start)!.Value; completionRef = TodoRef.For(new(seriesId, value.Id, showDate));
             }
             else if (original?.Origin != null) commands.Add(new EditOccurrence(value, selectedScope));
-            else if (parentTodo?.Origin is OccurrenceKey parentOccurrence)
+            else if (following && parentTodo?.Origin is OccurrenceKey parentOccurrence)
             {
+                if (controller.FindTodo(parentTodo.Id)?.Status == TodoStatus.Completed) { sheet.Error.Text = T("ChildCompletedParent"); return false; }
                 commands.Add(new AddSeriesTodo(value, TodoRef.Of(parentTodo), selectedScope));
                 completionRef = TodoRef.For(new(parentOccurrence.SeriesId, value.Id, parentOccurrence.Date));
             }
             else
             {
-                if (newRoot) value = value with { Kind = type?.SelectedIndex switch { 1 => TodoKind.CarryHistory, 2 => TodoKind.CarryLatest, _ => TodoKind.Once } };
-                commands.Add(new SaveTodo(value));
+                if (isNew) value = value with { Kind = type?.SelectedIndex switch { 1 => TodoKind.CarryHistory, 2 => TodoKind.CarryLatest, _ => TodoKind.Once } };
+                commands.Add(newChild ? new AddChildTodo(value, TodoRef.Of(parentTodo!)) : new SaveTodo(value));
                 if (carry && (type!.SelectedIndex == 0) != (original!.Kind == TodoKind.CarryHistory)) commands.Add(new SetCarryMode(TodoRef.Of(value), type.SelectedIndex == 0));
             }
             if (selectedScope != EditScope.Single && !Confirm(owner, T("RepeatScope"), T("RepeatApplyConfirm") + "\n" + (scope?.SelectedItem as ScopeChoice)?.Name)) return false;

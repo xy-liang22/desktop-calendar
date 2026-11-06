@@ -47,9 +47,9 @@ internal static partial class StageThreeChecks
         Check("GUI series child applies to pending dates and preserves completed history", c.On(start.AddDays(2)).Any(t => t.Title == "GUI series child") && !c.On(start).Any(t => t.Title == "GUI series child"));
         await DriveAsync(() => v.Edit(null, Occ(2).Id), async s =>
         {
-            Field(s, "PlannerTitle").Text = "GUI one-off done child"; Children<CheckBox>(s).Single(x => Equals(x.Content, MainWindow.Text("PlannerCompleted"))).IsChecked = true; await s.SaveAndCloseAsync(false);
+            Field(s, "PlannerTitle").Text = "GUI one-off done child"; Choice(s, "RepeatType").SelectedIndex = 0; Children<CheckBox>(s).Single(x => Equals(x.Content, MainWindow.Text("PlannerCompleted"))).IsChecked = true; await s.SaveAndCloseAsync(false);
         });
-        Check("GUI one-off child completion uses the correct instance reference", c.On(start.AddDays(2)).Any(t => t.Title == "GUI one-off done child" && t.Status == TodoStatus.Completed && t.Origin != null) && !c.On(start.AddDays(4)).Any(t => t.Title == "GUI one-off done child"));
+        Check("GUI one-off child completion retains parent occurrence without repeating", c.On(start.AddDays(2)).Any(t => t.Title == "GUI one-off done child" && t.Status == TodoStatus.Completed && t.Origin == null && t.ParentId == Occ(2).Id) && !c.On(start.AddDays(4)).Any(t => t.Title == "GUI one-off done child"));
         await DriveAsync(() => v.Edit(PlannerQueries.Resolve(c.State!, Occ(2))), async s => { Field(s, "PlannerTitle").Text = "GUI single exception"; await s.SaveAndCloseAsync(false); });
         Check("single instance editing does not rename another date", PlannerQueries.Resolve(c.State!, Occ(2)).Title == "GUI single exception" && PlannerQueries.Resolve(c.State!, Occ(4)).Title == "GUI periodic daily");
         c.BeginInline(PlannerQueries.Resolve(c.State!, Occ(2)), start.AddDays(2)); window.UpdateLayout(); await Idle();

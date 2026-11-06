@@ -38,6 +38,7 @@ internal static partial class PlannerCommands
     }
     static CommandChange AddSeriesChild(PlannerState s, AddSeriesTodo c, DateTimeOffset now)
     {
+        if (c.Value.Kind != TodoKind.Once) throw new PlannerException("SeriesChildMustFollowRule");
         var parent = Get(s, c.Parent); if (parent.Origin is not OccurrenceKey key) throw new PlannerException("OccurrenceParentRequired");
         if (c.Scope == EditScope.Single) return AddOccurrence(s, new(c.Value, c.Parent), now);
         var series = s.Series.Single(x => x.Id == key.SeriesId); var version = PlannerQueries.Version(series, key.Date) ?? throw new PlannerException("RuleVersionNotFound");

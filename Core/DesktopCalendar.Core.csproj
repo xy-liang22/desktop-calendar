@@ -4,7 +4,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <NuGetAudit>false</NuGetAudit>
-    <Version>0.8.4</Version>
+    <Version>0.8.5</Version>
   </PropertyGroup>
   <ItemGroup><EmbeddedResource Include="calendar.json" /></ItemGroup>
   <ItemGroup><PackageReference Include="lunar-csharp" Version="[1.6.8]" /></ItemGroup>

@@ -6,6 +6,7 @@ namespace DesktopCalendar.Core;
 public abstract record PlannerCommand;
 public sealed record BatchCommand(ImmutableArray<PlannerCommand> Commands) : PlannerCommand;
 public sealed record SaveTodo(Todo Value) : PlannerCommand;
+public sealed record AddChildTodo(Todo Value, TodoRef Parent) : PlannerCommand;
 public sealed record RenameTodo(TodoRef Todo, string Title, string ExpectedTitle) : PlannerCommand;
 public sealed record SetTodoCompleted(TodoRef Todo, bool Completed) : PlannerCommand;
 public sealed record MoveCarryTodo(TodoRef Todo, DateOnly Date) : PlannerCommand;
@@ -99,6 +100,14 @@ internal static partial class PlannerCommands
                 else if (t.Status != old.Status || t.CompletedAt != old.CompletedAt || t.Kind != old.Kind || t.Origin != old.Origin || t.CarryDate != old.CarryDate || t.FrozenCarryDate != old.FrozenCarryDate || !t.Moves.SequenceEqual(old.Moves) || t.CompletionIntent != old.CompletionIntent || t.CompletionSnapshot != old.CompletionSnapshot || t.CompletionSnapshotInvalidated != old.CompletionSnapshotInvalidated) throw new PlannerException("UseExplicitTodoCommand");
                 if (old?.Origin != null && old.ParentId != t.ParentId) throw new PlannerException("OccurrenceReparentNotSupported");
                 return new(s with { Todos = Put(s.Todos, t) }, t.Id);
+            }
+            case AddChildTodo c:
+            {
+                if (s.Todos.Any(t => t.Id == c.Value.Id) || c.Value.Origin != null || c.Value.SeriesId != null || c.Value.ParentId is Guid p && p != c.Parent.Id) throw new PlannerException("InvalidNewChild");
+                s = Materialize(s, c.Parent); var parent = Get(s, c.Parent);
+                if (parent.Status == TodoStatus.Cancelled) throw new PlannerException("CancelledTodo");
+                // A local ordinary/carry child belongs only to this stable parent identity.
+                return ApplyCore(s, new SaveTodo(c.Value with { ParentId = parent.Id }), now, depth + 1);
             }
             case RenameTodo c:
             {

@@ -531,4 +531,8 @@
 无=None</s:String>
  <s:String x:Key="CalendarDateDetails">Date details / almanac</s:String>
  <s:String x:Key="CategoryDone">Done</s:String>
+ <s:String x:Key="ChildFollowParent">Recurring (follow parent rule)</s:String>
+ <s:String x:Key="ChildTypeHint">Defaults to the parent type. Choose one-time or either carry mode independently. Independent recurring subtasks are not supported.</s:String>
+ <s:String x:Key="ChildInstanceHint">Following uses the parent's rule, starting with this occurrence by default and preserving completed history. One-time or carry tasks attach only to this parent occurrence.</s:String>
+ <s:String x:Key="ChildCompletedParent">This completed parent occurrence is preserved. Add a recurring subtask under a pending occurrence, or choose one-time/carry to attach only to this occurrence.</s:String>
 </ResourceDictionary>

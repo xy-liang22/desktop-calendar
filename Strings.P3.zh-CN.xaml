@@ -47,4 +47,8 @@
  <s:String x:Key="RepeatInvalid">规则无效或范围内没有发生：检查间隔、星期、月日、结束日期及次数。</s:String><s:String x:Key="RepeatCancel">取消 / 停止重复待办</s:String><s:String x:Key="RepeatCancelApply">确认取消所选范围</s:String><s:String x:Key="RepeatCancelHint">未完成事项按范围取消；已完成历史及其必要祖先保留。可撤销。子任务范围操作仅影响该分支。</s:String><s:String x:Key="RepeatCompletedProtected">已完成历史受保护；若需取消本次，请先取消完成。</s:String>
  <s:String x:Key="RepeatMove">顺延到日期</s:String><s:String x:Key="RepeatCarryHint">持续待办使用同一ID和完成状态；未完成时自动延续到今天。顺延到未来日会保留记录，完成后冻结原显示范围。</s:String><s:String x:Key="RepeatMoveInvalid">请选择晚于最后一次显式顺延日的有效日期。</s:String><s:String x:Key="RepeatHistoryMark">持续 · 保留历史</s:String><s:String x:Key="RepeatLatestMark">持续 · 仅最新</s:String><s:String x:Key="RepeatPeriodicMark">周期实例</s:String><s:String x:Key="RepeatCopyHint">复制为独立的一次性待办及子树，不复制重复规则或持续性；原任务不变。</s:String>
  <s:String x:Key="RepeatUseUntil">启用</s:String>
+ <s:String x:Key="ChildFollowParent">周期性（跟随父任务规则）</s:String>
+ <s:String x:Key="ChildTypeHint">默认继承父任务类型，可独立选择普通或两种持续方式；独立周期子任务暂不支持。</s:String>
+ <s:String x:Key="ChildInstanceHint">跟随周期时与父任务共用规则，默认从本次起生效并保留已完成历史。普通或持续类型只关联这次父任务，不复制到后续发生。</s:String>
+ <s:String x:Key="ChildCompletedParent">已完成的父任务发生保持不变。请从一次未完成的父任务中新增周期子任务，或改选普通/持续类型只关联本次。</s:String>
 </ResourceDictionary>

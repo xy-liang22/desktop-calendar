@@ -197,7 +197,7 @@ internal sealed class PlannerController
     internal Todo NewTodo(string title, Guid? parent = null)
     {
         var ancestor = parent == null ? null : FindTodo(parent.Value);
-        return new() { Id = Guid.NewGuid(), Title = title.Trim(), PlannedDate = SelectedDate, PlannedTimeZoneId = DisplayZone, ParentId = parent, CategoryId = ancestor?.CategoryId, Color = ancestor?.Color,
+        return new() { Id = Guid.NewGuid(), Title = title.Trim(), Kind = ancestor?.Kind is TodoKind.CarryHistory or TodoKind.CarryLatest ? ancestor.Kind : TodoKind.Once, PlannedDate = SelectedDate, PlannedTimeZoneId = ancestor?.Origin != null ? TodoTime.SourceZone(State!, ancestor) : DisplayZone, ParentId = parent, CategoryId = ancestor?.CategoryId, Color = ancestor?.Color,
             SortKey = (ancestor != null && State != null ? PlannerQueries.Children(State, ancestor).Select(t => t.SortKey).DefaultIfEmpty(-1024).Max() : State?.Todos.Where(t => t.ParentId == parent && t.PlannedDate == SelectedDate).Select(t => t.SortKey).DefaultIfEmpty(-1024).Max() ?? -1024) + 1024 };
     }
     internal static bool QuickInput(string value, out string title, out TimeOnly? time)
