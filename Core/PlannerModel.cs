@@ -51,6 +51,8 @@ public sealed record TodoRef(Guid Id, OccurrenceKey? Occurrence = null)
 public sealed record TodoMove(DateOnly From, DateOnly To, DateTimeOffset At);
 public sealed record CompletionBefore(Guid TodoId, TodoStatus Status, CompletionIntent Intent, DateTimeOffset? CompletedAt, DateOnly? FrozenCarryDate);
 public sealed record CompletionSnapshot(Guid Id, DateTimeOffset CapturedAt, string Guard, ImmutableArray<CompletionBefore> Entries);
+// Null Date means the task's planned date. Null Time means the end of Date.
+public sealed record TodoDeadline(DateOnly? Date, TimeOnly? Time, string TimeZoneId, TimeSpan? Offset = null);
 public sealed record Todo : Entity
 {
     public string Title { get; init; } = "";
@@ -64,6 +66,7 @@ public sealed record Todo : Entity
     // null preserves legacy floating wall-clock plans. A zone anchors new timed plans.
     public string? PlannedTimeZoneId { get; init; }
     public TimeSpan? PlannedOffset { get; init; }
+    public TodoDeadline? Deadline { get; init; }
     public TodoKind Kind { get; init; }
     public TodoStatus Status { get; init; }
     public DateTimeOffset? CompletedAt { get; init; }

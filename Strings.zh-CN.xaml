@@ -38,4 +38,35 @@
  <s:String x:Key="PickerAll">全部表情</s:String><s:String x:Key="PickerSearch">搜索表情、常用词或直接输入自定义表情</s:String><s:String x:Key="PickerNoResults">没有匹配；仍可在上方直接输入</s:String><s:String x:Key="PickerClear">清除表情</s:String>
  <s:String x:Key="EmojiFaces">笑脸与心情</s:String><s:String x:Key="EmojiPeople">人物与手势</s:String><s:String x:Key="EmojiNature">动物与自然</s:String><s:String x:Key="EmojiFood">食物与饮料</s:String><s:String x:Key="EmojiTravel">旅行与地点</s:String><s:String x:Key="EmojiActivities">活动与运动</s:String><s:String x:Key="EmojiObjects">物品与办公</s:String><s:String x:Key="EmojiSymbols">爱心与符号</s:String>
  <s:String x:Key="CategoryOrderHint">拖动分类调整顺序，绿色线表示插入位置；排序立即保存，可撤销。也可选中后上下移动。</s:String><s:String x:Key="CategoryMoveUp">↑ 上移</s:String><s:String x:Key="CategoryMoveDown">↓ 下移</s:String>
+ <s:String x:Key="Deadline">截止时间 DDL</s:String>
+ <s:String x:Key="DeadlineNone">无截止时间</s:String>
+ <s:String x:Key="DeadlineDate">日期（当天结束）</s:String>
+ <s:String x:Key="DeadlineTime">时间（计划日期当天）</s:String>
+ <s:String x:Key="DeadlineBoth">日期与时间</s:String>
+ <s:String x:Key="DeadlineHint">日期可选择年份；仅时间随计划日期。DDL 颜色提示紧迫程度，不改变排序。</s:String>
+ <s:String x:Key="DeadlineInvalid">截止时间无效，或遇到夏令时缺失/重复小时。请检查日期、时间、时区及偏移。</s:String>
+ <s:String x:Key="TimeZoneSystem">系统时区</s:String>
+ <s:String x:Key="BulkEdit">批量编辑…</s:String>
+ <s:String x:Key="BulkSelectAll">全选本日条目（含子任务）</s:String>
+ <s:String x:Key="BulkDate">修改计划日期</s:String>
+ <s:String x:Key="BulkKeepType">保持原类型</s:String>
+ <s:String x:Key="BulkHint">只改勾选条目，一次保存与撤销。周期转类型需明确选中整棵子树；保护已完成历史。周期改日期仅移动所选发生，转类型从生效日替换后续未完成发生。</s:String>
+ <s:String x:Key="BulkChoose">请选择条目及要修改的日期或类型。</s:String>
+ <s:String x:Key="BulkPreview">将原子修改 {0} 项。请确认以下范围：</s:String>
+ <s:String x:Key="BulkSelectSubtree">此周期转换涉及子树。请明确勾选全部后代后重试；本次未保存。</s:String>
+ <s:String x:Key="BulkSelectSeriesRoot">周期类型转换需要选中系列根任务及其后代；仅改单次日期可独立选择。</s:String>
+ <s:String x:Key="BulkCompletedHistory">此操作会改写已完成周期历史，请取消勾选该历史条目或另选未完成发生。</s:String>
+ <s:String x:Key="HierarchyMove">调整任务层级…</s:String>
+ <s:String x:Key="HierarchyRoot">移至顶层（保留子树）</s:String>
+ <s:String x:Key="HierarchyDetachType">移出周期后的类型</s:String>
+ <s:String x:Key="HierarchyHint">保留任务 ID、关联和子树。父任务会重新计算进度；结构变更使旧完成快照失效。周期后续范围保留已完成历史。</s:String>
+ <s:String x:Key="HierarchyConversion">本次发生及其子树将转为独立普通/持续任务，保留 ID 和关联；其他日期的周期发生不变。之后可重新选择父任务。请明确确认转换。</s:String>
+ <s:String x:Key="HierarchyDetachSingle">跨系列或移出系列先转换所选单次发生，其他日期保持原规则。</s:String>
+ <s:String x:Key="HierarchyCycle">不能移入自身或后代任务。</s:String>
+ <s:String x:Key="WorkflowInvalid">无法应用此修改，请检查选择范围、层级及日期。原数据未改变。</s:String>
+ <s:String x:Key="TodoDragHint">拖至上下边缘排序，中心成为子任务；可滚轮滚动，Esc 取消。</s:String>
+ <s:String x:Key="TodoDragSiblingOnly">未完成与已完成分组不能混排；移至中心可调整层级。</s:String>
+ <s:String x:Key="TodoDragChild">松开后确认成为子任务：</s:String>
+ <s:String x:Key="TodoDragBefore">放在前面：</s:String>
+ <s:String x:Key="TodoDragAfter">放在后面：</s:String>
 </ResourceDictionary>

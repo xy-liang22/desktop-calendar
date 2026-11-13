@@ -17,7 +17,7 @@ public sealed record DecodedPlanner(PlannerState State, bool Migrated);
 
 public static class PlannerCodec
 {
-    public const int CurrentSchema = 4;
+    public const int CurrentSchema = 5;
     internal static readonly JsonSerializerOptions Json = MakeOptions();
     static JsonSerializerOptions MakeOptions()
     {
@@ -79,7 +79,7 @@ public static class PlannerCodec
                 foreach (var row in series) if (row != null) row["retiredNodeIds"] ??= new System.Text.Json.Nodes.JsonArray();
             payload = legacy.Deserialize<PlannerPayloadDto>(Json) ?? throw new PlannerException("InvalidPayload");
         }
-        else if (version is 2 or 3 or CurrentSchema)
+        else if (version is 2 or 3 or 4 or CurrentSchema)
         {
             var dto = root.Deserialize<PlannerEnvelopeDto>(Json) ?? throw new PlannerException("InvalidEnvelope");
             if (!string.Equals(dto.PayloadSha256, Hash(dto.Payload), StringComparison.Ordinal)) throw new PlannerException("ChecksumMismatch");
@@ -101,6 +101,7 @@ public static class PlannerCodec
                 }
                 if (!todo.AsObject().ContainsKey("plannedTimeZoneId")) todo["plannedTimeZoneId"] = null;
                 if (!todo.AsObject().ContainsKey("plannedOffset")) todo["plannedOffset"] = null;
+                if (!todo.AsObject().ContainsKey("deadline")) todo["deadline"] = null;
             }
             foreach (var t in migrated["todos"]!.AsArray()) Upgrade(t);
             foreach (var series in migrated["series"]!.AsArray()) foreach (var v in series!["versions"]!.AsArray()) foreach (var t in v!["templates"]!.AsArray()) Upgrade(t);

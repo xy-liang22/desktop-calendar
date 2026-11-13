@@ -61,6 +61,10 @@ internal static partial class StageThreeChecks
         {
             await controller.Pending;
             window.Show(); window.UpdateLayout();
+            if (Environment.GetCommandLineArgs().Contains("--workflow-only"))
+            {
+                await RunWorkflowChecks(window); File.WriteAllLines(Path.Combine(DirectoryPath, "checks-workflow.txt"), results); session.Exit(results.Any(r => r.StartsWith("FAIL ")) ? 1 : 0); return;
+            }
             if (phase == "restart")
             {
                 Check("fresh WPF process loads entire prior committed planner graph", Digest(controller.State!) == File.ReadAllText(Path.Combine(DirectoryPath, "expected-hash.txt")));
@@ -136,8 +140,7 @@ internal static partial class StageThreeChecks
                 await controller.ExecuteAsync(new SetTodoCompleted(new(alpha.Id), false));
                 foreach (var name in new[] { "GUI beta", "GUI gamma" }) { view.Quick.Text = name; await view.AddQuickAsync(); }
                 var beta = controller.State!.Todos.Single(t => t.Title == "GUI beta"); var gamma = controller.State.Todos.Single(t => t.Title == "GUI gamma");
-                Check("native drag payload uses canonical inert ID", PlannerView.DragId(new DataObject("DesktopCalendar.Todo", gamma.Id.ToString("D"))) == gamma.Id);
-                Check("foreign or malformed native drag payload is rejected", PlannerView.DragId(new DataObject(DataFormats.Text, gamma.Id.ToString())) == null && PlannerView.DragId(new DataObject("DesktopCalendar.Todo", "not-an-id")) == null);
+                Check("todo list does not accept foreign OLE payloads", view.Items.Children.OfType<Border>().All(row => !row.AllowDrop));
                 Check("real drop handler persists sibling insertion", await view.DropAsync(gamma, beta, false) && controller.On(controller.Today).Where(t => t.ParentId == null).Select(t => t.Title).SequenceEqual(["GUI edited", "GUI gamma", "GUI beta"]));
                 Check("drop handler rejects cross-parent moves", !await view.DropAsync(child, beta, false));
                 await controller.UndoAsync(); Check("Undo restores prior sorting mode without losing tasks", controller.State!.Todos.Length == 4 && controller.State.TodoOrderings.Length == 0); await controller.RedoAsync();

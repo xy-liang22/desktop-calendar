@@ -22,6 +22,7 @@ internal static partial class Checks
         Directory.CreateDirectory(output);
         try { ModelChecks(); await StorageChecks(output); await ServiceChecks(output); await BoundaryChecks(output); await CompletionChecks(output); await P4Checks(output); await P5Checks(output); await P6Checks(output); await P7Checks(output); await P8Checks(output); await ConversionChecks(output); await CategoryOrderChecks(output); await TimeZoneChecks(output); await SubtaskTypeChecks(output); }
         catch (Exception e) { Results.Add("FAIL unhandled " + e); }
+        try { await WorkflowChecks(output); } catch (Exception e) { Results.Add("FAIL workflow unhandled " + e); }
         File.WriteAllLines(Path.Combine(output, "checks.txt"), Results);
         int failures = Results.Count(s => s.StartsWith("FAIL "));
         Console.WriteLine($"P2 PASS={Results.Count(s => s.StartsWith("PASS "))} FAIL={failures} NOT_VERIFIED={Results.Count(s => s.StartsWith("NOT VERIFIED "))}");

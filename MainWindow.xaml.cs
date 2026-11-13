@@ -89,6 +89,7 @@ public partial class MainWindow : Window
         {
             CompactItems.Visibility = Visibility.Collapsed;
             session.Planner.Changed += RefreshPlanner;
+            session.Planner.ClockChanged += RefreshCompactDeadlines;
             PreviewKeyDown += PlannerKey;
             RefreshPlanner();
         }
@@ -114,7 +115,7 @@ public partial class MainWindow : Window
         edgeTimer.Tick += (_, _) => EvaluateEdge();
         RestoreButton.MouseEnter += (_, _) => { if (Mode == DisplayMode.EdgeHandle) RestoreNormal(false); };
         Closing += OnClosing;
-        Closed += (_, _) => { Ready = false; edgeTimer.Stop(); source?.RemoveHook(WindowMessage); PlannerView?.Detach(); DailyTimeline.Unbind(); WeeklyTimeline.Unbind(); if (session.Planner != null) session.Planner.Changed -= RefreshPlanner; };
+        Closed += (_, _) => { Ready = false; edgeTimer.Stop(); source?.RemoveHook(WindowMessage); PlannerView?.Detach(); DailyTimeline.Unbind(); WeeklyTimeline.Unbind(); if (session.Planner != null) { session.Planner.Changed -= RefreshPlanner; session.Planner.ClockChanged -= RefreshCompactDeadlines; } };
         Surface.SizeChanged += (_, _) => Surface.Clip = new RectangleGeometry(new Rect(0, 0, Surface.ActualWidth, Surface.ActualHeight), Mode == DisplayMode.Normal ? 18 : 12, Mode == DisplayMode.Normal ? 18 : 12);
     }
     internal void ShowPlannerMonth() { if (Mode != DisplayMode.Normal) RestoreNormal(); SetPage(false); }
@@ -167,6 +168,7 @@ public partial class MainWindow : Window
     }
     async void PlannerKey(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.Escape && PlannerView?.TodoDragging == true) { PlannerView.CancelTodoDrag(); e.Handled = true; return; }
         if (Session.Planner == null || (Keyboard.Modifiers & ModifierKeys.Control) == 0) return;
         if (e.OriginalSource is System.Windows.Controls.Primitives.TextBoxBase input && (input != PlannerView?.Quick || PlannerView.Quick.Text.Length > 0)) return;
         if (e.Key == Key.Z) { e.Handled = true; if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0) await Session.Planner.RedoAsync(); else await Session.Planner.UndoAsync(); }
@@ -207,14 +209,22 @@ public partial class MainWindow : Window
         if (rows.Length == 0) CompactRealList.Children.Add(PlannerView.Text(Text(planner.State == null ? planner.NoticeKey : "PlannerEmpty"), 12, "#A2AFBC"));
         void Row(TodoDateNode node, int depth)
         {
-            var task = node.Value; var text = PlannerView.Text(""); text.Inlines.Add(new System.Windows.Documents.Run(PlannerView.Prefix(task, planner.State!, planner.Today)) { FontWeight = FontWeights.SemiBold, Foreground = PrototypeViews.Brush("#A3D9C4") }); text.Inlines.Add(new System.Windows.Documents.Run(task.Title)); text.TextWrapping = TextWrapping.Wrap; text.TextDecorations = task.Status == TodoStatus.Completed ? TextDecorations.Strikethrough : null; text.Opacity = task.Status == TodoStatus.Completed ? .55 : 1;
-            var check = new CheckBox { Content = text, IsChecked = task.Status == TodoStatus.Completed, Margin = new Thickness(depth * 12, 0, 0, 12), IsEnabled = !node.ContextOnly };
+            var task = node.Value; var text = PlannerView.Text("");
+            if (task.Deadline != null) text.Inlines.Add(new System.Windows.Documents.Run(WorkflowText.Deadline(task, planner.DisplayZone) + " · ") { Foreground = ThemeColors.Brush(WorkflowText.DeadlineColor(task)), FontWeight = FontWeights.SemiBold });
+            text.Inlines.Add(new System.Windows.Documents.Run(PlannerView.PlannedPrefix(task, planner.State!, planner.Today)) { FontWeight = FontWeights.SemiBold, Foreground = PrototypeViews.Brush("#A3D9C4") }); text.Inlines.Add(new System.Windows.Documents.Run(task.Title)); text.TextWrapping = TextWrapping.Wrap; text.TextDecorations = task.Status == TodoStatus.Completed ? TextDecorations.Strikethrough : null; text.Opacity = task.Status == TodoStatus.Completed ? .55 : 1;
+            var check = new CheckBox { Content = text, Tag = task.Id, IsChecked = task.Status == TodoStatus.Completed, Margin = new Thickness(depth * 12, 0, 0, 12), IsEnabled = !node.ContextOnly };
             System.Windows.Automation.AutomationProperties.SetName(check, task.Title);
             check.Click += async (_, _) => { bool complete = check.IsChecked == true; check.IsChecked = task.Status == TodoStatus.Completed; await planner.ExecuteAsync(new SetTodoCompleted(TodoRef.Of(task), complete)); };
             CompactRealList.Children.Add(check); foreach (var child in planner.DisplayChildren(node)) Row(child, Math.Min(depth + 1, 6));
             int done = planner.CompletedChildCount(node); if (done > 0) CompactRealList.Children.Add(PlannerView.Button(string.Format(Localization.Culture, Text(planner.CompletedCollapsed(task.Id) ? "ChildrenShowDone" : "ChildrenHideDone"), done), () => planner.ToggleCompletedChildren(task.Id)));
         }
         foreach (var node in rows) Row(node, 0);
+    }
+    void RefreshCompactDeadlines()
+    {
+        foreach (var check in CompactRealList.Children.OfType<CheckBox>())
+            if (check.Tag is Guid id && Session.Planner?.FindTodo(id) is Todo task && task.Deadline != null && check.Content is System.Windows.Controls.TextBlock text && text.Inlines.FirstInline is System.Windows.Documents.Run due)
+                due.Foreground = ThemeColors.Brush(WorkflowText.DeadlineColor(task));
     }
     internal void PrepareStartup(WindowPreferences preferences, bool fallback)
     {

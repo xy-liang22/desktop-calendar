@@ -1,6 +1,13 @@
 # 数据与服务接口：P2基础与P3–P8集成
 
-状态：应用与Core为0.8.5，真实待办、周期、Activity与P6周目标/统计/总结界面已接入。纯C# Core不依赖WPF或数据库；唯一获批第三方库lunar-csharp 1.6.8只用于离线宜忌，首次开发恢复需显式联网。业务schema4，图片/备注呈现及偏好位于WPF层，实体/JSON仍不含WPF对象。下方原schema3阶段记录按本节最新约定解释。
+状态：应用0.8.6，业务schema5。纯C# Core不依赖WPF或数据库；唯一获批第三方库lunar-csharp 1.6.8只用于离线宜忌。图片/备注呈现及偏好位于WPF层，实体/JSON仍不含WPF对象。历史schema记录按本节最新约定解释。
+
+## 0.8.6 DDL、批量与层级命令
+
+- `Todo.Deadline` 可空，`TodoDeadline(Date, Time, TimeZoneId, Offset)`：Date为空表示计划日，Time为空表示日期的排他次日边界，不能同时为空；DST遵循现有时区解析规则。明确日期不会随计划日移动，时间型随计划日解释；周期模板相对时间按每次计划日计算，绝对日期保持不变。`TodoDeadlines.Instant/Label/Urgency`统一计算；展示层处理未来DST未消歧警告，不猜测偏移。迁移旧schema只补null，不生成截止时间、不变更旧完成来源或快照。
+- `BulkEditTodos`：只改明确引用，周期日期单次修改可独立选；涉及周期改型必须显式选完整根子树，不满足时整批拒绝。普通/持续改型不改子任务类型。持续日期整体平移该任务自己的顺延历史；明确DDL日期保持不变。周期类型转换沿用已批准的历史保护与引用重映射。命令队列一次提交和撤销；预览不写盘，执行再次验证。
+- `ReparentTodo`：稳定ID、关联及后代保留；普通/持续可嵌入、提升、跨级。禁止循环/超深树。周期同系列同发生提供Single/FromDate；后续模板调整保留已完成实例及其必要祖先结构。跨系列或移出周期明确转换**所选单次发生及子树**为普通/持续，其他日期保留规则，不暗改未来系列。保留原ID，将Origin清空并更新Activity/Goal引用，同步记录取消墓碑；日期/子项查询按稳定ID避免再次生成旧发生。整系列跨父移动不在此单次转换中暗做。
+- `PlaceTodoRelative`将跨层级移动与相对兄弟插入合成单个事务；同级排序仍保持未完成在前、完成在后。`TodoCompletion.Reconcile`统一失效旧快照并重新派生进度。`PlannerWorkspace.Preview`只校验不可变快照，最终保存依然经过完整校验与原子存储。
 
 ## 0.8.5 子任务类型接口
 
@@ -115,7 +122,7 @@ P4继续编码schema3，无读写迁移。测试中实际引用旧`bin/P31/.../D
 
 默认 `%LOCALAPPDATA%\DesktopCalendar\planner-data.json`；窗口偏好仍是独立 `window-preferences.json`，兼容旧schema2。`PlannerOptions`作为调用上下文传入，不写入业务JSON。P3正常启动读取真实业务文件；只有主/备份/残留都不存在才允许首次初始化，现有P2其他实体与关联保留。
 
-当前业务schema4：`schemaVersion/documentId/revision/payload/payloadSha256`，DTO不存WPF对象，严格字段/枚举/重复键/关联检查；未知同版本字段拒绝。v1为早期迁移合同（documentId/data，无revision/校验和），不是P1.1真实业务文件；兼容v1/v2/v3读取迁移，下一次明确成功保存才写4并备份旧文件。
+当前业务schema5：`schemaVersion/documentId/revision/payload/payloadSha256`，DTO不存WPF对象，严格字段/枚举/重复键/关联检查；未知同版本字段拒绝。v1为早期迁移合同（documentId/data，无revision/校验和），不是P1.1真实业务文件；兼容v1/v2/v3/v4读取迁移，下一次明确成功保存才写5并备份旧文件。
 
 同目录唯一临时文件，完整写入、Flush(true)、重新解码校验、File.Replace 保留 `.bak`；首次创建用同卷 Move。每个工作区串行队列＋跨进程排他锁文件＋文件指纹/Revision，防晚写覆盖和旧快照。旧锁文件不是持锁，进程退出由系统释放句柄。写入失败返回诊断；提交后异常先核实实际结果，不盲目重试。
 

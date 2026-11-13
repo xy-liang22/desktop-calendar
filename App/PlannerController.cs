@@ -18,6 +18,7 @@ internal sealed class PlannerController
     PlannerWorkspace? workspace;
     readonly bool maintenanceBlocked;
     DateOnly lastToday;
+    internal event Action? ClockChanged;
     internal PlannerState? State => workspace?.Snapshot;
     internal StoreLoad? Storage => workspace?.Storage;
     internal Task Pending { get; private set; } = Task.CompletedTask;
@@ -83,6 +84,7 @@ internal sealed class PlannerController
         {
             if (!Busy && !Stopping && workspace != null && State?.Options.TimeZoneId != DisplayZone) { Pending = ChangeTimeZone(DisplayTimeZoneId); await Pending; }
             if (lastToday != Today) { lastToday = Today; Changed?.Invoke(); }
+            else ClockChanged?.Invoke();
         };
     }
     internal Task InitializeAsync() => Pending = InitializeCore();

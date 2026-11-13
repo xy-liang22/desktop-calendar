@@ -24,6 +24,9 @@ public sealed class PlannerWorkspace
         finally { gate.Release(); }
     }
     public bool CanUndo => undo.Count > 0 && loaded.CanWrite;
+    // The UI validates an explicit preview against an immutable snapshot; Execute validates again.
+    public static PlannerState Preview(PlannerState state, PlannerCommand command, DateTimeOffset now)
+    { var next = PlannerCommands.Apply(state, command, now).State; PlannerIntegrity.Validate(next); return next; }
     public async Task<T> MaintenanceAsync<T>(Func<Task<T>> action, CancellationToken ct = default)
     { await gate.WaitAsync(ct).ConfigureAwait(false); try { return await store.MaintenanceAsync(loaded.Fingerprint, action, ct).ConfigureAwait(false); } finally { gate.Release(); } }
     public bool CanRedo => redo.Count > 0 && loaded.CanWrite;

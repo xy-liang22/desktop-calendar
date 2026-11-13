@@ -97,7 +97,7 @@ internal static partial class StageThreeChecks
         await DriveAsync(() => v.Edit(null), async s => { Field(s, "PlannerTitle").Text = "GUI carried"; Field(s, "PlannerTime").Text = "15:00"; Choice(s, "RepeatType").SelectedIndex = 1; await s.SaveAndCloseAsync(false); });
         var carry = c.State!.Todos.Single(t => t.Title == "GUI carried");
         Check("GUI creates one shared history-carry task across dates", c.On(c.Today).Any(t => t.Id == carry.Id) && c.On(c.Today.AddDays(-2)).Any(t => t.Id == carry.Id));
-        c.Select(c.Today, true); c.BeginInline(carry, c.Today); window.UpdateLayout(); await Idle();
+        c.Select(c.Today, true); window.Activate(); await Idle(); c.BeginInline(carry, c.Today); window.UpdateLayout(); await Idle();
         Check("history carry opens only one inline box despite repeated date cells", Children<TextBox>(v).Count(t => AutomationProperties.GetName(t) == MainWindow.Text("CalendarInlineTitle")) == 1); c.CancelInline();
         var check = window.CompactRealList.Children.OfType<CheckBox>().Single(x => AutomationProperties.GetName(x) == carry.Title); check.IsChecked = true; check.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent, check)); await c.Pending;
         Check("compact completion shares frozen carry status with month and day", c.On(c.Today.AddDays(-1)).Any(t => t.Id == carry.Id && t.Status == TodoStatus.Completed) && !c.On(c.Today.AddDays(1)).Any(t => t.Id == carry.Id));

@@ -24,7 +24,7 @@ internal static partial class PlannerCommands
         return next with { Cancelled = [.. exclusions] };
     }
     static Todo Editable(Todo target, Todo fields) => target with { Title = fields.Title, Description = fields.Description, CategoryId = fields.CategoryId, Color = fields.Color,
-        Important = fields.Important, Urgent = fields.Urgent, PlannedTime = fields.PlannedTime, PlannedTimeZoneId = fields.PlannedTimeZoneId, PlannedOffset = fields.PlannedOffset, ManualProgress = fields.ManualProgress, ProgressMode = fields.ProgressMode };
+        Important = fields.Important, Urgent = fields.Urgent, Deadline = fields.Deadline, PlannedTime = fields.PlannedTime, PlannedTimeZoneId = fields.PlannedTimeZoneId, PlannedOffset = fields.PlannedOffset, ManualProgress = fields.ManualProgress, ProgressMode = fields.ProgressMode };
     static CommandChange EditOccurrenceFields(PlannerState s, EditOccurrence c, DateTimeOffset now)
     {
         var original = Get(s, TodoRef.Of(c.Value));
@@ -70,6 +70,7 @@ internal static partial class PlannerCommands
             Color = before.Color != next.Color ? next.Color : value.Color,
             Important = before.Important != next.Important ? next.Important : value.Important,
             Urgent = before.Urgent != next.Urgent ? next.Urgent : value.Urgent,
+            Deadline = before.Deadline != next.Deadline ? next.Deadline : value.Deadline,
             PlannedTime = before.PlannedTime != next.PlannedTime ? next.PlannedTime : value.PlannedTime,
             PlannedTimeZoneId = before.PlannedTimeZoneId != next.PlannedTimeZoneId ? next.PlannedTimeZoneId : value.PlannedTimeZoneId,
             PlannedOffset = before.PlannedOffset != next.PlannedOffset ? next.PlannedOffset : value.PlannedOffset,

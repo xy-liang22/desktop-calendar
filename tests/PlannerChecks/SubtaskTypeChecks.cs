@@ -42,6 +42,6 @@ internal static partial class Checks
         await w.UndoAsync();
         Check("undo cancel restores local carry and saved relationship", w.Snapshot!.Todos.Any(t => t.Id == carry && t.ParentId == Parent(0).Id));
         var roundtrip = PlannerCodec.Decode(PlannerCodec.Encode(w.Snapshot!), Utc).State;
-        Check("mixed child types roundtrip existing schema without additional store", PlannerCodec.CurrentSchema == 4 && roundtrip.Todos.Single(t => t.Id == carry).Kind == TodoKind.CarryHistory);
+        Check("mixed child types roundtrip current schema without additional store", PlannerCodec.CurrentSchema == 5 && roundtrip.Todos.Single(t => t.Id == carry).Kind == TodoKind.CarryHistory);
     }
 }

@@ -181,6 +181,7 @@ internal static partial class PlannerDialogs
         var zone = TimeZoneChoices.Create(draft.PlannedTimeZoneId ?? (draft.Origin == null ? null : TodoTime.SourceZone(controller.State!, draft)), "FloatingTodoTime"); sheet.Field("TodoTimeZone", zone);
         var offset = Input(draft.PlannedOffset is TimeSpan o ? PeriodFields.Offset(o) : ""); sheet.Field("TodoTimeOffset", offset);
         var zoneHint = PlannerView.Text(T("TodoTimeZoneHint"), 10); zoneHint.TextWrapping = TextWrapping.Wrap; sheet.Body.Children.Add(zoneHint);
+        var deadline = new DeadlineFields(draft, controller.DisplayZone); sheet.Body.Children.Add(new Expander { Header = T("Deadline"), Content = deadline, IsExpanded = draft.Deadline != null });
         RecurrenceFields? repeat = null; Expander? repeatSection = null;
         if (newRoot)
         {
@@ -215,14 +216,14 @@ internal static partial class PlannerDialogs
         if (draft.ParentId is Guid p) { var parentText = PlannerView.Text(T("PlannerParent") + " " + controller.FindTodo(p)?.Title, 10, "#A2AFBC"); sheet.Body.Children.Add(parentText); }
         var goals = new GoalLinks(owner, controller, TodoRef.Of(draft)); sheet.Body.Children.Add(new Expander { Header = T("ActivityGoal"), Content = goals });
         string Signature() => JsonSerializer.Serialize(new { title.Text, Description = description.Text, Date = date.SelectedDate, Time = time.Text, Zone = TimeZoneChoices.Value(zone), Offset = offset.Text, appearance.CategoryId, Color = appearance.Color.Value, Important = important.IsChecked, Urgent = urgent.IsChecked, Progress = progress.Text, Auto = automatic.IsChecked, Complete = completed.IsChecked, Type = type?.SelectedIndex, Repeat = newRoot && type?.SelectedIndex == 3 ? repeat?.DraftSignature : null, Goals = goals.Signature });
-        string initial = Signature();
+        string initial = Signature(); string initialDeadline = deadline.Signature;
         sheet.Save(async () =>
         {
             // Esc need not move focus out of DatePicker's editable text box first.
             var dateInput = date.Template?.FindName("PART_TextBox", date) as System.Windows.Controls.Primitives.DatePickerTextBox;
             if (!DateTime.TryParse(dateInput?.Text ?? date.Text, CultureInfo.GetCultureInfo(T("PlannerUiLanguage")), DateTimeStyles.AllowWhiteSpaces, out var parsedDate)) { sheet.Error.Text = T("PlannerDateRequired"); return false; }
             date.SelectedDate = parsedDate.Date;
-            if (!invalidDate && Signature() == initial && (original != null || sheet.CloseWithoutChanges && string.IsNullOrWhiteSpace(title.Text))) return true;
+            if (!invalidDate && Signature() == initial && deadline.Signature == initialDeadline && (original != null || sheet.CloseWithoutChanges && string.IsNullOrWhiteSpace(title.Text))) return true;
             if (!TodoDraftRules.Title(title.Text)) { sheet.Error.Text = T("PlannerTitleRequired"); return false; }
             if (invalidDate || date.SelectedDate == null) { sheet.Error.Text = T("PlannerDateRequired"); return false; }
             if (!TodoDraftRules.Time(time.Text, out var planned)) { sheet.Error.Text = T("PlannerTimeInvalid"); return false; }
@@ -246,6 +247,7 @@ internal static partial class PlannerDialogs
             }
             var mode = !autoTouched && automatic.IsChecked == initialAuto ? draft.ProgressMode : automatic.IsChecked == true ? ProgressMode.Children : ProgressMode.Manual;
             var value = draft with { Title = title.Text.Trim(), Description = description.Text, PlannedDate = DateOnly.FromDateTime(date.SelectedDate.Value), PlannedTime = planned, PlannedTimeZoneId = sourceZone, PlannedOffset = preferredOffset, CategoryId = appearance.CategoryId, Color = appearance.Color.Value, Important = important.IsChecked == true, Urgent = urgent.IsChecked == true, ProgressMode = mode, ManualProgress = percent };
+            if (!deadline.Read(value, out var due)) { sheet.Error.Text = T("DeadlineInvalid"); return false; } value = value with { Deadline = due };
             var commands = new System.Collections.Generic.List<PlannerCommand>(); bool following = newChild && type?.SelectedIndex == 3;
             var selectedScope = newChild && !following ? EditScope.Single : (scope?.SelectedItem as ScopeChoice)?.Value ?? EditScope.Single;
             DateOnly showDate = value.PlannedDate; TodoRef completionRef = TodoRef.Of(value);

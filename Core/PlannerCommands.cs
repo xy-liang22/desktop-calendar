@@ -5,6 +5,9 @@ namespace DesktopCalendar.Core;
 // Commands are the mutation boundary. No UI collection or control is a persistence model.
 public abstract record PlannerCommand;
 public sealed record BatchCommand(ImmutableArray<PlannerCommand> Commands) : PlannerCommand;
+public sealed record BulkEditTodos(ImmutableArray<TodoRef> Todos, DateOnly? Date, TodoKind? Kind, DateOnly EffectiveDate, RecurrenceRule? Rule = null) : PlannerCommand;
+public sealed record ReparentTodo(TodoRef Todo, TodoRef? Parent, EditScope Scope = EditScope.Single, TodoKind? DetachKind = null) : PlannerCommand;
+public sealed record PlaceTodoRelative(ReparentTodo Move, TodoRef Sibling, bool After, DateOnly DisplayDate, DateOnly AsOf) : PlannerCommand;
 public sealed record SaveTodo(Todo Value) : PlannerCommand;
 public sealed record AddChildTodo(Todo Value, TodoRef Parent) : PlannerCommand;
 public sealed record RenameTodo(TodoRef Todo, string Title, string ExpectedTitle) : PlannerCommand;
@@ -81,6 +84,19 @@ internal static partial class PlannerCommands
         if (depth > 16) throw new PlannerException("CommandTooDeep");
         switch (command)
         {
+            case BulkEditTodos c: return BulkEdit(s, c, now);
+            case ReparentTodo c: return Reparent(s, c, now);
+            case PlaceTodoRelative c:
+            {
+                s = Apply(s, c.Move, now, depth + 1).State;
+                var source = s.Todos.Single(t => t.Id == c.Move.Todo.Id); var target = Get(s, c.Sibling);
+                if (source.ParentId != target.ParentId || source.Status != target.Status || source.Id == target.Id) throw new PlannerException("DifferentSiblingGroups");
+                var siblings = source.ParentId is Guid p ? PlannerQueries.Children(s, s.Todos.Single(t => t.Id == p)).Where(t => t.Status != TodoStatus.Cancelled).ToList()
+                    : PlannerQueries.TodosOn(s, c.DisplayDate, c.AsOf).Where(t => t.ParentId == null).ToList();
+                siblings.RemoveAll(t => t.Id == source.Id); int index = siblings.FindIndex(t => t.Id == target.Id);
+                if (index < 0) throw new PlannerException("InvalidSiblingOrder"); siblings.Insert(index + (c.After ? 1 : 0), source);
+                return Apply(s, new ReorderTodos([.. siblings.Select(TodoRef.Of)], c.DisplayDate, c.AsOf), now, depth + 1);
+            }
             case BatchCommand c:
             {
                 if (c.Commands.IsDefaultOrEmpty || c.Commands.Length > 1000) throw new PlannerException("InvalidCommandBatch");

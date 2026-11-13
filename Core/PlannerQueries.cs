@@ -61,7 +61,7 @@ public static class PlannerQueries
             foreach (var node in version.Templates)
             {
                 var key = new OccurrenceKey(series.Id, node.Id, sourceDate);
-                if (state.Todos.Any(t => t.Origin == key)) continue; // moved/completed override wins on every query date
+                if (state.Todos.Any(t => t.Id == key.StableId())) continue; // includes an explicitly detached occurrence
                 try { var item = Resolve(state, TodoRef.For(key)); if (TodoTime.Display(state, item).Date == date) rows.Add(item); }
                 catch (PlannerException e) when (e.Code is "OccurrenceNotFound") { }
             }
@@ -121,6 +121,8 @@ public static class PlannerQueries
             {
                 var childKey = new OccurrenceKey(key.SeriesId, template.Id, key.Date);
                 if (children.Any(c => c.Origin == childKey)) continue;
+                if (state.Todos.Any(t => t.Id == childKey.StableId() && t.ParentId != parent.Id)) continue;
+                if (children.Any(c => c.Id == childKey.StableId())) continue;
                 try { var resolved = Resolve(state, TodoRef.For(childKey)); if (resolved.ParentId == parent.Id) children.Add(resolved); } catch (PlannerException e) when (e.Code == "OccurrenceNotFound") { }
             }
         }
