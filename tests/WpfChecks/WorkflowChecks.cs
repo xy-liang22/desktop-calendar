@@ -30,7 +30,7 @@ internal static partial class StageThreeChecks
             Field(sheet, "DeadlineTime").Text = "25:00";
             bool saved = await sheet.SaveAndCloseAsync(false); Check("invalid deadline keeps editor and stored value", !saved && sheet.IsVisible && c.FindTodo(first.Id)!.Deadline?.Time == new TimeOnly(18, 0));
         });
-        await DriveAsync(() => PlannerDialogs.BatchEdit(window, c), async sheet =>
+        await DriveAsync(() => Click(Children<Button>(window.PlannerView!).Single(b => System.Windows.Automation.AutomationProperties.GetName(b) == MainWindow.Text("BulkEdit"))), async sheet =>
         {
             Children<CheckBox>(sheet).Single(x => Equals(x.Content, first.Title)).IsChecked = true;
             Choice(sheet, "RepeatType").SelectedIndex = 1;
@@ -70,5 +70,13 @@ internal static partial class StageThreeChecks
             Check("workflow localized resources complete " + language, new[] { "BulkEdit", "HierarchyMove", "Deadline", "TodoDragHint", "DeadlineInvalid", "BulkSelectSubtree" }.All(k => Application.Current.TryFindResource(k) is string value && !string.IsNullOrWhiteSpace(value)));
         }
         Localization.Apply(wasEnglish ? "en" : "zh-CN");
+        // Render the existing toolbar at the supported minimum column width in both languages.
+        var originalColumn = window.PlannerView!.ColumnDefinitions[2].Width;
+        foreach (int language in new[] { 1, 0 })
+        {
+            window.LanguageChoice.SelectedIndex = language; await Idle(); window.PlannerView!.ColumnDefinitions[2].Width = new GridLength(200); await Idle();
+            Image(window, "workflow-toolbar-" + (language == 1 ? "en" : "zh") + ".png");
+        }
+        window.LanguageChoice.SelectedIndex = wasEnglish ? 1 : 0; await Idle(); window.PlannerView!.ColumnDefinitions[2].Width = originalColumn;
     }
 }

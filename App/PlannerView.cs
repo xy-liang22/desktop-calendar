@@ -29,7 +29,7 @@ internal sealed partial class PlannerView : Grid
     DayOfWeek renderedWeekStart;
     WeekPlanLayout renderedWeekLayout;
     internal StackPanel Items { get; } = new();
-    readonly Button add, quickAdd, undo, redo, reload, recover;
+    readonly Button add, bulk, quickAdd, undo, redo, reload, recover;
     readonly Dictionary<DateOnly, Button> days = [];
     readonly HashSet<Guid> collapsed = [];
     readonly HashSet<Guid> calendarExpanded = [];
@@ -77,8 +77,8 @@ internal sealed partial class PlannerView : Grid
         var todo = RowGrid(GridLength.Auto, new GridLength(1, GridUnitType.Star), GridLength.Auto, GridLength.Auto);
         var heading = new StackPanel(); var toolbar = new DockPanel();
         var controls = new StackPanel { Orientation = Orientation.Horizontal }; undo = Button("↶", async () => await Controller.UndoAsync(), T("PlannerUndo")); redo = Button("↷", async () => await Controller.RedoAsync(), T("PlannerRedo")); add = Button("＋", () => Edit(null), T("PlannerNew"));
-        controls.Children.Add(undo); controls.Children.Add(redo); controls.Children.Add(add); DockPanel.SetDock(controls, Dock.Right); toolbar.Children.Add(controls); toolbar.Children.Add(Text(T("TodoTitle"), 17)); heading.Children.Add(toolbar);
-        heading.Children.Add(Button(T("BulkEdit"), () => PlannerDialogs.BatchEdit(owner, Controller)));
+        bulk = Button("☷", () => PlannerDialogs.BatchEdit(owner, Controller), T("BulkEdit")); bulk.Width = 28; bulk.Padding = new Thickness(0); bulk.FontFamily = new FontFamily("Segoe UI Symbol"); bulk.FontSize = 18;
+        controls.Children.Add(undo); controls.Children.Add(redo); controls.Children.Add(bulk); controls.Children.Add(add); DockPanel.SetDock(controls, Dock.Right); toolbar.Children.Add(controls); toolbar.Children.Add(Text(T("TodoTitle"), 17)); heading.Children.Add(toolbar);
         dateTitle = Text("", 11, "#A3D9C4"); dateTitle.Margin = new Thickness(0, 7, 0, 10); heading.Children.Add(dateTitle); At(todo, heading);
         var details = Button(T("CalendarDateDetails"), () => ApplicationSettings.DateDetails(owner, Controller.SelectedDate)); details.FontSize = 10; details.HorizontalAlignment = HorizontalAlignment.Left; details.Padding = new Thickness(4, 2, 4, 2); heading.Children.Add(details);
         empty = Text(T("PlannerEmpty"), 12, "#A2AFBC"); empty.TextWrapping = TextWrapping.Wrap;
@@ -122,7 +122,7 @@ internal sealed partial class PlannerView : Grid
         foreach (var b in navButtons.Children.OfType<Button>().Where(b => b.Tag as string == "fixed-row-nav")) b.IsEnabled = owner.Appearance.FixedSixRows;
         dateTitle.Text = CalendarPresentation.Detail(owner.Session.Calendar, Controller.SelectedDate, false); dateTitle.TextWrapping = TextWrapping.Wrap; dateTitle.MaxHeight = 100; dateTitle.ToolTip = CalendarPresentation.Detail(owner.Session.Calendar, Controller.SelectedDate);
         notice.Text = T(Controller.NoticeKey); notice.ToolTip = Controller.Diagnostic;
-        add.IsEnabled = quickAdd.IsEnabled = Quick.IsEnabled = QuickAppearance.IsEnabled = Controller.Writable;
+        add.IsEnabled = bulk.IsEnabled = quickAdd.IsEnabled = Quick.IsEnabled = QuickAppearance.IsEnabled = Controller.Writable;
         if (Controller.State != null && renderedCategories != Controller.State.Categories) { QuickAppearance.Refresh(); renderedCategories = Controller.State.Categories; }
         undo.IsEnabled = Controller.CanUndo; redo.IsEnabled = Controller.CanRedo;
         reload.IsEnabled = !Controller.Busy; recover.IsEnabled = !Controller.Busy && Controller.Storage?.Status != StoreStatus.NewerSchema && Controller.Storage?.Candidates.Length > 0;
