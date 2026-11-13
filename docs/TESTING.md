@@ -11,6 +11,7 @@ dev/todo-workflow 基于 f89db0b；本轮只新增待办拖动滚动、批量日
 | 完整WPF、独立进程重启、损坏与更新schema保护 | **494 PASS / 0 FAIL**（475+12+5+2）；`artifacts/checks/wpf/run-a89aad085b1f481ea6621e2b6159b50f`。包含捕获重入/预览几何修复后的完整回归。 |
 | 窗口/owner/托盘/恢复/缩放回归 | **374 PASS / 0 FAIL**；`artifacts/p1-checks.txt`。属于程序化检查，不替代Win+D实机视觉。 |
 | 隔离安装、更新、卸载保护 | **20 PASS / 0 FAIL**；`artifacts/checks/install/run-1eb5b5bb915047029dc6a25ac1f8bce9`；仅项目隔离目录。 |
+| 实际安装版、开发输出与开始菜单一致性 | **11 PASS / 0 FAIL**；`artifacts/entry-checks-7f90fbb07a1b45f1a0b20cb1fed3671c`；7文件哈希一致，开始菜单目标及图标正确，实际安装EXE使用隔离数据启动并正常退出。 |
 | Release构建与最终发布包 | **PASS，0警告/0错误**；离线发布至`artifacts/package`，0.8.6，包ID `198c3f1ff0109a80`；7文件哈希均与清单、最终开发输出一致。 |
 
 数据新增覆盖：子树移动保留ID/Activity链接、循环拒绝、提升/跨级插入一次撤销、完成快照失效；批量只改选择项、缺失引用及写入中断时原文件不变；时间/日期DDL格式、跨时区换日、DST缺口/歧义/23小时日、计划日变更、重启；真实schema4去除deadline字段并重算校验和后迁移；周期仅本次/后续层级、已完成后代历史保护、单次脱离后的ID/链接/墓碑不重复生成；未选后代拒绝隐式转换，显式整树批量改型可保存。
@@ -21,7 +22,7 @@ WPF新增覆盖：编辑器中文冒号规范化、DDL保存和非法时间保�
 
 **NOT VERIFIED**：computer-use技能与备用cua均返回“Computer Use native pipe is unavailable … file specified (os error 2)”，未执行真实鼠标按住＋滚轮或桌面截图。不可把自动控件操作写成肉眼GUI验收。必要人工仅一组：打开长待办列表，按住任务滚轮滚动，分别放到另一行中心与边缘核对提示/层级，按Esc试取消；不重复要求已通过的Win+D/任务栏/Alt+Tab。Windows10、混合DPI实机、Explorer重启/休眠仍沿用历史限制。
 
-真实安装版0.8.5仍在运行，已请求正常退出，未强制终止；在收到回复前不更新真实开始菜单/自启动指向。可先正常退出，再运行`Install-DesktopCalendar.ps1 -Action Update -PackagePath .\artifacts\package`。此更新只部署用户级程序，首次用户使用0.8.6保存数据时才写schema5，旧文件保留备份。
+用户确认“已从托盘退出，可以更新”后，核对无旧进程并执行现有用户级更新脚本。实际安装已更新到0.8.6（`v198c3f1ff0109a80`），开始菜单及已启用的自启动入口随之指向新版；没有新增启动项、桌面快捷方式或系统设置。安装和一致性测试没有访问真实planner、图片或偏好；首次用户使用0.8.6保存数据时才写schema5，旧文件按存储机制保留备份。可从开始菜单启动新版，不需再次执行安装命令。
 
 ## 2026-11-06：0.8.5 子任务类型选择与继承
 
